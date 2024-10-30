@@ -3,7 +3,6 @@
 		name: '',
 		rooms: [],
 		nextTime: 1,
-        nextTimeMeasure: 'days',
 	};
 
     let error = '';
@@ -22,10 +21,10 @@
             if (!response.ok) {
                 throw new Error(String(response.status) + ': Failed to add chore');
             }
-            window.location = '/';
         } catch (err) {
             error = err.message;
         }
+        window.history.back()
     }
 
     export let rooms;
@@ -55,7 +54,7 @@
             {/each}
         </div>
         <input type="range" min="1" max="42" step="1" bind:value={newChore.nextTime} />
-        <p>{formatNextTime(newChore.nextTime)}</p>
+        <p>Every {formatNextTime(newChore.nextTime)}</p>
         <button type="submit">Add Chore</button>
     </form>
 </div>

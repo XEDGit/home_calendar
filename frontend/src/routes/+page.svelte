@@ -3,7 +3,9 @@
     import AddEventForm from '$lib/addEvent.svelte';
     import AddChoreForm from '$lib/addChore.svelte';
 	import Chores from '$lib/chores.svelte';
-    
+    import PlusButton from '$lib/plusButton.svelte';
+    import NavButton from '$lib/navButton.svelte';
+
     export let data;
     let events = data.events;
     let chores = data.chores;
@@ -89,32 +91,15 @@
     }
 </style>
 </svelte:head>
+<NavButton fcal={() => updateViewMode(pages.calendar)} fcho={() => updateViewMode(pages.chores)} />
 
 { #if viewMode == pages.calendar }
-<div style="display:flex; flex-direction: column; align-items: center;">
-    <h1>Event Calendar</h1>
-    <div class="navBar">
-        <button class="navButton" on:click={() => updateViewMode(pages.calendar)}>Calendar</button>
-        <button class="navButton" on:click={() => updateViewMode(pages.chores)}>Chores</button>
-    </div>
-</div>
 
 <div style="width:90%; margin: 0 auto">
     <Calendar events={events}/>
 </div>
 
-<div>
-    <button style="
-        height: 50px;
-        width: 50px;
-        font-size: 2rem;
-        background-color: #B159EB;
-        border-radius: 50%;
-        position: fixed;
-        bottom: 40px;
-        right: 40px;
-        " on:click={() => updateViewMode(pages.addEvent)}>+</button>
-</div>
+<PlusButton func={() => updateViewMode(pages.addEvent)} />
 
 {:else if viewMode == pages.addEvent}
 
@@ -122,30 +107,11 @@
 
 {:else if viewMode == pages.chores}
 
-<div style="display:flex; flex-direction: column; align-items: center;">
-    <h1>Event Calendar</h1>
-    <div class="navBar">
-        <button class="navButton" on:click={() => updateViewMode(pages.calendar)}>Calendar</button>
-        <button class="navButton" on:click={() => updateViewMode(pages.chores)}>Chores</button>
-    </div>
-</div>
-
 <div style="width:90%; margin: 30px auto">
     <Chores chores={chores}/>
 </div>
 
-<div>
-    <button style="
-        height: 50px;
-        width: 50px;
-        font-size: 2rem;
-        background-color: #B159EB;
-        border-radius: 50%;
-        position: fixed;
-        bottom: 40px;
-        right: 40px;
-        " on:click={() => updateViewMode(pages.addChore)}>+</button>
-</div>
+<PlusButton func={() => updateViewMode(pages.addChore)} />
 
 {:else if viewMode == pages.addChore}
 

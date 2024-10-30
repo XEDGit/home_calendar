@@ -111,7 +111,8 @@ app.get('/chores', (req, res) => {
 
 // Add a new chores
 app.post('/chores', (req, res) => {
-    const newChore = req.body;
+    let newChore = req.body;
+    newChore.repetition = newChore.nextTime;
     chores.push(newChore);
     saveChores()
     res.status(201).send(newChore);

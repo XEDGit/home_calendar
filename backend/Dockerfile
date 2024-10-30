@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt-get -y update && apt-get -y upgrade
 
-COPY ./package* /app
+COPY ./package* /app/
 
 RUN npm i
 

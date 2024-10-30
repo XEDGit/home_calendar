@@ -1,10 +1,5 @@
 <script>
-	let choreTemplate = {
-		name: 'aaa',
-		room: 'kitchen',
-		nextTime: '10-12-2023',
-	}
-	let chores = [choreTemplate, choreTemplate];
+	export let chores;
 </script>
 
 {#each chores as chore}
@@ -14,13 +9,15 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;">
-	<div style="width: 90%; height: 10vh; border-radius: 5px;; background-color: gray; margin-bottom: 10px; align-content: center;">
+	<div style="width: 90%; height: 10vh; border-radius: 5px;; background-color: #D0A7EB; margin-bottom: 10px; align-content: center;">
 		<div style="float:left; padding-left: 10px">
 			<p>{chore.name}</p>
 		</div>
 		<div style="float:right; display: flex; flex-direction: row-reverse; gap: 10%; padding-right: 10px">
 			<p>{chore.nextTime}</p>
-			<p>{chore.room}</p>
+			{#each chore.rooms as room}
+				<p>{room}</p>
+			{/each}
 		</div>
 	</div>
 </div>

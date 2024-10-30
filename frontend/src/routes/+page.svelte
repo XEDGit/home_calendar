@@ -6,7 +6,7 @@
     
     export let data;
     let events = data.events;
-    // let chores = data.chores;
+    let chores = data.chores;
     let rooms = data.rooms;
     
     let pages = {
@@ -58,12 +58,44 @@
 
 </script>
 
+<svelte:head>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        background-color: #5961EB;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        font-family: 'Roboto', sans-serif;
+    }
+    .navButton {
+        background-color: #8159EB;
+        border: none;
+        border-radius: 20px;
+        width: 10vw;
+        height: 4vh;
+        font-size: 16px;
+        transition: box-shadow 0.5s, background-color 0.5s;
+    }
+    .navButton:hover {
+        background-color: #B159EB;
+        border-radius: 30px;
+        box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
+    }
+    .navBar {
+        height: 12vh;
+        display: flex;
+        gap: 100px
+    }
+</style>
+</svelte:head>
+
 { #if viewMode == pages.calendar }
 <div style="display:flex; flex-direction: column; align-items: center;">
     <h1>Event Calendar</h1>
-    <div>
-        <button on:click={() => updateViewMode(pages.calendar)}>Calendar</button>
-        <button on:click={() => updateViewMode(pages.chores)}>Chores</button>
+    <div class="navBar">
+        <button class="navButton" on:click={() => updateViewMode(pages.calendar)}>Calendar</button>
+        <button class="navButton" on:click={() => updateViewMode(pages.chores)}>Chores</button>
     </div>
 </div>
 
@@ -76,7 +108,7 @@
         height: 50px;
         width: 50px;
         font-size: 2rem;
-        background-color: #6544cf;
+        background-color: #B159EB;
         border-radius: 50%;
         position: fixed;
         bottom: 40px;
@@ -92,14 +124,14 @@
 
 <div style="display:flex; flex-direction: column; align-items: center;">
     <h1>Event Calendar</h1>
-    <div>
-        <button on:click={() => updateViewMode(pages.calendar)}>Calendar</button>
-        <button on:click={() => updateViewMode(pages.chores)}>Chores</button>
+    <div class="navBar">
+        <button class="navButton" on:click={() => updateViewMode(pages.calendar)}>Calendar</button>
+        <button class="navButton" on:click={() => updateViewMode(pages.chores)}>Chores</button>
     </div>
 </div>
 
 <div style="width:90%; margin: 30px auto">
-    <Chores/>
+    <Chores chores={chores}/>
 </div>
 
 <div>
@@ -107,7 +139,7 @@
         height: 50px;
         width: 50px;
         font-size: 2rem;
-        background-color: #6544cf;
+        background-color: #B159EB;
         border-radius: 50%;
         position: fixed;
         bottom: 40px;

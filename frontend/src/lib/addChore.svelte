@@ -3,12 +3,20 @@
 		name: '',
 		rooms: [],
 		nextTime: 1,
+		timeMeasure: 'days',
 	};
 
     let error = '';
 
 	async function addChore() {
         try {
+            if (newChore.nextTime == 1) {
+                newChore.timeMeasure = 'day';
+            } else if (newChore.nextTime == 31) {
+                newChore.timeMeasure = 'month';
+            } else if (newChore.nextTime > 31) {
+                newChore.timeMeasure = 'months';
+            }
             const response = await fetch('api/addChore', {
                 method: 'POST',
                 headers: {

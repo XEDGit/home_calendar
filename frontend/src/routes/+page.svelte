@@ -36,6 +36,17 @@
         viewMode = value
     }
 
+    import { page } from '$app/stores';
+    let queryParams = $page.url.searchParams;
+    for (let [key, value] of Array.from(queryParams.entries())) {
+        if (key == 'viewMode') {
+            let idx = pageNames.indexOf(value)
+            if (value != -1)
+                updateViewMode(idx)
+        }
+    }
+
+
     const handlePopState = (event) => {
         if (event.state && event.state.viewMode !== undefined) {
             viewMode = event.state.viewMode;
@@ -47,13 +58,6 @@
     import { onMount } from 'svelte';
     onMount(() => {
         if (browser) {
-            // Initialize the viewMode from the current state if exists
-            const currentState = window.history.state;
-            if (currentState && currentState.viewMode !== undefined) {
-                updateViewMode(currentState.viewMode);
-            } else {
-                updateViewMode(pages.calendar);
-            }
             window.addEventListener('popstate', handlePopState);
         }
     });
@@ -64,33 +68,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <style>
     body {
-        background-color: #5961EB;
+        background-color: #FFEAD0;
         margin: 0;
         height: 100%;
         width: 100%;
         font-family: 'Roboto', sans-serif;
+        color: #113537;
     }
     .navButton {
-        background-color: #8159EB;
         border: none;
         border-radius: 20px;
         width: 10vw;
-        height: 4vh;
-        font-size: 16px;
-        transition: box-shadow 0.5s, background-color 0.5s;
+        min-width: 40vw;
+        height: 8vh;
+        min-height: 8vh;
+        font-weight: bold;
+        font-size: 24px;
+        transition: box-shadow 0.5s,
+        background-color 0.5s,
+        border-radius 0.5s,
+        color 0.5s;
+        background-color: #96616B;
+        color: #FFEAD0;
     }
     .navButton:hover {
-        background-color: #B159EB;
+        background-color: #37505C;
+        color: white;
         border-radius: 30px;
         box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
     }
     .navBar {
         height: 12vh;
         display: flex;
-        gap: 100px
+        gap: 10vw;
     }
 </style>
 </svelte:head>
+
 <NavButton fcal={() => updateViewMode(pages.calendar)} fcho={() => updateViewMode(pages.chores)} />
 
 { #if viewMode == pages.calendar }
@@ -107,7 +121,7 @@
 
 {:else if viewMode == pages.chores}
 
-<div style="width:90%; margin: 30px auto">
+<div style="width:90%; margin: 0 auto">
     <Chores chores={chores}/>
 </div>
 

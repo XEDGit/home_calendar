@@ -1,4 +1,5 @@
 <script>
+	export let functions;
 	let isOpen = false;
 
 	function toggleMenu() {
@@ -17,15 +18,22 @@
 
 <style>
 	.menu-container {
+		top: -5px;
 		position: relative;
-		display: inline-block;
 	}
 
 	.menu-button {
 		background: none;
 		border: none;
-		font-size: 24px;
+		font-size: 44px;
+		color: #FFEAD0;
 		cursor: pointer;
+		transition: all 0.5s;
+	}
+
+	.menu-button:hover {
+		color: white;
+		transform: scale(1.1);
 	}
 
 	.menu-popup {
@@ -63,10 +71,10 @@
 
 <div class="menu-container">
 	<button class="menu-button" aria-label="More options" on:click={toggleMenu}>
-		•••
+		...
 	</button>
 	<div class="menu-popup {isOpen ? 'open' : ''}">
-		<button class="trashcan-button">
+		<button class="trashcan-button" on:click={() => {functions.delete(functions.id)}}>
 			<svg class="trashcan-icon" width="20" height="20" viewBox="0 0 24 24">
 				<path d="M3 6h18v2H3zm2 3h14v14H5zm2 2h10v10H7z" />
 			</svg><p>Delete</p>

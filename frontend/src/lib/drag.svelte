@@ -1,6 +1,4 @@
-<script>
-    import { onMount } from 'svelte';
-    
+<script>    
 	export let dragData;
     let startX = 0;
     let currentX = 0;
@@ -11,12 +9,16 @@
         isDragging = true;
         startX = event.touches ? event.touches[0].clientX : event.clientX;
     };
-    
+
     const handleDragMove = (event) => {
         if (!isDragging) return;
+		if (currentX < startX) {
+			startX = currentX;
+			return;
+		}
         currentX = (event.touches ? event.touches[0].clientX : event.clientX) - startX + offsetX;
     };
-    
+
     const handleDragEnd = () => {
         isDragging = false;
         
@@ -32,9 +34,6 @@
 
 <div class='info-card'
 	aria="slide-card"
-    on:mousedown={handleDragStart}
-    on:mousemove={handleDragMove}
-    on:mouseup={handleDragEnd}
     on:touchstart={handleDragStart}
     on:touchmove={handleDragMove}
     on:touchend={handleDragEnd}

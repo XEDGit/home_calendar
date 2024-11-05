@@ -1,5 +1,5 @@
 all:
-	docker-compose up --build
+	docker-compose --env-file .env up --build
 down:
 	docker-compose down
 clean: down

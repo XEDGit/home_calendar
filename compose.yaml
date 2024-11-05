@@ -5,9 +5,12 @@ networks:
 volumes:
   frontend_modules:
   backend_modules:
+  database_data:
 
 services:
   frontend:
+    container_name: frontend
+    restart: always
     build: ./frontend
     ports:
       - "5173:5173"
@@ -16,16 +19,33 @@ services:
       - frontend_modules:/app/node_modules
     networks:
       - app-network
-    restart: always
     command: ["npm", "run", "dev", "--", "--host"]
 
   backend:
+    container_name: backend
+    restart: always
     build:
       context: ./backend
+    depends_on:
+      - database
     volumes:
       - ./backend:/app
       - backend_modules:/app/node_modules
+    environment:
+      - MONGO_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@database:27017/test?authSource=admin
     networks:
       - app-network
     command: ["node", "backend.js"]
+
+  database:
+    container_name: database
     restart: always
+    image: mongo:latest
+    volumes:
+      - ./database:/app
+      - database_data:/data/db
+    networks:
+      - app-network
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}

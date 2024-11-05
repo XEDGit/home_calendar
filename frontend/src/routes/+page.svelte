@@ -5,11 +5,32 @@
 	import Chores from '$lib/chores.svelte';
     import PlusButton from '$lib/plusButton.svelte';
     import NavButton from '$lib/navButton.svelte';
+	import PromptUser from "$lib/promptUser.svelte";
+	import { onMount } from 'svelte';
 
     export let data;
     let events = data.events;
     let chores = data.chores;
     let rooms = data.rooms;
+	let user = undefined;
+
+	function getCookie(name) {
+	    const cookieArr = document.cookie.split(';');
+	    for (let i = 0; i < cookieArr.length; i++) {
+			let cookie = cookieArr[i].trim();
+			if (cookie.startsWith(name + '=')) {
+				return cookie.substring(name.length + 1, cookie.length);
+			}
+	    }
+	    return null; // Return null if cookie not found
+	}
+	function setCookie(name, value, days) {
+		const date = new Date();
+		date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000)); // Expiry in days
+		const expires = `expires=${date.toUTCString()}`;
+		document.cookie = `${name}=${value}; ${expires}; path=/`; // Setting the cookie
+		user = value
+	}
     
     let pages = {
         calendar:   0,
@@ -55,10 +76,10 @@
         }
     };
 
-    import { onMount } from 'svelte';
     onMount(() => {
         if (browser) {
             window.addEventListener('popstate', handlePopState);
+			user = getCookie('user')
         }
     });
 
@@ -69,7 +90,8 @@
 <style>
     body {
         background-color: #FFEAD0;
-        margin: 0;
+        margin: 0, 0;
+		overflow: hidden;
         height: 100%;
         width: 100%;
         font-family: 'Roboto', sans-serif;
@@ -107,7 +129,11 @@
 
 <NavButton fcal={() => updateViewMode(pages.calendar)} fcho={() => updateViewMode(pages.chores)} />
 
-{ #if viewMode == pages.calendar }
+{#if !user}
+
+<PromptUser onSubmit={(value) => {setCookie('user', value, 1)}} />
+
+{:else if viewMode == pages.calendar }
 
 <div style="width:90%; margin: 0 auto">
     <Calendar events={events}/>

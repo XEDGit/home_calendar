@@ -20,6 +20,7 @@
 	.menu-container {
 		top: -5px;
 		position: relative;
+		z-index: 10;
 	}
 
 	.menu-button {

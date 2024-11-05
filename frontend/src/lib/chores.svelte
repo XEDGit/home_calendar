@@ -5,6 +5,10 @@
 
 	let chores;
 
+	function isTouchDevice() {
+		return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    }
+
 	function getChores() {
 		fetch('api/getChores', {
 		method: 'GET',
@@ -14,7 +18,6 @@
 					if (!acc[chore.nextTime]) {
 						acc[chore.nextTime] = [];
 					}
-					chore.id = index;
 					acc[chore.nextTime].push(chore);
 					return acc;
 				}, {});
@@ -71,19 +74,19 @@
 		}
 	}
 
-	function delChore(index) {
+	function delChore(id) {
 		fetch('api/delChore', {
 			method: 'POST',
-			body: JSON.stringify({"id": index}),
+			body: JSON.stringify({"id": id}),
 		}).then(() => {
 			chores = getChores();
 		})
 	}
 
-	function signChore(index) {
+	function signChore(id) {
 		fetch('api/signChore', {
 			method: 'POST',
-			body: JSON.stringify({"id": index}),
+			body: JSON.stringify({"id": id}),
 		}).then(() => {
 			chores = getChores();
 		})
@@ -157,11 +160,13 @@
 	.rep-text {
 		text-align: right;
 	}
+
+	.choreName {
+		float:left;
+		padding-left: 10px;
+	}
 	
 	@media (max-width: 1000px) {
-		.like-container {
-			display: none;
-		}
 		.rep-text {
 			display: none;
 			position: absolute;
@@ -180,18 +185,18 @@
 	<hr />
 	{#each chores[day] as chore}
 		<div class='choreContainer'>
-			<Drag dragData={{id: chore.id, delete: delChore, sign: signChore}}>
-				<div style="float:left; padding-left: 10px">
+			<Drag dragData={{id: chore._id, delete: delChore, sign: signChore}}>
+				<div class="choreName">
 					<p>{chore.name}</p>
 				</div>
 				<div class='info-right'>
 					<p class='room-text'>{chore.room}</p>
 					<p class='rep-text'>Every {chore.repetition} {chore.timeMeasure}</p>
 					<hr class='urgency-indicator' style="background-color: {chore.nextTime <= 1? '#DB324D' : chore.nextTime <=3? 'orange' : 'green'}" />
-					<ContextMenu functions={{id: chore.id, delete: delChore}} />
+					<ContextMenu functions={{id: chore._id, delete: delChore}} />
 				</div>
 			</Drag>
-			<button aria-label="img" class="like-container" on:click={signChore(chore.id)}>
+			<button aria-label="img" class="like-container" style="display: {isTouchDevice()? 'none' : 'block'}" on:click={signChore(chore._id)}>
 				<img alt="Mark done" class="like" src={Like} />
 			</button>
 		</div>

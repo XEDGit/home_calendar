@@ -2,10 +2,18 @@ import schedule from 'node-schedule'
 import cors from 'cors';
 import express from 'express';
 import fs from 'fs';
+import { MongoClient, ObjectId } from 'mongodb';
 const app = express();
 const PORT = 3000;
 
+const mongoUri = process.env.MONGO_URI || "mongodb://database:27017/db";
 
+async function connectDB() {
+	const client = new MongoClient(mongoUri);
+	await client.connect();
+	console.log("Connected to MongoDB");
+	return client.db();
+}
 
 app.use(cors({
     origin: 'http://backend:3000'
@@ -55,30 +63,30 @@ function saveRooms() {
     });
 }
 
-let chores = []
-// Load chores from file on startup
-function loadChores() {
-    fs.readFile('chores.json', 'utf8', (err, data) => {
-        if (!err) {
-            chores = JSON.parse(data);
-        }
-    });
-}
-
 // Write events to file
-function saveChores() {
-    let json_chores = JSON.stringify(chores, 2, null)
-    fs.writeFileSync('chores.json', json_chores, (err) => {
-        if (err) {
-            console.error("Error saving chores:", err);
-        }
-    });
+async function saveChores(chores) {
+    // let json_chores = JSON.stringify(chores, 2, null)
+    // fs.writeFileSync('chores.json', json_chores, (err) => {
+    //     if (err) {
+    //         console.error("Error saving chores:", err);
+    //     }
+    // });
+	try {
+		const db = await connectDB();
+		console.log('chores: ', chores)
+		const collection = db.collection('chores')
+		const result = await collection.insertMany(chores)
+		console.log(`${result.insertedCount} documents inserted in db.`);
+		return 0;
+	} catch (err) {
+		console.error("Error inserting data in db:", err);
+		return 1;
+	}
 }
 
 // Load data when server starts
 loadEvents();
 loadRooms();
-loadChores();
 
 // Get all events
 app.get('/events', (req, res) => {
@@ -108,17 +116,27 @@ app.post('/rooms', (req, res) => {
 
 
 // Get all chores
-app.get('/chores', (req, res) => {
-    res.send(chores);
+app.get('/chores', async (req, res) => {
+    try {
+		const db = await connectDB();
+		const collection = db.collection('chores')
+		const chores = await collection.find({}).toArray();
+		console.log(`${chores.length} documents retrieved from db.`);
+		res.send(chores);
+	} catch (err) {
+		console.error("Error retrieving data from db:", err);
+		res.status(500).send({error: err});
+	}
 });
 
-// Add a new chores
-app.post('/chores', (req, res) => {
+// Add a new chore
+app.post('/chores', async (req, res) => {
     let newChore = req.body;
     if (!newChore["nextTime"] || !newChore["rooms"] || !newChore["name"]) {
-        res.status(400).send('Missing field');
+		res.status(400).send('Missing field');
         return;
     }
+	let chores = [];
     newChore.repetition = newChore.nextTime;
     let singleRoomChore = Object.assign({}, newChore);
     delete singleRoomChore.rooms;
@@ -129,11 +147,14 @@ app.post('/chores', (req, res) => {
         for (let room of newChore.rooms) {
             let newChoreSingleRoom = Object.assign({}, singleRoomChore);
             newChoreSingleRoom.room = room;
+			newChoreSingleRoom.signatures = []
             chores.push(newChoreSingleRoom);
         }
     }
-    saveChores();
-    res.status(201).send(newChore);
+    if (await saveChores(chores) == 0)
+	    res.status(201).send(newChore);
+	else
+		res.status(500).send(newChore);
 });
 
 app.post('/chores/sign', (req, res) => {
@@ -143,29 +164,36 @@ app.post('/chores/sign', (req, res) => {
         return;
     }
     console.log(sign)
-    chores[sign.id].nextTime = chores[sign.id].repetition;
-    saveChores();
+    // TODO
     res.status(201).send(sign);
 });
 
 
-// Add a new chores
-app.post('/chores/del', (req, res) => {
+// Delete chore
+app.post('/chores/del', async (req, res) => {
     let id = req.body;
     if (!id["id"]) {
-        res.status(400).send('Missing field');
-        return;
+		console.log("Missing id, stopping deletion")
+        return res.status(400).send({error: "Missing field"});
     }
-    chores.splice(id.id, 1);
-    saveChores()
-    res.status(201).send(id);
+	try {
+        const db = await connectDB();
+		const objId = new ObjectId(String(id.id))
+        const result = await db.collection('chores').deleteOne({ _id:  objId});
+
+        if (result.deletedCount === 0) {
+            return res.status(404).send({error: 'No chore found with that ID'});
+        }
+		console.log("Success: ", id.id)
+        res.status(200).send({message: 'Chore deleted successfully'});
+    } catch (error) {
+        console.error('Error deleting chore:', error);
+        res.status(500).send({message: 'Error deleting chore'});
+    }
 });
 
 schedule.scheduleJob('0 0 * * *', () => {
-    for (let chore of chores) {
-        chore.nextTime--;
-    }
-    saveChores()
+
 })
 
 // Start the server

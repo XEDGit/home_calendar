@@ -49,45 +49,64 @@
 </script>
 
 <style>
+	div {
+		margin-left: 15px;
+		border: 3px solid #96616B;
+		border-radius: 7px;
+		padding: 5px;
+		display: inline-block;
+	}
 	input {
+		outline: none;
 		background: none;
 		border: none;
+		width: 20vw;
 		border-radius: 4px;
 		border-bottom: 1px solid #96616B;
+		caret-color: #96616B80;
+		color: #96616B;
 	}
-
+	
 	label {
 		color: #96616B;
+		margin-right: 10px;
 	}
 
 	button {
 		background-color: #96616B;
 		color: #FFEAD0;
 		border: none;
-		border-radius: 15px;
-		padding: 0 1em;
+		border-radius: 7px;
+		padding: 0.5em 1em;
+	}
+
+	button:hover {
+		background-color: #FFEAD0;
+		color: #96616B;
 	}
 </style>
 
-<form on:submit|preventDefault={handleSubmit}>
-{#each Object.entries(inputs) as [name, type]}
-	<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}:</label>
-	<input
-		id={name}
-		type={type}
-		bind:value={formData[name]}
-		required
-	/>
-{/each}
+<div>
+	<form on:submit|preventDefault={handleSubmit}>
+		{#each Object.entries(inputs) as [name, type]}
+			<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}</label>
+			<input
+				id={name}
+				type={type}
+				bind:value={formData[name]}
+				required
+			/>
+		{/each}
 
-{#each Object.entries(hidden) as [name, value]}
-	<input
-		id={name}
-		type='hidden'
-		value={value}
-		required
-	/>
-{/each}
+		{#each Object.entries(hidden) as [name, value]}
+			<input
+				id={name}
+				type='hidden'
+				value={value}
+				required
+			/>
+		{/each}
 
-<button type="submit">{submitText}</button>
-</form>
+		<button type="submit">{submitText}</button>
+	</form>
+</div>

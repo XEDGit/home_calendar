@@ -18,12 +18,14 @@
 
 <style>
 	.menu-container {
-		top: -5px;
+		height: 50%;
 		position: relative;
+		top: -10px;
 		z-index: 10;
 	}
-
+	
 	.menu-button {
+		align-content: center;
 		background: none;
 		border: none;
 		font-size: 44px;
@@ -46,11 +48,11 @@
 		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 		z-index: 1000;
 		margin-top: 5px;
-		display: none; /* Hidden by default */
+		display: none;
 	}
 
 	.menu-popup.open {
-		display: block; /* Show when open */
+		display: block;
 	}
 
 	.trashcan-button {
@@ -71,9 +73,7 @@
 </style>
 
 <div class="menu-container">
-	<button class="menu-button" aria-label="More options" on:click={toggleMenu}>
-		...
-	</button>
+	<button class="menu-button" aria-label="More options" on:click={toggleMenu}>...</button>
 	<div class="menu-popup {isOpen ? 'open' : ''}">
 		<button class="trashcan-button" on:click={() => {functions.delete(functions.id)}}>
 			<svg class="trashcan-icon" width="20" height="20" viewBox="0 0 24 24">

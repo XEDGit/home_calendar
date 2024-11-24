@@ -2,6 +2,7 @@ import schedule from 'node-schedule'
 import cors from 'cors';
 import express from 'express';
 import fs from 'fs';
+import https from 'https';
 import { MongoClient, ObjectId } from 'mongodb';
 const app = express();
 const PORT = 3000;
@@ -108,7 +109,7 @@ const db = new DB()
 await db.connectDB()
 
 app.use(cors({
-    origin: 'http://' + 'backend' + ':' + String(PORT)
+    origin: 'http://' + 'frontend' + ':' + String(PORT)
 }));
 
 app.use(express.json());
@@ -116,6 +117,20 @@ app.use(express.json());
 schedule.scheduleJob('0 0 * * *', () => {
 
 })
+
+// const sslOptions = {
+// 	key: fs.readFileSync('path/to/your/private.key'),
+// 	cert: fs.readFileSync('path/to/your/certificate.crt'),
+// 	ca: fs.readFileSync('path/to/your/ca_bundle.crt'),
+// };
+
+////////////////////////////////////////////
+// START SERVER
+
+const server = app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
+
 
 ////////////////////////////////////////////
 // EVENTS
@@ -151,7 +166,7 @@ app.get('/rooms', async (req, res) => {
 // Add a new room
 app.post('/rooms', async (req, res) => {
     const newRoom = req.body;
-    await db.insert(newRoom, 'events', res)
+    await db.insert(newRoom, 'rooms', res)
 });
 
 // Delete a room
@@ -240,11 +255,4 @@ app.post('/users/del', async (req, res) => {
 		return
 	id = new ObjectId(id)
 	await db.delete('users', res, {_id: id})
-});
-
-////////////////////////////////////////////
-// START SERVER
-
-const server = app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
 });

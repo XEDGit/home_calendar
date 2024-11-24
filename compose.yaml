@@ -42,10 +42,11 @@ services:
     restart: always
     image: mongo:latest
     volumes:
-      - ./database:/app
       - database_data:/data/db
+      - ./database/mongod.conf:/etc/mongod.conf
     networks:
       - app-network
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    command: --quiet --tlsMode disabled --config /etc/mongod.conf

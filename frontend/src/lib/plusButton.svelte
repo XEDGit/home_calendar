@@ -6,9 +6,11 @@
     height: 50px;
     width: 50px;
     font-size: 2rem;
-    background-color: #B159EB;
+    background-color: #96616B;
+	color: #FFEAD0;
+	border: none;
     border-radius: 50%;
-    position: absolute;
+    position: fixed;
     bottom: 40px;
     right: 40px;
     " on:click={func}>+</button>

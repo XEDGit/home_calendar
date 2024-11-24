@@ -6,6 +6,7 @@
     import PlusButton from '$lib/plusButton.svelte';
     import NavButton from '$lib/navButton.svelte';
 	import PromptUser from "$lib/promptUser.svelte";
+	import Settings from '$lib/Settings.svelte';
 	import { onMount } from 'svelte';
 
     export let data;
@@ -37,6 +38,7 @@
         chores:     1,
         addEvent:   2,
         addChore:   3,
+		settings:	4,
     };
 
     let pageNames = [
@@ -83,15 +85,31 @@
         }
     });
 
+	let users = null
+
+	function getUsers() {
+		fetch('api/getUsers', {
+			method: 'GET',
+		}).then(res => 
+			res.json().then(json => {
+				users = json;
+			})
+		)
+	}
+	getUsers()
 </script>
 
 <svelte:head>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <style>
+	* {
+		transition: all 0.3s;
+	}
+
     body {
         background-color: #FFEAD0;
         margin: 0, 0;
-		overflow: hidden;
+		overflow-x: hidden;
         height: 100%;
         width: 100%;
         font-family: 'Roboto', sans-serif;
@@ -100,38 +118,37 @@
     .navButton {
         border: none;
         border-radius: 20px;
-        width: 10vw;
-        min-width: 40vw;
-        height: 8vh;
-        min-height: 8vh;
+        padding: 0.5em 2em;
+        min-height: 60px;
         font-weight: bold;
         font-size: 24px;
-        transition: box-shadow 0.5s,
-        background-color 0.5s,
-        border-radius 0.5s,
-        color 0.5s;
         background-color: #96616B;
         color: #FFEAD0;
+		justify-content: center;
     }
     .navButton:hover {
         background-color: #37505C;
         color: white;
-        border-radius: 30px;
         box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
     }
     .navBar {
         height: 12vh;
         display: flex;
-        gap: 10vw;
+        gap: 5vw;
+		margin-bottom: 40px;
     }
 </style>
 </svelte:head>
 
-<NavButton fcal={() => updateViewMode(pages.calendar)} fcho={() => updateViewMode(pages.chores)} />
+<NavButton 
+	fcal={() => updateViewMode(pages.calendar)}
+	fcho={() => updateViewMode(pages.chores)}
+	fsett={() => updateViewMode(pages.settings)}
+/>
 
 {#if !user}
 
-<PromptUser onSubmit={(value) => {setCookie('user', value, 1)}} />
+<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 1)}} />
 
 {:else if viewMode == pages.calendar }
 
@@ -155,7 +172,11 @@
 
 {:else if viewMode == pages.addChore}
 
-<AddChoreForm rooms={rooms} />
+<AddChoreForm />
+
+{:else if viewMode == pages.settings}
+
+<Settings />
 
 {:else}
 

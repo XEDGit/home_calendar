@@ -1,22 +1,5 @@
-import { json } from '@sveltejs/kit';
+import { postBackend } from "$lib/requests";
 
 export async function POST({ request }) {
-    try {
-        const body = await request.json();
-
-        const backendResponse = await fetch('http://backend:3000/chores/del', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': request.headers.get('Authorization') || '',
-            },
-            body: JSON.stringify(body)
-        });
-
-        const data = await backendResponse.json();
-        return json(data, { status: backendResponse.status });
-    } catch (error) {
-        console.error('Error proxying request:', error);
-        return json({ error: 'Failed to post data to backend' }, { status: 500 });
-    }
+	return await postBackend(request, 'chores/del')
 }

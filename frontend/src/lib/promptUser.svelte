@@ -1,7 +1,7 @@
 <script>
 	export let onSubmit = () => {};  // This is the function that will be called when the user submits
 
-	export let buttons = [{name: "Iris", _id:"aaa"}, {name: "Lorenzo", _id:"abc"}]
+	export let buttons = null
 </script>
   
 <style>
@@ -33,14 +33,18 @@
 		gap: 10px;
 	}
 </style>
-  
+
+{#if (buttons)}
+
 <div class="modal">
 	<div class="modal-content">
-	<h3>Who are you?</h3>
-	<div class='userButtons'>
-	{#each buttons as button}
-		<button class='navButton' on:click={() => onSubmit(button._id)}>{button.name}</button>
-	{/each}
+		<h3>Who are you?</h3>
+		<div class='userButtons'>
+			{#each buttons as button}
+			<button class='navButton' on:click={() => onSubmit(button._id)}>{button.name}</button>
+			{/each}
+		</div>
 	</div>
 </div>
-</div>
+
+{/if}

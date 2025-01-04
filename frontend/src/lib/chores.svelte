@@ -1,21 +1,21 @@
 <script>
-	import ContextMenu from "./contextMenu.svelte";
-	import Like from '../assets/like.svg'
 	import Section from "./Section.svelte";
+	import UpdateTask from "./UpdateTask.svelte";
 	import { onMount } from "svelte";
+	import Chart from 'chart.js/auto'
 
-	let chores;
+	let chores = [];
+	let sortedDays = [];
 
 	function isTouchDevice() {
 		return 'ontouchstart' in window;
     }
 
-	function getChores() {
-		fetch('api/getChores', {
+	async function getChores() {
+		await fetch('api/getChores', {
 		method: 'GET',
 		}).then(res => {
 			res.json().then(json => {
-				console.log(json)
 				let perDay = json.reduce((acc, chore, index) => {
 					if (!acc[chore.nextTime]) {
 						acc[chore.nextTime] = [];
@@ -25,7 +25,6 @@
 				}, {});
 				let final = {}
 				for (let day of Object.keys(perDay)) {
-					// perDay[day].sort((a, b) => {return a.room.toLowerCase().localeCompare(b.room.toLowerCase())})
 					if (7 <= day && day < 14) {
 						let week = 7;
 						if (!final[week])
@@ -36,6 +35,16 @@
 						if (!final[after])
 							final[after] = [];
 						final[after].push(...perDay[day]);
+					} else if (day < -7) {
+						let very_late = -8;
+						if (!final[very_late])
+							final[very_late] = [];
+						final[very_late].push(...perDay[day]);
+					} else if (day > 42) {
+						let after = 43;
+						if (!final[after])
+							final[after] = [];
+						final[after].push(...perDay[day]);
 					} else {
 						if (!final[day])
 							final[day] = [];
@@ -43,12 +52,18 @@
 					}
 				}
 				chores = final
+				sortedDays = Object.keys(chores).sort((a, b) => {return a - b})
 			})
 		});
 	}
 
-	onMount(() => {
+	let graph = null 
+	let chart = null
+
+	onMount(async () => {
 		getChores()
+		graph = document.getElementById('statsGraph').getContext('2d');
+		makeChart()
 	})
 
 	function getDateLabel(dayNumber) {
@@ -59,7 +74,7 @@
 			return `Very late`;
 		}
 		if (dayNumber < 0 && dayNumber > -7) {
-			return `Late by ${dayNumber} days`;
+			return `Late by ${Math.abs(dayNumber)} days`;
 		}
 		else if (dayNumber == 0) {
 			return 'Today';
@@ -76,25 +91,118 @@
 		}
 	}
 
-	function delChore(id) {
-		fetch('api/delChore', {
+	async function delChore(id) {
+		await fetch('api/delChore', {
 			method: 'POST',
 			body: JSON.stringify({"id": id}),
-		}).then(() => {
-			chores = getChores();
 		})
+		chores = getChores();
+		await makeChart()
 	}
 
-	function signChore(id) {
-		fetch('api/signChore', {
+	async function signChore(obj) {
+		await fetch('api/signChore', {
 			method: 'POST',
-			body: JSON.stringify({"id": id}),
-		}).then(() => {
-			chores = getChores();
+			body: JSON.stringify(obj),
 		})
+		chores = getChores();
+		await makeChart()
 	}
 
+	let isOpen = 0;
+	let roomChoice = 0;
+	function reset() {
+		roomChoice = 0;
+	}
 	import Drag from "./drag.svelte";
+	
+	async function getStats() {
+		let res = await fetch('api/getStats', {
+			method: 'GET',
+		})
+		res = await res.json()
+		return res
+	}
+
+	async function getUsers() {
+		let res = await fetch('api/getUsers', {
+			method: 'GET',
+		})
+		res = await res.json()
+		return res
+	}
+
+	async function makeChart() {
+		let date = new Date()
+		let dates = []
+		for (let i = 0; i < 5; i++) {
+			const day = String(date.getDate())
+			const month = String(date.getMonth() + 1)
+			dates.push(`${day}-${month}`)
+			date.setDate(date.getDate() - 1)
+		}
+		dates.reverse()
+		let stats = await getStats()
+		let users = await getUsers()
+		let dict_users = {}
+		for (let u of users) {
+			dict_users[u._id] = u.name
+		}
+		console.log('making graph')
+		let dataset = {}
+		for (let d of stats) {
+			date = new Date(d.date)
+			const day = String(date.getDate())
+			const month = String(date.getMonth() + 1)
+			date = `${day}-${month}`
+			let idx = dates.findIndex((cmp_date) => {return date == cmp_date})
+			if (idx == -1)
+				continue;
+			if (d.who in dataset) {
+				dataset[d.who].data[idx] += d.rooms.length
+			}
+			else {
+				dataset[d.who] = {
+					label: dict_users[d.who],
+					data: Array(5).fill(0),
+					fill: true
+				}
+				dataset[d.who].data[idx] += d.rooms.length
+			}
+		}
+
+		dataset = Object.values(dataset)
+
+		if (chart) {
+			console.log(chart.data.datasets)
+			chart.data.datasets = []
+			chart.data.datasets.push(...dataset)
+			console.log(chart.data.datasets)
+			chart.update()
+		}
+		else {
+			chart = new Chart(graph, {
+				type: 'line',
+				data: {
+					labels: dates,
+					datasets: dataset,
+				},
+				options: {
+					responsive: true,
+					scales: {
+						y: {
+							ticks: {
+								// Force ticks to display integers only
+								callback: function(value) {
+									return Number.isInteger(value) ? value : null; // Show only integers
+								}
+							}
+						}
+					}
+				}
+			});
+		}
+	}
 </script>
 
 <style>
@@ -105,44 +213,27 @@
 	p::first-letter {
 		text-transform: uppercase;
 	}
-	.like {
-		position: relative;
-		fill: #FFEAD0;
-		stroke: none;
-		left: 2px;
-		top: -1px;
-		width: 50px;
-		height: 50px;
-	}
-	.like-container {
-		background-color: #96616B;
-		border-radius: 50%;
-		padding: 7px;
-		border: none;
-	}
-	.like-container:hover {
-        box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
-		background-color: rgb(116, 189, 93);
-	}
 	.choreContainer {
+		position: relative;
 		width: 90%;
 		margin: 0 auto;
 		display: flex;
-		gap: 10px;
-		flex-direction: row;
+		flex-direction: column;
 		color: #FFEAD0;
-		align-items: center;
-		justify-content: center;
+		align-items: flex-end;
+		z-index: 0;
+		cursor: pointer;
+		transition: z-index 0s;
 	}
+
 	.info-right {
 		float: right;
 		right: 0px;
-		display: grid;
-		grid-template-columns: 1fr 1fr 0.3fr 0.1fr;
-		grid-template-rows: 1fr;
+		display: flex;
+		flex-direction: row;
+		align-items: center;
 		gap: 10px;
 		justify-content: center;
-		/* justify-content: space-between; */
 		padding-right: 10px;
 		position: relative;
 	}
@@ -152,80 +243,110 @@
 		border: none;
 		width: 7vw;
 		min-width: 30px;
-		top: 28px;
-		position: relative;
 		margin: 0 0;
 		border-radius: 10px;
 	}
 
-	.room-text {
+	.rep-text .room-text {
 		text-align: right;
-		font-size: 14px;
-		align-content: center;
-	}
-
-	.rep-text {
-		text-align: right;
+		font-size: 16px;
 	}
 
 	.choreName {
 		float:left;
 		padding-left: 10px;
+		max-width: 40%;
+		min-width: 40%;
+		overflow: hidden;
+		white-space: nowrap;
+		display: flex;
+		flex-direction: row;
+		position: relative;
+		align-items: center;
 	}
-	
+
+	.fade {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		height: 80%;
+		width: 10%;
+		pointer-events: none;
+		background: linear-gradient(to left, #96616B, transparent);
+	}
+
+	.menu-container {
+		position: relative;
+		left: 0;
+		width: 50px;
+		text-align: center;
+	}
+
+	.menu-button {
+		background: none;
+		border: none;
+		font-size: 2em;
+		color: #FFEAD0;
+		cursor: pointer;
+	}
+
+	.menu-button:hover {
+		color: white;
+		transform: scale(1.1);
+	}
+
+	.stats {
+		border: solid #96616B 3px;
+		width: 100%;
+		height: 20vh;
+		border-radius: 5px;
+	}
+
 	@media (max-width: 1000px) {
 		.rep-text {
 			display: none;
 			position: absolute;
 		}
-		.info-right {
-			display: grid;
-			grid-template-columns: 1fr 0.3fr 0.1fr;
-			grid-template-rows: 1fr;
+		.room-text {
+			font-size: 12px;
+			text-align: right;
+			align-content: center;
+		}
+	}
+
+	@media (min-width: 700px) {
+		.choreName {
+			max-width: 70%;
+			min-width: 70%;
 		}
 	}
 </style>
 
 {#if chores}
-{#each Object.keys(chores) as day}
+<Section title={'Stats'} />
+<canvas id="statsGraph" class='stats' width="100%" height="40%"></canvas>
+{#each sortedDays as day}
 	<Section title={getDateLabel(day)} />
 	{#each chores[day] as chore}
-		<div class='choreContainer'>
-			<Drag dragData={{id: chore._id, delete: delChore, sign: signChore}}>
+		<div class='choreContainer' style='z-index: {roomChoice == chore._id || isOpen == chore._id ? '1' : '0'};' on:click={() => {if (roomChoice != chore._id) roomChoice = chore._id; isOpen = 0}}>
+			<Drag>
 				<div class="choreName">
 					<p>{chore.name}</p>
+					<div class='fade'></div>
 				</div>
 				<div class='info-right'>
-					<p class='room-text'>{chore.room.name}</p>
-					<p class='rep-text'>Every {chore.repetition} {chore.timeMeasure}</p>
-					<hr class='urgency-indicator' style="background-color: {chore.nextTime <= 1? '#DB324D' : chore.nextTime <=3? 'orange' : 'green'}" />
-					<ContextMenu functions={{id: chore._id, delete: delChore, sign: signChore}} />
+					<p class='room-text'>{chore.rooms.length} rooms</p>
+					<!-- <p class='rep-text'>Every {chore.repetition} {chore.timeMeasure}</p> -->
+					<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />
 				</div>
 			</Drag>
-			<button aria-label="img" class="like-container" style="display: {isTouchDevice()? 'none' : 'block'}" on:click={signChore(chore._id)}>
-				<svg class='like' version="1.0" xmlns="http://www.w3.org/2000/svg"
-					width="128.000000pt" height="128.000000pt" viewBox="0 0 128.000000 128.000000"
-					preserveAspectRatio="xMidYMid meet"
-				>
-					<g
-						transform="translate(0.000000,128.000000) scale(0.100000,-0.100000)"
-					>
-						<path d="M664 1186 c-37 -16 -50 -32 -192 -235 l-108 -154 -141 2 c-137 2
-						-141 2 -157 -21 -14 -19 -16 -66 -16 -355 0 -407 -14 -373 158 -373 121 0 162
-						11 162 46 0 19 2 18 57 -16 l47 -30 244 0 c150 0 251 4 263 10 11 6 67 105
-						129 231 89 177 112 231 116 277 11 102 -22 174 -97 212 -32 17 -59 20 -173 20
-						l-135 0 20 58 c35 100 41 142 29 193 -14 55 -61 116 -106 135 -41 17 -60 17
-						-100 0z m85 -122 c29 -37 27 -63 -19 -198 -41 -122 -42 -156 -5 -170 9 -3 95
-						-6 190 -6 168 0 174 -1 189 -22 9 -13 16 -43 16 -70 0 -40 -15 -78 -97 -243
-						l-98 -195 -214 0 -215 0 -63 41 -63 41 0 189 0 188 97 138 c53 76 127 182 165
-						236 38 53 75 97 83 97 7 0 23 -12 34 -26z m-479 -639 l0 -265 -55 0 -55 0 0
-						265 0 265 55 0 55 0 0 -265z"/>
-					</g>
-				</svg>
-			</button>
+			{#if roomChoice == chore._id}
+				<UpdateTask chore={chore} onSubmit={(updateChore) => {signChore(updateChore); reset();}} reset={reset} delFunc={delChore} />
+			{/if}
 		</div>
 	{/each}
 {/each}
 {:else}
-<p>Loading...</p>
+	<p>Loading...</p>
 {/if}

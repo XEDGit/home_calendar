@@ -1,5 +1,5 @@
 export async function load() {
-    const response = await fetch('http://backend:3000/rooms'); // Adjust the URL if necessary
+    const response = await fetch('https://backend:3000/rooms');
 
     if (!response.ok) {
         // Handle error response

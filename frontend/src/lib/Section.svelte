@@ -1,17 +1,33 @@
 <script>
 	export let title = '';
+	export let color = '#96616B'
 </script>
 
 <style>
+	div {
+		display: flex;
+		flex-direction: column;
+	}
+
 	h2, hr {
-		margin: 1rem;
-		color: #96616B;
+		margin: 0;
+		color: var(--color);
 	}
 
 	hr {
-		border: 1px solid #96616B;
+		width: 100%;
+		border: 1px solid var(--color);
+		margin-bottom: 3vh;
+	}
+	
+	h2 {
+		margin-top: 0.5vh;
+		margin-bottom: 0.5vh;
+		text-align: left;
 	}
 </style>
 
-<h2>{title}</h2>
-<hr />
+<div style="--color: {color};">
+	<h2>{title}</h2>
+	<hr />
+</div>

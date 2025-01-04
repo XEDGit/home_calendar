@@ -28,7 +28,7 @@
 </script>
 
 <style>
-	div {
+	.container {
 		display: flex;
 		flex-direction: row;
 		justify-content: space-between;
@@ -48,20 +48,29 @@
 	}
 </style>
 
-<Section title='Users' />
-{#each users as user}
 <div>
-	<p>{user.name}</p>
-	<Form endpoint='delUser' submitText='Delete' hidden={{id: user._id}} hook={getUsers} />
-</div>
-{/each}
-<Form endpoint='addUser' inputs={{name:'text'}} submitText='Add' hook={getUsers} />
+	<Section title='Users' />
+	{#each users as user}
+	<div class='container'>
+		<p>{user.name}</p>
+		<Form endpoint='delUser' submitText='Delete' hidden={{id: user._id}} hook={getUsers} />
+	</div>
+	{/each}
+	<Form endpoint='addUser' inputs={{name:'text'}} submitText='Add' hook={getUsers} />
 
-<Section title='Rooms' />
-{#each rooms as room}
-<div>
-	<p>{room.name}</p>
-	<Form endpoint='delRoom' submitText='Delete' hidden={{id: room._id}} hook={getRooms} />
+	<Section title='Rooms' />
+	{#each rooms as room}
+	<div class='container'>
+		<p>{room.name}</p>
+		<Form endpoint='delRoom' submitText='Delete' hidden={{id: room._id}} hook={getRooms} />
+	</div>
+	{/each}
+	<Form endpoint='addRoom' inputs={{name:'text'}} submitText='Add' hook={getRooms} />
+	<Section title='Danger zone' />
+	<div style='background-color: transparent;'>
+		<div style='justify-content: flex-start;'>
+			<Form submitText='Advance all chores by 1 day' endpoint='dbgChores' />
+			<Form submitText='Reset chores stats' endpoint='clearStats' />
+		</div>
+	</div>
 </div>
-{/each}
-<Form endpoint='addRoom' inputs={{name:'text'}} submitText='Add' hook={getRooms} />

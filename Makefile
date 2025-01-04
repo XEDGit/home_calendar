@@ -4,5 +4,5 @@ build:
 	docker-compose build --no-cache
 down:
 	docker-compose down
-clean: down
-	docker-compose down -v
+# clean: down
+# 	docker-compose down -v

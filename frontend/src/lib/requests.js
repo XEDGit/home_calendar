@@ -1,11 +1,14 @@
 import { json } from '@sveltejs/kit';
 
+const BACK_ENDPOINT = 'https://backend:3000/'
+
 export async function getBackend(request, endpoint) {
 	try {
-		const backendResponse = await fetch('http://backend:3000/' + endpoint, {
+		const backendResponse = await fetch(BACK_ENDPOINT + endpoint, {
 			method: 'GET',
 			headers: {
 				'Authorization': request.headers.get('Authorization') || '',
+				'Cookie': request.headers.get('Cookie') || '',
 			},
 		});
 		const data = await backendResponse.json();
@@ -21,11 +24,12 @@ export async function postBackend(request, endpoint) {
 	try {
         const body = await request.json();
 
-        const backendResponse = await fetch('http://backend:3000/' + endpoint, {
+        const backendResponse = await fetch(BACK_ENDPOINT + endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': request.headers.get('Authorization') || '',
+				'Cookie': request.headers.get('Cookie') || '',
             },
             body: JSON.stringify(body)
         });
@@ -38,7 +42,7 @@ export async function postBackend(request, endpoint) {
     }
 }
 
-export async function getFrontend(endpoint, toUpdate) {
+export async function getFrontend(endpoint) {
 	await fetch(endpoint, {
 		method: 'GET',
 	}).then(res => 

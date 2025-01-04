@@ -1,19 +1,25 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "backkend.js",
+  "main": "backend.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node backend.js",
+    "start:dev": "nodemon backend.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "mongodb": "^6.10.0",
     "node-schedule": "^2.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
   }
 }

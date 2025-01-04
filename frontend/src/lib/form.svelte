@@ -5,6 +5,7 @@
 	export let submitText = 'Submit'
 	export let hook = null;
 	let formData = {};
+	let done = false;
 
 	// Initialize formData with empty values for each input field
 	$: {
@@ -36,6 +37,8 @@
 		if (response.ok) {
 			const result = await response.json();
 			console.log('Success:', result);
+			done = true;
+			setTimeout(() => {done = false;}, 1500);
 			if (hook)
 				hook();
 			resetForm();
@@ -49,7 +52,7 @@
 </script>
 
 <style>
-	div {
+	.main-container {
 		margin-left: 15px;
 		border: 3px solid #96616B;
 		border-radius: 7px;
@@ -84,9 +87,25 @@
 		background-color: #FFEAD0;
 		color: #96616B;
 	}
+
+	.fade {
+		opacity: 0;
+		pointer-events: none;
+		color: #15f60180;
+		margin: 7px 0;
+		font-size: 14px;
+		width: 0;
+	}
+
+	.fade.show {
+		opacity: 1;
+		margin-left: 5px;
+		margin-right: 40px;
+	}
+
 </style>
 
-<div>
+<div class='main-container'>
 	<form on:submit|preventDefault={handleSubmit}>
 		{#each Object.entries(inputs) as [name, type]}
 			<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}</label>
@@ -107,6 +126,9 @@
 			/>
 		{/each}
 
-		<button type="submit">{submitText}</button>
+		<div style='display: inline-flex; flex-direction: row;'>
+			<p class="fade {done ? 'show' : ''}">Done!</p>
+			<button type="submit">{submitText}</button>
+		</div>
 	</form>
 </div>

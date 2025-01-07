@@ -26,12 +26,11 @@
 				dataset[chore.name][user.name] = 0;
 				for (let stat of stats_per_user[user._id]) {
 					if (date < new Date(stat.date) && stat.chore_ref == chore._id)
-						dataset[chore.name][user.name]++;
+						dataset[chore.name][user.name] += stat.rooms.length;
 				}
 			}
 		}
-		dataset = Object.fromEntries(Object.entries(dataset).filter((task) => {return Object.values(task[1]).some((v) => {console.log(task, v, v != 0);return v != 0})}))
-		console.log(dataset)
+		dataset = Object.fromEntries(Object.entries(dataset).filter((task) => {return Object.values(task[1]).some((v) => {return v != 0})}))
 		let labels = Object.keys(dataset)
 		let tasks = []
 		for (let user of users) {
@@ -42,11 +41,23 @@
 			})
 		}
 		if (chart) {
-			chart.config.type = 'bar'
-			chart.data.datasets = tasks
-			chart.data.labels = labels
-			chart.update()
+			chart.destroy()
 		}
+		chart = new Chart(graph, {
+			type: 'bar',
+			data: {
+				datasets: tasks,
+				labels: labels
+			},
+			options: {
+				indexAxis: 'y',
+				scales: {
+					x: {
+						beginAtZero: true
+					}
+				}
+			}
+		});
 	}
 
 	async function makeChart() {
@@ -87,48 +98,43 @@
 		dataset = Object.values(dataset);
 
 		if (chart) {
-			chart.config.type = 'line';
-			chart.data.datasets = dataset;
-			chart.data.labels = dates;
-			chart.update();
+			chart.destroy()
 		}
-		else {
-			chart = new Chart(graph, {
-				type: 'line',
-				data: {
-					labels: dates,
-					datasets: dataset,
-				},
-				options: {
-					responsive: true,
-					scales: {
-						x: {
-							ticks: {
-								font: {
-									size: 10
-								},
-								maxRotation: 90,
-								minRotation: 0,
-							}
-						},
-						y: {
-							ticks: {
-
-								font: {
-									size: 10
-								},
-								// Force ticks to display integers only
-								callback: function(value) {
-									return Number.isInteger(value) ? value : null; // Show only integers
-								}
+		chart = new Chart(graph, {
+			type: 'line',
+			data: {
+				labels: dates,
+				datasets: dataset,
+			},
+			options: {
+				responsive: true,
+				scales: {
+					x: {
+						ticks: {
+							font: {
+								size: 10
 							},
-							min: 0,
-							suggestedMax: 4,
+							maxRotation: 90,
+							minRotation: 0,
 						}
 					},
-				}
-			});
-		}
+					y: {
+						ticks: {
+
+							font: {
+								size: 10
+							},
+							// Force ticks to display integers only
+							callback: function(value) {
+								return Number.isInteger(value) ? value : null;
+							}
+						},
+						min: 0,
+						suggestedMax: 4,
+					}
+				},
+			}
+		});
 	}
 
 	function reduceStats() {

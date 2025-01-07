@@ -1,4 +1,5 @@
 <script>
+	import Stats from '$lib/stats.svelte';
 	import Calendar from '$lib/calendar.svelte';
 	import AddEventForm from '$lib/addEvent.svelte';
 	import AddChoreForm from '$lib/addChore.svelte';
@@ -39,7 +40,8 @@
 		addEvent:   2,
 		addChore:   3,
 		settings:	4,
-		shoplist:	5,
+		notes:	5,
+		stats:		6,
 	};
 
 	let pageNames = [
@@ -49,6 +51,7 @@
 		'addChore',
 		'settings',
 		'shopping-list',
+		'stats',
 	];
 
 	let viewMode = 1;
@@ -185,6 +188,18 @@
 <Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0].name} :)' />
 {/if}
 
+<NavButton
+	f = {updateViewMode}
+	buttons = {{
+		"calendar": pages.calendar,
+		"chores": pages.chores,
+		"stats": pages.stats,
+		"notes": pages.notes,
+		"settings": pages.settings,
+	}}
+/>
+
+
 {#if !user && users && users.length}
 {console.log(users)}
 <PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 1)}} />
@@ -217,24 +232,18 @@
 
 <Settings />
 
-{:else if viewMode == pages.shoplist}
+{:else if viewMode == pages.notes}
 
 <Shoppinglist />
+
+{:else if viewMode == pages.stats}
+
+<Stats />
 
 {:else}
 
 {viewMode}
 
 { /if }
-
-<NavButton
-	f = {updateViewMode}
-	buttons = {{
-		"calendar": pages.calendar,
-		"chores": pages.chores,
-		"shop": pages.shoplist,
-		"settings": pages.settings,
-	}}
-/>
 
 <div style="margin-bottom: 28vh;"></div>

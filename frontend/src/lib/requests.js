@@ -42,12 +42,40 @@ export async function postBackend(request, endpoint) {
     }
 }
 
-export async function getFrontend(endpoint) {
-	await fetch(endpoint, {
+async function get(endpoint) {
+	let res = await fetch('api/' + endpoint, {
 		method: 'GET',
-	}).then(res => 
-		res.json().then(json => {
-			return json;
-		})
-	)
+	})
+	res = await res.json()
+	return res
+}
+
+
+async function post(endpoint, data) {
+	let res = await fetch('api/' + endpoint, {
+		method: 'POST',
+		body: JSON.stringify(data),
+	})
+	res = await res.json()
+	return res
+}
+
+export async function delStats(_id) {
+	return post('delStats', {id: _id})
+}
+
+export async function getStats() {
+	return get('getStats')
+}
+
+export async function getRooms() {
+	return get('getRooms')
+}
+
+export async function getUsers() {
+	return get('getUsers')
+}
+
+export async function getChores() {
+	return get('getChores')
 }

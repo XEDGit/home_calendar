@@ -27,7 +27,6 @@ class DB {
 	async insert(elem, collectionName) {
 		try {
 			const collection = this.db.collection(collectionName)
-			console.log(elem)
 			const result = await collection.insertOne(elem)
 			console.log(`'${elem}' inserted in collection ${collectionName} in db.`);
 		} catch (err) {
@@ -326,11 +325,23 @@ app.post('/chores/sign', async (req, res) => {
 		return;
 	}
 	sign.id = getID(req, res);
-	if (!sign.id)
+	if (!sign.id) {
+		res.status(400).send({error: 'missing chore id'});
 		return;
+	}
+
+	if (req.cookies.user == undefined) {
+		res.status(400).send({error: 'missing user, refresh the page'});
+		return
+	}
 
 	// Find chore to update
 	let chore = await db.find('chores', {_id: sign.id})
+	if (!chore.length) {
+		res.status(400).send({error: 'No chore found to sign'});
+		console.log('ERROR: No chores found to sign')
+		return
+	}
 	chore = chore[0]
 
 	// Change repetition if it has been updated
@@ -348,7 +359,6 @@ app.post('/chores/sign', async (req, res) => {
 				return {_id: nroom, name: match.name, done: false}
 			}
 		})
-		console.log(chore.rooms)
 	}
 
 	// Change amount of rooms done
@@ -358,7 +368,6 @@ app.post('/chores/sign', async (req, res) => {
 				room.done = true;
 		}
 	})
-
 	
 	// Reset value of nextTime to repetition and recalculate daysNextTime if all rooms are done
 	if (chore.rooms.every(room => room.done)) {
@@ -370,8 +379,10 @@ app.post('/chores/sign', async (req, res) => {
 	}
 
 	chore.name = sign.name;
-	if (sign.rooms.length && sign.stats)
+	if (sign.rooms.length && sign.stats) {
+		console.log('Recording stats in db')
 		await db.insert({date: Date.now(), delay: sign.nextTime, chore_ref: sign.id, who: req.cookies.user, rooms: sign.rooms}, 'signatures')
+	}
 	await db.updateRespond('chores', res,
 		{_id: sign.id},
 		{
@@ -404,11 +415,17 @@ app.get('/chores/stats', async (req, res) => {
 	return await db.findRespond('signatures', res)
 })
 
-app.get('/chores/stats/clear', async (req, res) => {
-	await db.db.collection('signatures').drop()
-	console.log('Reset signatures')
-})
+app.post('/chores/stats/del', async (req, res) => {
+	let id = getID(req, res)
+	if (id == false)
+		return
+	id = new ObjectId(id)
+	await db.deleteRespond('signatures', res, {_id: id})
+});
 
+app.get('/chores/stats/clear', async (req, res) => {
+	while (await db.delete('signatures', res, {who: undefined}));
+})
 
 ////////////////////////////////////////////
 // USERS
@@ -431,6 +448,7 @@ app.post('/users/del', async (req, res) => {
 	if (id == false)
 		return
 	id = new ObjectId(id)
+	while (await db.delete('signatures', {who: id}));
 	await db.deleteRespond('users', res, {_id: id})
 });
 

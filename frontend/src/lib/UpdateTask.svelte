@@ -8,9 +8,9 @@
 
 	export let delFunc = () => {};
 
-	export let chore = {}
-	chore.stats = true
-	
+	export let chore = {};
+	chore.stats = true;
+
 	let all_rooms = []
 	onMount(async () => {
 		all_rooms = await fetch('api/getRooms')
@@ -26,9 +26,9 @@
 
 	let roomsChecked = [];
 
-	function checkRooms(newel, checked) {
-		if (checked) {
-			roomsChecked.push(newel);
+	function checkRooms(newel, event) {
+		if (event.target.checked) {
+			roomsChecked.push(newel._id);
 		} else {
 			roomsChecked = roomsChecked.filter(item => item !== newel);
 		}
@@ -226,27 +226,27 @@
 							id={button._id}
 							checked={button.done}
 							disabled={button.done}
-							on:change={(event) => checkRooms(button._id, event.target.checked)} 
+							on:change={(event) => checkRooms(button, event)} 
 						/>
-						<label for={button._id} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label>
+						<label for={button._id} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label><small style='color: gray;'>{button.done? 'already signed' : ''}<small></small>
 					</label>
 					{/each}
 			</div>
 			{#if chore.notes}
 			<Section title='Notes' />
-			<div class='retro-red info-card'>
-				<p style='color: #FFEAD0; padding: 10px; margin: 0;'>{chore.notes}</p>
+			<div class='retro-red' style='border-radius: 5px; text-align: left;'>
+				<p style='white-space: pre-line; color: #FFEAD0; padding: 10px; margin: 0;'>{chore.notes}</p>
 			</div>
 			{/if}
-			<div class='retro-red stats-checkbox'>
-				<label><input type="checkbox" bind:checked={chore.stats} /> Record in statistics</label>
-			</div>
 			<div style='width: 100%; margin-top: 10px; gap: 40px; display: flex; justify-content: space-between'>
-				<button class='update-button' on:click={submit}>Update</button>
+				<button class='update-button' on:click={submit}>Save</button>
 				<button class='delete-button' on:click={() => {if (confirm("Are you sure you want to delete " + chore.name)) delFunc(chore._id)}}>Delete</button>
 			</div>
 			<div style='min-height: 20px'></div>
 			<Collapsible title='Edit'>
+				<div class='retro-red stats-checkbox'>
+					<label><input type="checkbox" bind:checked={chore.stats} /> Statistics: {chore.stats? 'on' : 'off'}</label>
+				</div>
 				<Section title='Notes' />
 				<div class='retro-red info-card' style='width: 92%;'>
 					<textarea bind:value={chore.notes} />

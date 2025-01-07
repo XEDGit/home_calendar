@@ -3,6 +3,8 @@
 	import UpdateTask from "./UpdateTask.svelte";
 	import { onMount } from "svelte";
 	import Chart from 'chart.js/auto'
+	import { getStats, getUsers } from './requests'
+	import Drag from "./drag.svelte";
 
 	let chores = [];
 	let sortedDays = [];
@@ -114,23 +116,6 @@
 	function reset() {
 		roomChoice = 0;
 	}
-	import Drag from "./drag.svelte";
-	
-	async function getStats() {
-		let res = await fetch('api/getStats', {
-			method: 'GET',
-		})
-		res = await res.json()
-		return res
-	}
-
-	async function getUsers() {
-		let res = await fetch('api/getUsers', {
-			method: 'GET',
-		})
-		res = await res.json()
-		return res
-	}
 
 	async function makeChart() {
 		let date = new Date()
@@ -148,7 +133,6 @@
 		for (let u of users) {
 			dict_users[u._id] = u.name
 		}
-		console.log('making graph')
 		let dataset = {}
 		for (let d of stats) {
 			date = new Date(d.date)
@@ -174,10 +158,8 @@
 		dataset = Object.values(dataset)
 
 		if (chart) {
-			console.log(chart.data.datasets)
 			chart.data.datasets = []
 			chart.data.datasets.push(...dataset)
-			console.log(chart.data.datasets)
 			chart.update()
 		}
 		else {
@@ -198,7 +180,7 @@
 								}
 							}
 						}
-					}
+					},
 				}
 			});
 		}

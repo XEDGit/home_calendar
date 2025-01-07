@@ -3,67 +3,66 @@
 	import UpdateTask from "./UpdateTask.svelte";
 	import { onMount } from "svelte";
 	import Chart from 'chart.js/auto'
-	import { getStats, getUsers } from './requests'
+	import { getStats, getUsers, getChores } from './requests'
 	import Drag from "./drag.svelte";
 
 	let chores = [];
 	let sortedDays = [];
+	let stats = null;
+	let users = null
+	let users_by_id = null;
 
-	function isTouchDevice() {
-		return 'ontouchstart' in window;
-    }
-
-	async function getChores() {
-		await fetch('api/getChores', {
-		method: 'GET',
-		}).then(res => {
-			res.json().then(json => {
-				let perDay = json.reduce((acc, chore, index) => {
-					if (!acc[chore.nextTime]) {
-						acc[chore.nextTime] = [];
-					}
-					acc[chore.nextTime].push(chore);
-					return acc;
-				}, {});
-				let final = {}
-				for (let day of Object.keys(perDay)) {
-					if (7 <= day && day < 14) {
-						let week = 7;
-						if (!final[week])
-							final[week] = [];
-						final[week].push(...perDay[day]);
-					} else if (14 < day && day <= 30) {
-						let after = 14;
-						if (!final[after])
-							final[after] = [];
-						final[after].push(...perDay[day]);
-					} else if (day < -7) {
-						let very_late = -8;
-						if (!final[very_late])
-							final[very_late] = [];
-						final[very_late].push(...perDay[day]);
-					} else if (day > 42) {
-						let after = 43;
-						if (!final[after])
-							final[after] = [];
-						final[after].push(...perDay[day]);
-					} else {
-						if (!final[day])
-							final[day] = [];
-						final[day].push(...perDay[day]);
-					}
-				}
-				chores = final
-				sortedDays = Object.keys(chores).sort((a, b) => {return a - b})
-			})
-		});
+	async function sortChores() {
+		stats = await getStats()
+		users = await getUsers()
+		const sorted_stats = stats.sort((a, b) => {return a.date > b.date})
+		const res = await getChores()
+		users_by_id = Object.fromEntries(users.map(u => [u._id, u.name]));
+		let perDay = res.reduce((acc, chore, index) => {
+			chore.last_sign = users_by_id[sorted_stats.find((stat) => {return stat.chore_ref == chore._id})?.who] || 'Nobody'
+			if (!acc[chore.nextTime]) {
+				acc[chore.nextTime] = [];
+			}
+			acc[chore.nextTime].push(chore);
+			return acc;
+		}, {});
+		let final = {}
+		for (let day of Object.keys(perDay)) {
+			if (7 <= day && day < 14) {
+				let week = 7;
+				if (!final[week])
+					final[week] = [];
+				final[week].push(...perDay[day]);
+			} else if (14 < day && day <= 30) {
+				let after = 14;
+				if (!final[after])
+					final[after] = [];
+				final[after].push(...perDay[day]);
+			} else if (day < -7) {
+				let very_late = -8;
+				if (!final[very_late])
+					final[very_late] = [];
+				final[very_late].push(...perDay[day]);
+			} else if (day > 42) {
+				let after = 43;
+				if (!final[after])
+					final[after] = [];
+				final[after].push(...perDay[day]);
+			} else {
+				if (!final[day])
+					final[day] = [];
+				final[day].push(...perDay[day]);
+			}
+		}
+		chores = final
+		sortedDays = Object.keys(chores).sort((a, b) => {return a - b})
 	}
 
 	let graph = null 
 	let chart = null
 
 	onMount(async () => {
-		getChores()
+		await sortChores()
 		graph = document.getElementById('statsGraph').getContext('2d');
 		makeChart()
 	})
@@ -98,7 +97,7 @@
 			method: 'POST',
 			body: JSON.stringify({"id": id}),
 		})
-		chores = getChores();
+		chores = sortChores();
 		await makeChart()
 	}
 
@@ -107,7 +106,7 @@
 			method: 'POST',
 			body: JSON.stringify(obj),
 		})
-		chores = getChores();
+		chores = sortChores();
 		await makeChart()
 	}
 
@@ -127,12 +126,7 @@
 			date.setDate(date.getDate() - 1)
 		}
 		dates.reverse()
-		let stats = await getStats()
-		let users = await getUsers()
-		let dict_users = {}
-		for (let u of users) {
-			dict_users[u._id] = u.name
-		}
+		stats = await getStats()
 		let dataset = {}
 		for (let d of stats) {
 			date = new Date(d.date)
@@ -147,7 +141,7 @@
 			}
 			else {
 				dataset[d.who] = {
-					label: dict_users[d.who],
+					label: users_by_id[d.who],
 					data: Array(5).fill(0),
 					fill: true
 				}
@@ -318,6 +312,7 @@
 					<div class='fade'></div>
 				</div>
 				<div class='info-right'>
+					<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
 					<p class='room-text'>{chore.rooms.length} rooms</p>
 					<!-- <p class='rep-text'>Every {chore.repetition} {chore.timeMeasure}</p> -->
 					<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />

@@ -21,7 +21,6 @@
 				room.used = true;
 			return room;
 		})
-		console.log(all_rooms)
 	})
 
 	let roomsChecked = [];

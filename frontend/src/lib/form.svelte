@@ -36,7 +36,6 @@
 
 		if (response.ok) {
 			const result = await response.json();
-			console.log('Success:', result);
 			done = true;
 			setTimeout(() => {done = false;}, 1500);
 			if (hook)
@@ -59,6 +58,11 @@
 		padding: 5px;
 		display: inline-block;
 	}
+	.multi {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
 	input {
 		outline: none;
 		background: none;
@@ -71,6 +75,7 @@
 	}
 	
 	label {
+		flex: 1;
 		color: #96616B;
 		margin-right: 10px;
 	}
@@ -106,15 +111,16 @@
 </style>
 
 <div class='main-container'>
-	<form on:submit|preventDefault={handleSubmit}>
+	<form on:submit|preventDefault={handleSubmit} class={Object.keys(inputs).length > 1? 'multi' : ''}>
 		{#each Object.entries(inputs) as [name, type]}
-			<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}</label>
+			<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}
 			<input
 				id={name}
 				type={type}
 				bind:value={formData[name]}
 				required
 			/>
+			</label>
 		{/each}
 
 		{#each Object.entries(hidden) as [name, value]}

@@ -1,30 +1,15 @@
 <script>
 	import Form from "./form.svelte";
 	import Section from "./Section.svelte";
+	import { onMount } from "svelte";
+	import { getUsers, getRooms } from "./requests.js";
 
-	let users = [] 
-	function getUsers() {
-		fetch('api/getUsers', {
-			method: 'GET',
-		}).then(res => 
-			res.json().then(json => {
-				users = json;
-			})
-		)
-	}
-	getUsers()
-
-	let rooms = [] 
-	function getRooms() {
-		fetch('api/getRooms', {
-			method: 'GET',
-		}).then(res => 
-			res.json().then(json => {
-				rooms = json;
-			})
-		)
-	}
-	getRooms()
+	let users = []
+	let rooms = []
+	onMount(async () => {
+		users = await getUsers()
+		rooms = await getRooms()
+	})
 </script>
 
 <style>
@@ -66,6 +51,10 @@
 	</div>
 	{/each}
 	<Form endpoint='addRoom' inputs={{name:'text'}} submitText='Add' hook={getRooms} />
+	<Section title='Add new account' />
+	<Form submitText='Add new account' inputs={{'username': 'text', 'password': 'password'}} endpoint='sessions' />
+	<Section title='Log out' />
+	<button class='retro-red' style='border-radius: 5px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {document.cookie = `session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.location = '/login'}}>Log out</button>
 	<Section title='Danger zone' />
 	<div style='background-color: transparent;'>
 		<div style='justify-content: flex-start;'>

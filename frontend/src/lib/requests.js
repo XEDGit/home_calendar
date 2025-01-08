@@ -13,7 +13,15 @@ export async function getBackend(request, endpoint) {
 		});
 		const data = await backendResponse.json();
 
-		return json(data, { status: backendResponse.status });
+		const responseHeaders = new Headers();
+        backendResponse.headers.forEach((value, name) => {
+            responseHeaders.set(name, value);
+        });
+
+		return new Response(JSON.stringify(data), {
+            status: backendResponse.status,
+            headers: responseHeaders
+        });
 	} catch (error) {
 		console.error('Error proxying request:', error);
 		return json({ error: 'Failed to get data from backend' }, { status: 500 });
@@ -35,7 +43,16 @@ export async function postBackend(request, endpoint) {
         });
 
         const data = await backendResponse.json();
-        return json(data, { status: backendResponse.status });
+
+		const responseHeaders = new Headers();
+        backendResponse.headers.forEach((value, name) => {
+            responseHeaders.set(name, value);
+        });
+
+		return new Response(JSON.stringify(data), {
+            status: backendResponse.status,
+            headers: responseHeaders
+        });
     } catch (error) {
         console.error('Error proxying request:', error);
         return json({ error: 'Failed to post data to backend' }, { status: 500 });

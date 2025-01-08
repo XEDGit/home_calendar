@@ -15,7 +15,7 @@
 	async function sortChores() {
 		stats = await getStats()
 		users = await getUsers()
-		const sorted_stats = stats.sort((a, b) => {return a.date > b.date})
+		const sorted_stats = stats.sort((a, b) => {return a.date < b.date})
 		const res = await getChores()
 		users_by_id = Object.fromEntries(users.map(u => [u._id, u.name]));
 		let perDay = res.reduce((acc, chore, index) => {

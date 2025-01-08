@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { MongoClient, ObjectId } from 'mongodb';
 const app = express();
 const PORT = 3000;
-const SECRET = 'dioporchissimo'
+const SECRET = 'use-env-file' // TODO
 const saltRounds = 10
 
 ////////////////////////////////////////////

@@ -201,7 +201,6 @@
 
 
 {#if !user && users && users.length}
-{console.log(users)}
 <PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 1)}} />
 
 {:else if viewMode == pages.calendar }

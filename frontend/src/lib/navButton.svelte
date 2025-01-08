@@ -18,7 +18,7 @@
 		border: 3px solid #96616B;
 		border-radius: 5px;
 		cursor: pointer;
-		padding: 1vw 2vw;
+		padding: 0 2vw;
 		min-height: 40px;
 		font-weight: bold;
 		font-size: clamp(12px, 2vw, 32px);

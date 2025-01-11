@@ -1,14 +1,15 @@
 <script>
-	import Stats from '$lib/stats.svelte';
-	import Calendar from '$lib/calendar.svelte';
-	import AddEventForm from '$lib/addEvent.svelte';
-	import AddChoreForm from '$lib/addChore.svelte';
-	import Chores from '$lib/chores.svelte';
-	import PlusButton from '$lib/plusButton.svelte';
-	import NavButton from '$lib/navButton.svelte';
-	import PromptUser from "$lib/promptUser.svelte";
-	import Settings from '$lib/Settings.svelte';
+	import Stats from '$lib/menus/stats/stats.svelte';
+	import Calendar from '$lib/menus/calendar/calendar.svelte';
+	import AddEventForm from '$lib/menus/calendar/addEvent.svelte';
+	import AddChoreForm from '$lib/menus/chores/addChore.svelte';
+	import Chores from '$lib/menus/chores/chores.svelte';
+	import PlusButton from '$lib/buttons/plusButton.svelte';
+	import NavButton from '$lib/header/navButton.svelte';
+	import PromptUser from "$lib/prompts/promptUser.svelte";
+	import Settings from '$lib/menus/settings/Settings.svelte';
 	import { onMount } from 'svelte';
+	import { getUsers } from '$lib/requests';
 
 	export let data;
 	let events = data.events;
@@ -24,7 +25,7 @@
 				return cookie.substring(name.length + 1, cookie.length);
 			}
 		}
-		return null; // Return null if cookie not found
+		return null;
 	}
 	function setCookie(name, value, days) {
 		const date = new Date();
@@ -66,7 +67,7 @@
 	}
 
 	import { page } from '$app/stores';
-	import Section from '../lib/Section.svelte';
+	import Section from '../lib/header/Section.svelte';
 	let queryParams = $page.url.searchParams;
 	for (let [key, value] of Array.from(queryParams.entries())) {
 		if (key == 'viewMode') {
@@ -85,25 +86,18 @@
 		}
 	};
 
-	onMount(() => {
+	let users = null
+	onMount(async () => {
 		if (browser) {
 			window.addEventListener('popstate', handlePopState);
 			user = getCookie('user')
 		}
-		getUsers()
+		users = await getUsers()
+		if (!users.length) {
+			viewMode = pages.settings
+		}
 	});
 
-	let users = null
-
-	function getUsers() {
-		fetch('api/getUsers', {
-			method: 'GET',
-		}).then(res => 
-			res.json().then(json => {
-				users = json;
-			})
-		)
-	}
 
 	const greetings = {
 		"Hello": "(hɛˈloʊ) in English",
@@ -183,7 +177,7 @@
 </style>
 </svelte:head>
 
-{#if user && users}
+{#if user && users && users.length}
 <small style="display: block; font-size: 0.7em; color: gray; margin: 0; margin-bottom: -6px">{greet[1]}</small>
 <Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0].name} :)' />
 {/if}
@@ -197,6 +191,7 @@
 		"notes": pages.notes,
 		"settings": pages.settings,
 	}}
+	disableMask = {[true, false, false, true, false]}
 />
 
 

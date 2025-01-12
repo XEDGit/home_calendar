@@ -132,13 +132,13 @@
 	}
 
 	async function afterDelChore(id) {
-		delChore({"id": id})
+		await delChore({"id": id})
 		chores = sortChores();
 		await makeChart()
 	}
 
 	async function afterSignChore(data) {
-		signChore(data)
+		await signChore(data)
 		chores = sortChores();
 		await makeChart()
 	}

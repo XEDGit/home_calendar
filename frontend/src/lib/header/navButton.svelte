@@ -19,7 +19,7 @@
 		border: 3px solid #96616B;
 		border-radius: 5px;
 		cursor: pointer;
-		padding: 0 2vw;
+		flex-grow: 0.15;
 		min-height: 40px;
 		font-weight: bold;
 		font-size: clamp(12px, 2vw, 32px);
@@ -45,10 +45,9 @@
 		max-height: 40px;
 		width: 100%;
 		align-content: center;
-		justify-content: center;
+		justify-content: space-evenly;
 		background-color: #FFEAD0;
 		display: flex;
-		gap: 5px;
 		padding-bottom: 10px;
 	}
 

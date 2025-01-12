@@ -178,8 +178,8 @@
 					label: users_by_id[d.who].name,
 					data: Array(5).fill(0),
 					fill: true,
-					backgroundColor: color? color.padEnd(6, '0') + '99' : 'gray',
-					borderColor: color || 'gray',
+					backgroundColor: color? color.padEnd(6, '0') + '99' : '#96616B99',
+					borderColor: color || '#96616B99',
 				}
 				dataset[d.who].data[idx] += d.rooms.length
 			}

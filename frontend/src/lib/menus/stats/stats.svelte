@@ -38,7 +38,9 @@
 			tasks.push({
 				label: user.name,
 				data: labels.map(task => dataset[task][user.name] || 0),
-				borderWidth: 1
+				borderWidth: 1,
+				backgroundColor: user.color? user.color.padEnd(6, '0') + '99' : '#96616B99',
+				borderColor: user.color || '#96616B',
 			})
 		}
 		if (chart) {

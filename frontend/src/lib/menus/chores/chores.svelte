@@ -3,21 +3,52 @@
 	import UpdateTask from "./updateChore.svelte";
 	import { onMount } from "svelte";
 	import Chart from 'chart.js/auto'
-	import { getStats, getUsers, getChores, signChore, delChore } from '$lib/requests'
+	import { getStats, getUsers, getChores, signChore, delChore, getRooms } from '$lib/requests'
 	import Drag from "$lib/containers/drag.svelte";
+    import Button from "$lib/buttons/button.svelte";
 
 	let chores = [];
 	let sortedDays = [];
 	let stats = null;
-	let users = null
+	let users = null;
 	let users_by_id = null;
+	let rooms = null;
+	let rooms_by_id = null;
+
+	// Filter shown chores
+	let chores_filter = []
+
+	function clearFilter() {
+		chores_filter = []
+		makeChart()
+	}
+
+	function handleFilter(newel) {
+		if (chores_filter.includes(newel)) {
+			chores_filter = chores_filter.filter(item => item !== newel);
+		} else {
+			chores_filter = [...chores_filter, newel];
+		}
+		makeChart()
+	}
+
+	function filterChores(chores_list, chores_filter) {
+		if (chores_filter.length) {
+			chores_list = chores_list.filter((chore) => {return chore.rooms.some((room) => {return chores_filter.includes(room.name);})})
+		}
+		return chores_list;
+	}
+
+	function filterStats(stats_list, chores_filter) {
+		if (chores_filter.length) {
+			stats_list = stats_list.filter((stat) => {return stat.rooms.some((room) => {return chores_filter.includes(rooms_by_id[room]);})})
+		}
+		return stats_list;
+	}
 
 	async function sortChores() {
-		stats = await getStats()
-		users = await getUsers()
 		const sorted_stats = stats.sort((a, b) => {return a.date < b.date})
-		const res = await getChores()
-		users_by_id = Object.fromEntries(users.map(u => [u._id, u.name]));
+		let res = await getChores()
 		let perDay = res.reduce((acc, chore, index) => {
 			chore.last_sign = users_by_id[sorted_stats.find((stat) => {return stat.chore_ref == chore._id})?.who] || 'Nobody'
 			if (!acc[chore.nextTime]) {
@@ -62,6 +93,11 @@
 	let chart = null
 
 	onMount(async () => {
+		stats = await getStats()
+		users = await getUsers()
+		users_by_id = Object.fromEntries(users.map(u => [u._id, u.name]));
+		rooms = await getRooms()
+		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		await sortChores()
 		const canvas = document.getElementById('statsGraph');
 		if (!canvas)
@@ -125,7 +161,7 @@
 		dates.reverse()
 		stats = await getStats()
 		let dataset = {}
-		for (let d of stats) {
+		for (let d of filterStats(stats, chores_filter)) {
 			date = new Date(d.date)
 			const day = String(date.getDate())
 			const month = String(date.getMonth() + 1)
@@ -277,6 +313,16 @@
 		border-radius: 5px;
 	}
 
+	.filter-bar {
+		width: 100%;
+		padding: 10px 0;
+		display: flex;
+		gap: 5px;
+		flex-wrap: wrap;
+		color: #96616B;
+		align-items: center;
+	}
+
 	@media (max-width: 1000px) {
 		.rep-text {
 			display: none;
@@ -298,29 +344,37 @@
 </style>
 
 {#if chores}
-<Section title={'Stats'} />
+<Section title='Stats' />
 <canvas id="statsGraph" class='stats' width="100%" height="40%"></canvas>
-{#each sortedDays as day}
-	<Section title={getDateLabel(day)} />
-	{#each chores[day] as chore}
-		<div class='choreContainer' style='z-index: {roomChoice == chore._id || isOpen == chore._id ? '1' : '0'};' on:click={() => {if (roomChoice != chore._id) roomChoice = chore._id; isOpen = 0}}>
-			<Drag>
-				<div class="choreName">
-					<p>{chore.name}</p>
-					<div class='fade'></div>
-				</div>
-				<div class='info-right'>
-					<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
-					<p class='room-text'>{chore.rooms.length} rooms</p>
-					<!-- <p class='rep-text'>Every {chore.repetition} {chore.timeMeasure}</p> -->
-					<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />
-				</div>
-			</Drag>
-			{#if roomChoice == chore._id}
-				<UpdateTask chore={chore} onSubmit={(updateChore) => {afterSignChore(updateChore); reset();}} reset={reset} delFunc={afterDelChore} />
-			{/if}
-		</div>
+<p style='color: #96616B; margin: 0; margin-top: 10px; '>Show:</p>
+<div class='filter-bar'>
+	<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
+	{#each rooms as room}
+		<Button title={room.name} func={handleFilter} inverted={true} active={chores_filter.includes(room.name)} />
 	{/each}
+</div>
+{#each sortedDays as day}
+	{#if (filterChores(chores[day], chores_filter)).length}
+		<Section title={getDateLabel(day)} />
+		{#each filterChores(chores[day], chores_filter) as chore}
+			<div class='choreContainer' style='z-index: {roomChoice == chore._id || isOpen == chore._id ? '1' : '0'};' on:click={() => {if (roomChoice != chore._id) roomChoice = chore._id; isOpen = 0}}>
+				<Drag>
+					<div class="choreName">
+						<p>{chore.name}</p>
+						<div class='fade'></div>
+					</div>
+					<div class='info-right'>
+						<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
+						<p class='room-text'>{chore.rooms.length} rooms</p>
+						<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />
+					</div>
+				</Drag>
+				{#if roomChoice == chore._id}
+					<UpdateTask chore={chore} onSubmit={(updateChore) => {afterSignChore(updateChore); reset();}} reset={reset} delFunc={afterDelChore} />
+				{/if}
+			</div>
+		{/each}
+	{/if}
 {/each}
 {:else}
 	<p>Loading...</p>

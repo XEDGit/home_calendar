@@ -8,6 +8,7 @@
 	let graph = null
 	let chart = null
 	let users = null
+	let users_by_id = null
 	let stats = null
 	let stats_per_user = null
 	let chores = null
@@ -70,10 +71,6 @@
 			date.setDate(date.getDate() - 1)
 		}
 		dates.reverse()
-		let dict_users = {}
-		for (let u of users) {
-			dict_users[u._id] = u.name
-		}
 		let dataset = {}
 		for (let d of stats) {
 			date = new Date(d.date)
@@ -87,10 +84,13 @@
 				dataset[d.who].data[idx] += d.rooms.length
 			}
 			else {
+				const color = users_by_id[d.who].color
 				dataset[d.who] = {
-					label: dict_users[d.who],
+					label: users_by_id[d.who].name,
 					data: Array(history_len).fill(0),
-					fill: true
+					fill: true,
+					backgroundColor: color? color.padEnd(6, '0') + '99' : '#96616B99',
+					borderColor: color || '#96616B',
 				}
 				dataset[d.who].data[idx] += d.rooms.length
 			}
@@ -160,6 +160,7 @@
 		}, {});
 		reduceStats()
 		users = await getUsers()
+		users_by_id = Object.fromEntries(users.map(u => [u._id, u]));
 		graph = document.getElementById('statsGraph').getContext('2d');
 		chart_func()
 })
@@ -174,6 +175,10 @@
 		flex-direction: column;
 		align-items: center;
 		margin-bottom: 10px;
+	}
+
+	.stats {
+		max-height: 60vh;
 	}
 
 	input {

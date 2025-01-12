@@ -1,16 +1,25 @@
 <script>
+    import { color } from 'chart.js/helpers';
+	import ColorPicker from 'svelte-awesome-color-picker';
+
 	export let endpoint = ''
 	export let inputs = {};
 	export let hidden = {};
 	export let submitText = 'Submit'
 	export let hook = null;
+	export let ask_confirm = '';
+	export let colorText = '';
+
 	let formData = {};
 	let done = false;
 
 	// Initialize formData with empty values for each input field
 	$: {
 		for (const key in inputs) {
-			if (!(key in formData)) {
+			if (key.endsWith('color') && !(key in formData)) {
+				formData['color'] = inputs[key].split('-')[0];
+			}
+			else if (!(key in formData)) {
 				formData[key] = '';
 			}
 		}
@@ -18,12 +27,17 @@
 
 	function resetForm() {
 		for (const key in inputs) {
+			if (key == 'color') continue;
 			formData[key] = '';
 		}
 	}
 
 	async function handleSubmit(event) {
 		event.preventDefault();
+		if (ask_confirm != '') {
+			if (!confirm(ask_confirm))
+				return
+		}
 
 		try {
 		const response = await fetch('/api/' + endpoint, {
@@ -45,7 +59,7 @@
 			console.error('Error:', response.statusText);
 		}
 		} catch (error) {
-		console.error('Error:', error);
+			console.error('Error:', error);
 		}
 	}
 </script>
@@ -62,6 +76,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+	}
+	.single {
+		display: inline-flex;
+		flex-direction: row;
+		gap: 10px;
+		justify-content: center;
 	}
 	input {
 		outline: none;
@@ -85,7 +105,7 @@
 		color: #FFEAD0;
 		border: none;
 		border-radius: 7px;
-		padding: 0.5em 1em;
+		padding: 1vw 2vw;
 	}
 
 	button:hover {
@@ -111,16 +131,22 @@
 </style>
 
 <div class='main-container'>
-	<form on:submit|preventDefault={handleSubmit} class={Object.keys(inputs).length > 1? 'multi' : ''}>
+	<form on:submit|preventDefault={handleSubmit} class={Object.keys(inputs).length > 1? 'multi' : 'single'}>
 		{#each Object.entries(inputs) as [name, type]}
-			<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}
-			<input
-				id={name}
-				type={type}
-				bind:value={formData[name]}
-				required
-			/>
-			</label>
+			{#if type.endsWith('color')}
+				<label for={name} style='margin-right: 0'>{colorText}
+				<ColorPicker --picker-indicator-size="25px" bind:hex={formData['color']} label="" position='responsive' />
+				</label>
+			{:else}
+				<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}
+				<input
+					id={name}
+					type={type}
+					bind:value={formData[name]}
+					required
+				/>
+				</label>
+			{/if}
 		{/each}
 
 		{#each Object.entries(hidden) as [name, value]}
@@ -134,7 +160,7 @@
 
 		<div style='display: inline-flex; flex-direction: row;'>
 			<p class="fade {done ? 'show' : ''}">Done!</p>
-			<button type="submit">{submitText}</button>
+			<button style='white-space: nowrap;' type="submit">{submitText}</button>
 		</div>
 	</form>
 </div>

@@ -50,7 +50,7 @@
 		const sorted_stats = stats.sort((a, b) => {return a.date < b.date})
 		let res = await getChores()
 		let perDay = res.reduce((acc, chore, index) => {
-			chore.last_sign = users_by_id[sorted_stats.find((stat) => {return stat.chore_ref == chore._id})?.who] || 'Nobody'
+			chore.last_sign = users_by_id[sorted_stats.find((stat) => {return stat.chore_ref == chore._id})?.who]?.name || 'Nobody'
 			if (!acc[chore.nextTime]) {
 				acc[chore.nextTime] = [];
 			}
@@ -95,7 +95,7 @@
 	onMount(async () => {
 		stats = await getStats()
 		users = await getUsers()
-		users_by_id = Object.fromEntries(users.map(u => [u._id, u.name]));
+		users_by_id = Object.fromEntries(users.map(u => [u._id, u]));
 		rooms = await getRooms()
 		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		await sortChores()
@@ -173,10 +173,13 @@
 				dataset[d.who].data[idx] += d.rooms.length
 			}
 			else {
+				const color = users_by_id[d.who].color
 				dataset[d.who] = {
-					label: users_by_id[d.who],
+					label: users_by_id[d.who].name,
 					data: Array(5).fill(0),
-					fill: true
+					fill: true,
+					backgroundColor: color? color.padEnd(6, '0') + '99' : 'gray',
+					borderColor: color || 'gray',
 				}
 				dataset[d.who].data[idx] += d.rooms.length
 			}
@@ -308,9 +311,8 @@
 
 	.stats {
 		border: solid #96616B 3px;
-		width: 100%;
-		height: 20vh;
 		border-radius: 5px;
+		max-height: 25vh;
 	}
 
 	.filter-bar {
@@ -345,8 +347,8 @@
 
 {#if chores}
 <Section title='Stats' />
-<canvas id="statsGraph" class='stats' width="100%" height="40%"></canvas>
-<p style='color: #96616B; margin: 0; margin-top: 10px; '>Show:</p>
+<canvas id="statsGraph" class='stats'></canvas>
+<p style='color: #96616B; margin: 0; margin-top: 10px; font-weight: bold; text-decoration: underline;'>Show:</p>
 <div class='filter-bar'>
 	<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
 	{#each rooms as room}

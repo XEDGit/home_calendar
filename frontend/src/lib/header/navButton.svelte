@@ -42,7 +42,6 @@
 	}
 
 	.navBar {
-		max-height: 40px;
 		width: 100%;
 		align-content: center;
 		justify-content: space-evenly;

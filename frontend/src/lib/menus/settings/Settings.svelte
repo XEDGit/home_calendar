@@ -1,9 +1,9 @@
 <script>
-	import Form from "../../prompts/form.svelte";
-	import Section from "../../header/Section.svelte";
+	import Form from "$lib/prompts/form.svelte";
+	import Section from "$lib/header/Section.svelte";
 	import { onMount } from "svelte";
-	import { getUsers, getRooms } from "../../requests.js";
-
+	import { getUsers, getRooms } from "$lib/requests.js";
+	export let user_id = '';
 	let users = []
 	let rooms = []
 	
@@ -47,10 +47,13 @@
 	{#each users as user}
 	<div class='container'>
 		<p>{user.name}</p>
-		<Form endpoint='delUser' submitText='Delete' hidden={{id: user._id}} hook={updateUsers} />
+		{#if user._id == user_id}
+			<Form endpoint='updateUser' submitText='Update color' inputs={{color: (user.color || '#ffffff') + '-color'}} />
+		{/if}
+		<Form endpoint='delUser' ask_confirm={"Warning: are you sure you want to delete the user named '" + user.name + "'? This will also delete ALL the statistics about them, this is not revertible"} submitText='Delete' hidden={{id: user._id}} hook={updateUsers} />
 	</div>
 	{/each}
-	<Form endpoint='addUser' inputs={{name:'text'}} submitText='Add' hook={updateUsers} />
+	<Form endpoint='addUser' inputs={{name:'text', color: '#96616B-color'}} colorText='Color:' submitText='Add' hook={updateUsers} />
 
 	<Section title='Rooms' />
 	{#each rooms as room}
@@ -64,6 +67,7 @@
 	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {document.cookie = `session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.location = '/login'}}>Log out</button>
 	<Section title='Add new account' />
 	<Form submitText='Add new account' inputs={{'username': 'text', 'password': 'password'}} endpoint='sessions' />
+	<Form endpoint='updateUser' submitText='Add' />
 	<!-- <Section title='Danger zone' />
 	<div style='background-color: transparent;'>
 		<div style='justify-content: flex-start;'>

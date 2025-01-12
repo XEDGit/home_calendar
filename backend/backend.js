@@ -229,6 +229,17 @@ function getID(req, res) {
 	return new ObjectId(id.id)
 }
 
+function getCookie(cookieString, name) {
+	const cookieArr = cookieString.split(';');
+	for (let i = 0; i < cookieArr.length; i++) {
+		let cookie = cookieArr[i].trim();
+		if (cookie.startsWith(name + '=')) {
+			return cookie.substring(name.length + 1, cookie.length);
+		}
+	}
+	return null;
+}
+
 ////////////////////////////////////////////
 // STARTUP ROUTINE
 
@@ -523,6 +534,11 @@ app.post('/users', async (req, res) => {
 app.get('/user', async (req, res) => {
 	const cookieSplit = req.header('Cookie').split('=')[1]
 	await db.findRespond('users', req.cookies.session, res, {user: cookieSplit})
+})
+
+app.post('/user/update', async (req, res) => {
+	const cookieSplit = getCookie(req.header('Cookie'), 'user')
+	await db.updateRespond('users', req.cookies.session, res, {_id: new ObjectId(cookieSplit)}, {$set: {color: req.body.color}})
 })
 
 app.post('/users/del', async (req, res) => {

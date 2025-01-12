@@ -1,5 +1,7 @@
 <script>
-	import Section from "../../header/Section.svelte";
+    import { getFrontend, postFrontend } from "$lib/requests";
+	import Section from "$lib/header/Section.svelte";
+    import { onMount } from "svelte";
 	let newChore = {
 		name: '',
 		rooms: [],
@@ -18,14 +20,7 @@
 			return
 		}
         try {
-            const response = await fetch('api/addChore', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-				credentials: 'include',
-                body: JSON.stringify(newChore)
-            });
+            const response = await postFrontend('addChore', newChore)
             if (!response.ok) {
                 throw new Error(String(response.status) + ': Failed to add chore');
             }
@@ -46,16 +41,12 @@
     }
 
 	let rooms = [] 
-	function getRooms() {
-		fetch('api/getRooms', {
-			method: 'GET',
-		}).then(res => 
-			res.json().then(json => {
-				rooms = json;
-			})
-		)
+	async function getRooms() {
+		rooms = await getFrontend('getRooms')
 	}
-	getRooms()
+	onMount(async () => {
+		await getRooms()
+	})
 </script>
 
 <style>

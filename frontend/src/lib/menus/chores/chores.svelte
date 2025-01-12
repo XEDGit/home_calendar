@@ -1,10 +1,10 @@
 <script>
-	import Section from "../../header/Section.svelte";
+	import Section from "$lib/header/Section.svelte";
 	import UpdateTask from "./updateChore.svelte";
 	import { onMount } from "svelte";
 	import Chart from 'chart.js/auto'
-	import { getStats, getUsers, getChores } from '../../requests'
-	import Drag from "../../containers/drag.svelte";
+	import { getStats, getUsers, getChores, signChore, delChore } from '$lib/requests'
+	import Drag from "$lib/containers/drag.svelte";
 
 	let chores = [];
 	let sortedDays = [];
@@ -95,20 +95,14 @@
 		}
 	}
 
-	async function delChore(id) {
-		await fetch('api/delChore', {
-			method: 'POST',
-			body: JSON.stringify({"id": id}),
-		})
+	async function afterDelChore(id) {
+		delChore({"id": id})
 		chores = sortChores();
 		await makeChart()
 	}
 
-	async function signChore(obj) {
-		await fetch('api/signChore', {
-			method: 'POST',
-			body: JSON.stringify(obj),
-		})
+	async function afterSignChore(data) {
+		signChore(data)
 		chores = sortChores();
 		await makeChart()
 	}
@@ -323,7 +317,7 @@
 				</div>
 			</Drag>
 			{#if roomChoice == chore._id}
-				<UpdateTask chore={chore} onSubmit={(updateChore) => {signChore(updateChore); reset();}} reset={reset} delFunc={delChore} />
+				<UpdateTask chore={chore} onSubmit={(updateChore) => {afterSignChore(updateChore); reset();}} reset={reset} delFunc={afterDelChore} />
 			{/if}
 		</div>
 	{/each}

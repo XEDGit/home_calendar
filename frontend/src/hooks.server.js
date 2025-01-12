@@ -5,7 +5,10 @@ export async function handle({ event, resolve }) {
   
 	if (!token && event.url.pathname != '/login' && event.url.pathname != '/api/login') {
 		console.log('Unauthorized connection on: ', event.url.pathname)
-		return Response.redirect(event.url.origin + '/login');
+		if (event.url.pathname != '/')
+			return new Response("'exit()", {status: 418, headers: {'Connection': 'close'},})
+		else
+			return Response.redirect(event.url.origin + '/login');
 	}
 
 	if (!token) {

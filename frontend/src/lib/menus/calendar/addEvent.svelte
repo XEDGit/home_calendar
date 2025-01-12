@@ -1,4 +1,6 @@
 <script>
+    import { addEvent } from "$lib/requests";
+
 	let newEvent = {
 		title: '',
 		start: '',
@@ -7,16 +9,9 @@
 
 	let error = '';
 
-	async function addEvent() {
+	async function hookAddEvent() {
         try {
-            const response = await fetch('api/addEvent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-				credentials: 'include',
-                body: JSON.stringify(newEvent)
-            });
+            const response = await addEvent(newEvent)
             if (!response.ok) {
                 throw new Error('Failed to add event');
             }
@@ -28,7 +23,7 @@
     }
 </script>
 
-<form on:submit|preventDefault={addEvent}>
+<form on:submit|preventDefault={hookAddEvent}>
 	<input type="text" bind:value={newEvent.title} placeholder="Event Title" required />
 	<input type="datetime-local" bind:value={newEvent.start} required />
 	<input type="datetime-local" bind:value={newEvent.end} required />

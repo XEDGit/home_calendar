@@ -59,7 +59,7 @@ export async function postBackend(request, endpoint) {
     }
 }
 
-async function get(endpoint) {
+export async function getFrontend(endpoint) {
 	let res = await fetch('api/' + endpoint, {
 		method: 'GET',
 	})
@@ -68,9 +68,12 @@ async function get(endpoint) {
 }
 
 
-async function post(endpoint, data) {
+export async function postFrontend(endpoint, data) {
 	let res = await fetch('api/' + endpoint, {
 		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
 		body: JSON.stringify(data),
 	})
 	res = await res.json()
@@ -78,21 +81,37 @@ async function post(endpoint, data) {
 }
 
 export async function delStats(_id) {
-	return post('delStats', {id: _id})
+	return postFrontend('delStats', {id: _id})
 }
 
 export async function getStats() {
-	return get('getStats')
+	return getFrontend('getStats')
 }
 
 export async function getRooms() {
-	return get('getRooms')
+	return getFrontend('getRooms')
 }
 
 export async function getUsers() {
-	return get('getUsers')
+	return getFrontend('getUsers')
 }
 
 export async function getChores() {
-	return get('getChores')
+	return getFrontend('getChores')
+}
+
+export async function signChore(data) {
+	return postFrontend('signChore', data)
+}
+
+export async function delChore(data) {
+	return postFrontend('delChore', data)
+}
+
+export async function addEvent(data) {
+	return postFrontend('addEvent', data)
+}
+
+export async function verify(data) {
+	return postFrontend('addEvent', data)
 }

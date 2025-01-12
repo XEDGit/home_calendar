@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Collapsible from '../../containers/collapsible.svelte';
 	import Section from '../../header/Section.svelte'
+    import { getFrontend } from '$lib/requests';
 	export let onSubmit = () => {};
 
 	export let reset = () => {};
@@ -13,8 +14,7 @@
 
 	let all_rooms = []
 	onMount(async () => {
-		all_rooms = await fetch('api/getRooms')
-		all_rooms = await all_rooms.json()
+		all_rooms = await getFrontend('getRooms')
 		all_rooms = all_rooms.map((room) => {
 			room.used = false;
 			if (chore.rooms.find((r) => {return r._id == room._id}))

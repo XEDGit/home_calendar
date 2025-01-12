@@ -1,4 +1,5 @@
 <script>
+    import { postFrontend } from '$lib/requests';
 	import { redirect } from '@sveltejs/kit'
 	let password = '';
 	let username = '';
@@ -8,14 +9,8 @@
 		if (busy)
 			return
 		busy = true
-		const res = await fetch('api/login', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({'password': password, 'username': username}, null, 2),
-		});
-		if (res.status == 200) {
+		const res = await postFrontend('login', {'password': password, 'username': username})
+		if (!res['error']) {
 			window.location.href = '/';
 		}
 		busy = false

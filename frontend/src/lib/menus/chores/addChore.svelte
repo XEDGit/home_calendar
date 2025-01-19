@@ -131,7 +131,7 @@
 			</label>
             {#each rooms as room}
             <label>
-                <input class='select-all' type="checkbox" on:change={() => {document.getElementById('select-all-check').checked = newChore.rooms.length != rooms.length}} bind:group={newChore.rooms} value="{room}" />
+                <input class='select-all' type="checkbox" bind:group={newChore.rooms} on:change={() => {document.getElementById('select-all-check').checked = newChore.rooms.length == rooms.length}} value="{room}" />
                 {room.name}
             </label>
             {/each}

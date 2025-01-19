@@ -446,7 +446,7 @@ app.post('/chores/sign', async (req, res) => {
 		calcNextTimeDays(chore);
 	}
 
-	if (sign.newRooms.length != chore.rooms.length || !sign.newRooms.every((nroom) => {return chore.rooms.findIndex((room) => {return nroom == room._id}) != -1})) {
+	if (sign['newRooms'] && (sign.newRooms.length != chore.rooms.length || !sign.newRooms.every((nroom) => {return chore.rooms.findIndex((room) => {return nroom == room._id}) != -1}))) {
 		let all_rooms = await db.find('rooms', req.cookies.session)
 		chore.rooms = sign.newRooms.map((nroom) => {
 			let match = all_rooms.find((room) => {return nroom == room._id})

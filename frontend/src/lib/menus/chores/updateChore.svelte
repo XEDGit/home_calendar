@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
-	import Collapsible from '../../containers/collapsible.svelte';
-	import Section from '../../header/Section.svelte'
+	import Collapsible from '$lib/containers/collapsible.svelte';
+	import Section from '$lib/header/Section.svelte'
     import { getFrontend } from '$lib/requests';
 	export let onSubmit = () => {};
 
@@ -43,8 +43,16 @@
 		}
 	}
 
-	function submit() {
+	function update() {
 		chore.newRooms = newRooms;
+		const swap_tmp = chore.rooms;
+		chore.rooms = [];
+		chore.id = chore._id;
+		onSubmit(chore);
+		chore.rooms = swap_tmp;
+	}
+
+	function submit() {
 		chore.rooms = roomsChecked;
 		chore.id = chore._id;
 		onSubmit(chore);
@@ -59,6 +67,8 @@
             return `${month} month${month === 1 ? '' : 's'}`;
         }
     }
+
+	let editMode = false;
 </script>
 
 <style>
@@ -95,6 +105,28 @@
 		position: relative;
 	}
 
+	.select-mode {
+		display: flex;
+		justify-content: center;
+		width: 100%;
+		margin-bottom: 5px;
+		gap: 10px;
+	}
+
+	.mode-button {
+		background-color: #96616B;
+		border: solid 3px #96616B;
+	}
+
+	.mode-button:hover {
+		color: #96616B;
+	}
+
+	.active {
+		background-color: #FFEAD0;
+		color: #96616B;
+	}
+
 	.userButtons {
 		flex-direction: column;
 		width: 100%;
@@ -108,6 +140,10 @@
 	.checkbox-label {
 		cursor: pointer;
 		user-select: none;
+	}
+
+	.sign-checkbox:checked {
+		background-color: green;
 	}
 
 	.label-container {
@@ -150,6 +186,15 @@
 		flex: 2;
 		background-color: green;
 		border: solid green 3px;
+	}
+
+	.update-button:disabled {
+		background-color: gray;
+		border: solid 3px gray;
+	}
+
+	.update-button:disabled:hover {
+		color: #FFEAD0;
 	}
 
 	.delete-button {
@@ -197,7 +242,9 @@
 	.stats-checkbox {
 		border-radius: 5px;
 		padding: 10px;
-		margin-top: 20px;
+		margin-top: 10px;
+		width: 100%;
+		user-select: none;
 	}
 
 	@media (max-width: 1000px) {
@@ -210,36 +257,41 @@
 {#if chore}
 	<div class="modal" role='button' on:keydown={() => {}} tabindex=0 on:click={(e) => {e.stopPropagation(); reset()}}>
 		<div class="modal-content" on:click={(e) => {e.stopPropagation()}}>
-			<Section title={chore.name} />
-			<div class="userButtons retro-red info-card">
-				{#each chore.rooms as button}
-					<label for={button._id} class='label-container'>
-						<input
-							type="checkbox"
-							id={button._id}
-							checked={button.done}
-							disabled={button.done}
-							on:change={(event) => checkRooms(button, event)} 
-						/>
-						<label for={button._id} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label><small style='color: gray;'>{button.done? 'already signed' : ''}<small></small>
-					</label>
-					{/each}
+			<div class="select-mode">
+				<button class={'mode-button ' + (!editMode? 'active' : '')} on:click={(e) => {if (editMode) editMode = false;}}>Sign</button>
+				<button class={'mode-button ' + (editMode? 'active' : '')} on:click={(e) => {if (!editMode) editMode = true;}}>Edit</button>
 			</div>
-			{#if chore.notes}
-			<Section title='Notes' />
-			<div class='retro-red' style='border-radius: 5px; text-align: left;'>
-				<p style='white-space: pre-line; color: #FFEAD0; padding: 10px; margin: 0;'>{chore.notes}</p>
-			</div>
-			{/if}
-			<div style='width: 100%; margin-top: 10px; gap: 40px; display: flex; justify-content: space-between'>
-				<button class='update-button' on:click={submit}>Sign {roomsChecked.length} rooms</button>
-				<button class='delete-button' on:click={() => {if (confirm("Are you sure you want to delete " + chore.name + '? This WILL DELETE ALL the statistics tied to it and is NOT revertible')) delFunc(chore._id)}}>Delete</button>
-			</div>
-			<div style='min-height: 20px'></div>
-			<Collapsible title='Edit'>
-				<div class='retro-red stats-checkbox'>
-					<label><input type="checkbox" bind:checked={chore.stats} /> Statistics: {chore.stats? 'on' : 'off'}</label>
+			<h1 style='color: #96616B; text-decoration: underline; margin: 0; width: 100%; font-weight: bold; font-size: 1.2em; padding: 10px 0;'>{chore.name}</h1>
+			{#if !editMode}
+				<div class="userButtons retro-red info-card">
+					{#each chore.rooms as button}
+						<label for={button._id} class='label-container'>
+							<input
+								type="checkbox"
+								id={button._id}
+								class='sign-checkbox'
+								checked={button.done}
+								disabled={button.done}
+								on:change={(event) => checkRooms(button, event)} 
+							/>
+							<label for={button._id} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label><small style='color: gray;'>{button.done? 'already signed' : ''}<small></small>
+						</label>
+						{/each}
 				</div>
+				{#if chore.notes}
+				<Section title='Notes' />
+				<div class='retro-red' style='border-radius: 5px; text-align: left;'>
+					<p style='white-space: pre-line; color: #FFEAD0; padding: 10px; margin: 0;'>{chore.notes}</p>
+				</div>
+				{/if}
+				<div class='retro-red stats-checkbox'>
+					<label><input type="checkbox" bind:checked={chore.stats} /> Stats: {chore.stats? 'on' : 'off'}</label>
+				</div>
+				<div style='width: 100%; margin-top: 20px; gap: 40px; display: flex; justify-content: space-between'>
+					<button disabled={roomsChecked.length == 0} class='update-button' on:click={submit}>{`Sign ${roomsChecked.length} rooms`}</button>
+				</div>
+				<div style='min-height: 20px'></div>
+			{:else}
 				<Section title='Name' />
 				<textarea class="retro-red name" bind:value={chore.name} />
 				<Section title='Notes' />
@@ -263,9 +315,13 @@
 							/>
 							<label for={button._id + '_add'} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label>
 						</label>
-						{/each}
+					{/each}
 				</div>
-			</Collapsible>
+				<div style='width: 100%; margin-top: 10px; gap: 40px; display: flex; justify-content: space-between'>
+					<button class='update-button' on:click={update}>Save changes</button>
+					<button class='delete-button' on:click={() => {if (confirm("Are you sure you want to delete " + chore.name + '? This WILL DELETE ALL the statistics tied to it and is NOT revertible')) delFunc(chore._id)}}>Delete</button>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}

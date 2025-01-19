@@ -209,7 +209,7 @@
 
 {#if user && users && users.length}
 <small style="display: block; font-size: 0.7em; color: gray; margin: 0; margin-bottom: -6px">{greet[1]}</small>
-<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0]?.name || ''} :)' onClick={() => {updateUI(); if (users.length > 1) user = undefined;}} />
+<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0]?.name || ''} :)' />
 {/if}
 
 <NavButton

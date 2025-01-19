@@ -54,7 +54,6 @@
 	.active {
 		background-color: #FFEAD0;
 		color: #96616B;
-		box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
 	}
 </style>
 

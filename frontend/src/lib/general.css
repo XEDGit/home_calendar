@@ -69,3 +69,13 @@ input[type="checkbox"] {
 input[type="checkbox"]:checked {
 	background-color: #96616B;
 }
+.title {
+	color: #FFEAD0;
+	text-align: center;
+	background-color: #96616B;
+	border-radius: 5px;
+	margin-top: 10px;
+}
+.title::first-letter {
+	text-transform: capitalize;
+}

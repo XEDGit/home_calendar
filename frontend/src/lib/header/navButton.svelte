@@ -1,4 +1,5 @@
 <script>
+	export let active = 1;
     export let f, buttons = [];
 	export let disableMask = Array(buttons.length).fill(false);
 </script>
@@ -50,12 +51,17 @@
 		padding-bottom: 10px;
 	}
 
+	.active {
+		background-color: #FFEAD0;
+		color: #96616B;
+		box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
+	}
 </style>
 
 <div class='navBackground'>
     <div class="navBar">
 		{#each Object.entries(buttons).map((button, index) => [button, disableMask[index]]) as [button, masked]}
-	        <button disabled={masked} class="navButton" on:click={() => {f(button[1])}}>{button[0]}</button>
+	        <button disabled={masked} class="navButton {active == button[1]? 'active' : ''}" on:click={() => {active = button[1]; f(button[1])}}>{button[0]}</button>
 		{/each}
     </div>
 </div>

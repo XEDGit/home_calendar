@@ -53,7 +53,7 @@
 			done = true;
 			setTimeout(() => {done = false;}, 1500);
 			if (hook)
-				hook();
+				await hook();
 			resetForm();
 		} else {
 			console.error('Error:', response.statusText);

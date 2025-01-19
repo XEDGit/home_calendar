@@ -8,7 +8,7 @@
 	import NavButton from '$lib/header/navButton.svelte';
 	import PromptUser from "$lib/prompts/promptUser.svelte";
 	import Settings from '$lib/menus/settings/Settings.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { getRooms, getUsers } from '$lib/requests';
 
 	let events = null;
@@ -68,7 +68,7 @@
 	}
 
 	import { page } from '$app/stores';
-	import Section from '../lib/header/Section.svelte';
+	import Section from '$lib/header/Section.svelte';
 	let queryParams = $page.url.searchParams;
 	for (let [key, value] of Array.from(queryParams.entries())) {
 		if (key == 'viewMode') {
@@ -87,7 +87,6 @@
 	};
 
 	function updateCookies() {
-		let refresh = false;
 		const date = new Date();
 		date.setTime(date.getTime() + (1000 * 24 * 60 * 60 * 1000));
 		const expires = "expires=" + date.toUTCString();
@@ -110,17 +109,23 @@
 		}
 	}
 
-	onMount(async () => {
-		if (browser) {
-			window.addEventListener('popstate', handlePopState);
-			user = getCookie('user')
-		}
+	async function updateUI() {
+		user = getCookie('user')
 		users = await getUsers()
 		rooms = await getRooms()
 		if (!users.length) {
 			viewMode = pages.settings
 		}
 		updateCookies()
+	}
+
+	setContext('updateUI', updateUI)
+
+	onMount(async () => {
+		if (browser) {
+			window.addEventListener('popstate', handlePopState);
+		}
+		await updateUI()
 	});
 
 
@@ -204,10 +209,11 @@
 
 {#if user && users && users.length}
 <small style="display: block; font-size: 0.7em; color: gray; margin: 0; margin-bottom: -6px">{greet[1]}</small>
-<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0].name} :)' />
+<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0]?.name || ''} :)' onClick={() => {updateUI(); if (users.length > 1) user = undefined;}} />
 {/if}
 
 <NavButton
+	active={viewMode}
 	f = {updateViewMode}
 	buttons = {{
 		"calendar": pages.calendar,
@@ -219,6 +225,7 @@
 	disableMask = {[true, false, false, true, false]}
 />
 
+<h1 class='title'>{pageNames[viewMode].replace(/([a-z])([A-Z])/g, '$1 $2')}</h1>
 
 {#if !user && users && users.length > 1}
 <PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 1)}} />

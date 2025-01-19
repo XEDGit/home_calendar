@@ -1,21 +1,26 @@
 <script>
 	import Form from "$lib/prompts/form.svelte";
 	import Section from "$lib/header/Section.svelte";
-	import { onMount } from "svelte";
+	import { getContext, onMount } from "svelte";
 	import { getUsers, getRooms, postFrontend } from "$lib/requests.js";
     import ColorPicker from "svelte-awesome-color-picker";
 	export let user_id = '';
 	let users = []
 	let rooms = []
-	let own_color = '#96616B';
+	let own_color = 'red';
+	const updateUI = getContext('updateUI')
 	
 	async function updateUsers() {
 		users = await getUsers()
 		own_color = users.find((u) => u._id == user_id)?.color
+		await updateUI()
+		own_color = users.find((u) => u._id == user_id)?.color
+		console.log(users.find((u) => u._id == user_id), own_color)
 	}
-	
+
 	async function updateRooms() {
 		rooms = await getRooms()
+		await updateUI()
 	}
 
 	onMount(async () => {
@@ -58,7 +63,7 @@
 		{#if user._id == user_id}
 		<div style='display: flex; gap: 10px; align-items: center;'>
 			<p>{user.name}</p>
-			<ColorPicker label='' bind:hex={own_color} on:input={(e) => {postFrontend('updateUser', {color: e.detail.hex}); updateUsers()}} ></ColorPicker>
+			<ColorPicker label='' bind:hex={own_color} on:input={(e) => {postFrontend('updateUser', {color: e.detail.hex});}} ></ColorPicker>
 		</div>
 		{:else}
 			<p>{user.name}</p>

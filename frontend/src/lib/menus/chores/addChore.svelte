@@ -100,7 +100,6 @@
 
 	.error {
 		color: red;
-		/* font-size: ; */
 	}
 </style>
 
@@ -117,12 +116,11 @@
         <div class='card' style="display: flex; flex-direction: column; gap: 0px;">
 			<Section title="Rooms:" color='#FFEAD0' />
             <label>
-				<input type="checkbox" on:change={(e) => {
+				<input id='select-all-check' type="checkbox" on:change={(e) => {
 					// Get and check all checkboxes
 					const checkboxes = document.getElementsByClassName('select-all');
 					for (let check of checkboxes)
 						check.checked = e.target.checked;
-					// Add to newChore.rooms array manually
 					if (e.target.checked) {
 						newChore.rooms = rooms.map(room => room);
 					} else {
@@ -133,7 +131,7 @@
 			</label>
             {#each rooms as room}
             <label>
-                <input class='select-all' type="checkbox" bind:group={newChore.rooms} value="{room}" />
+                <input class='select-all' type="checkbox" on:change={() => {document.getElementById('select-all-check').checked = newChore.rooms.length != rooms.length}} bind:group={newChore.rooms} value="{room}" />
                 {room.name}
             </label>
             {/each}

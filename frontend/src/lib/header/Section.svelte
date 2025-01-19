@@ -1,6 +1,7 @@
 <script>
 	export let title = '';
 	export let color = '#96616B'
+	export let onClick = () => {};
 </script>
 
 <style>
@@ -27,7 +28,7 @@
 	}
 </style>
 
-<div style="--color: {color};">
+<div style="--color: {color};" on:click={onClick}>
 	<h2>{title}</h2>
 	<hr />
 </div>

@@ -169,6 +169,13 @@
 </script>
 
 <style>
+	.tooltip {
+		text-transform: none;
+		color: gray;
+		font-style: italic;
+		white-space: wrap;
+	}
+
 	.bordered {
 		border: solid #96616B 3px;
 		border-radius: 5px;
@@ -180,7 +187,7 @@
 	}
 
 	.stats {
-		max-height: 60vh;
+		max-height: 90vh;
 	}
 
 	input {
@@ -240,6 +247,7 @@
 	}
 </style>
 
+{#if stats?.length}
 <div class='bordered'>
 	<div class='chartButtons'>
 		<button class={chart_func == makeChart? 'active' : 'chartButton'} on:click={() => {chart_func = makeChart; chart_func()}}>Line</button>
@@ -255,6 +263,7 @@
 		<div class="retro-red user-stats">
 			<Section title={user.name} color='#FFEAD0' />
 			<Collapsible>
+				{#if stats_per_user[user._id]}
 				{#each stats_per_user[user._id].reverse() as stat}
 					<div class='single-stat'>
 						<p>{chores_by_id[stat.chore_ref].name}</p>
@@ -265,7 +274,16 @@
 						</div>
 					</div>
 				{/each}
+				{:else}
+					<p class='tooltip'>Nothing to show</p>
+				{/if}
 			</Collapsible>
 		</div>
 	{/each}
 </div>
+{:else if !stats?.length}
+	<p class='tooltip'>No statistics have been found</p>
+	<p class='tooltip'>Finish a task in the <a href='/chores'>Chores tab</a> and sign it for any amount of rooms to start watching your progress</p>
+{:else}
+	<p class='tooltip'>Loading...</p>
+{/if}

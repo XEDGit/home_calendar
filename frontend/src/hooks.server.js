@@ -5,13 +5,26 @@ import { promises as fs } from 'fs';
 const blocked_ips = {}
 const unauth_connections = {}
 
-function blockIp(ip) {
-	delete unauth_connections[ip]
-	blocked_ips[ip] = [true, Date.now()];
+const BLOCKED_IPS_LOG = 'blocked_ips.log';
+
+(async () => {
 	try {
-		fs.appendFile('blocked_ips.log', ip + '\n', 'utf8');
-	} catch {
-		console.error('Could not log ' + ip + ' to blocked_ips.log')
+		const blocked_from_file = await fs.readFile(BLOCKED_IPS_LOG, {encoding: 'utf8'})
+		const parsed = JSON.parse(blocked_from_file)		
+		console.error(`Loaded blocked ips`)
+	} catch (err) {
+		console.error(`Couldn't load blocked ips because: ${err}`)
+	}
+})()
+
+async function blockIp(ip) {
+	const date = Date.now()
+	delete unauth_connections[ip]
+	blocked_ips[ip] = [true, date];
+	try {
+		await fs.writeFile(BLOCKED_IPS_LOG, JSON.stringify(blocked_ips, null, 2), {encoding: 'utf8'});
+	} catch (err) {
+		console.error('Could not write ips to ' + BLOCKED_IPS_LOG + ' because of: ' + err)
 	}
 }
 
@@ -20,12 +33,12 @@ export async function handle({ event, resolve }) {
   
 	const ip = event.request.headers.get('x-forwarded-for')
 
-	if (blocked_ips[ip] && blocked_ips[ip][0]) {
-		const day = 1000 * 60 * 60 * 24;
-		if (blocked_ips[ip][1] < Date.now() - day)
-			delete blocked_ips[ip]
-		else
-			return new Response("Contact the administrator", {status: 418, headers: {'Connection': 'close'},})
+	if (blocked_ips[ip]?.[0]) {
+		// const day = 1000 * 60 * 60 * 24;
+		// if (blocked_ips[ip][1] < Date.now() - day)
+		// 	delete blocked_ips[ip]
+		// else
+		return new Response("Contact the administrator", {status: 418, headers: {'Connection': 'close'},})
 	}
 
 	if (!token && event.url.pathname != '/login' && event.url.pathname != '/api/login') {

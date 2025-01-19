@@ -347,6 +347,8 @@ app.get('/rooms', async (req, res) => {
 // Add a new room
 app.post('/rooms', async (req, res) => {
 	const newRoom = req.body;
+	newRoom['name'] = newRoom['room name:']
+	delete newRoom['room name:']
 	await db.insertRespond(newRoom, 'rooms', req.cookies.session, res)
 });
 
@@ -528,7 +530,10 @@ app.get('/users', async (req, res) => {
 })
 
 app.post('/users', async (req, res) => {
-	await db.insertRespond(req.body, 'users', req.cookies.session, res)
+	const newUser = req.body
+	newUser['name'] = newUser['person name:']
+	delete newUser['person name:']
+	await db.insertRespond(newUser, 'users', req.cookies.session, res)
 })
 
 app.get('/user', async (req, res) => {

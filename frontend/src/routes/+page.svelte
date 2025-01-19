@@ -9,13 +9,13 @@
 	import PromptUser from "$lib/prompts/promptUser.svelte";
 	import Settings from '$lib/menus/settings/Settings.svelte';
 	import { onMount } from 'svelte';
-	import { getUsers } from '$lib/requests';
+	import { getRooms, getUsers } from '$lib/requests';
 
-	export let data;
-	let events = data.events;
-	let chores = data.chores;
-	let rooms = data.rooms;
+	let events = null;
+	let chores = null;
+	let rooms = null;
 	let user = undefined;
+	let users = undefined;
 
 	function getCookie(name) {
 		const cookieArr = document.cookie.split(';');
@@ -37,12 +37,12 @@
 	}
 	
 	let pages = {
-		calendar:   0,
-		chores:     1,
-		addEvent:   2,
-		addChore:   3,
+		calendar:	0,
+		chores:		1,
+		addEvent:	2,
+		addChore:	3,
 		settings:	4,
-		notes:	5,
+		notes:		5,
 		stats:		6,
 	};
 
@@ -78,7 +78,6 @@
 		}
 	}
 
-
 	const handlePopState = (event) => {
 		if (event.state && event.state.viewMode !== undefined) {
 			viewMode = event.state.viewMode;
@@ -87,16 +86,41 @@
 		}
 	};
 
-	let users = null
+	function updateCookies() {
+		let refresh = false;
+		const date = new Date();
+		date.setTime(date.getTime() + (1000 * 24 * 60 * 60 * 1000));
+		const expires = "expires=" + date.toUTCString();
+		if (user && !users.find((u) => u._id == user)) {
+			// Reset cookie if user is not found
+			document.cookie = `user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+			user = undefined;
+		}
+		if (!user && users.length == 1) {
+			// Set single cookie
+			document.cookie = "user=" + users[0]._id + ";" + expires + ";path=/";
+			user = users[0]._id;
+		}
+		// Renew cookies
+		const cookies = document.cookie.split('; ');
+		for (let i = 0; i < cookies.length; i++) {
+			const [cookieName, cookieValue] = cookies[i].split('=');
+			document.cookie = cookieName + "=" + cookieValue + ";" + expires + ";path=/";
+			return;
+		}
+	}
+
 	onMount(async () => {
 		if (browser) {
 			window.addEventListener('popstate', handlePopState);
 			user = getCookie('user')
 		}
 		users = await getUsers()
+		rooms = await getRooms()
 		if (!users.length) {
 			viewMode = pages.settings
 		}
+		updateCookies()
 	});
 
 
@@ -196,7 +220,7 @@
 />
 
 
-{#if !user && users && users.length}
+{#if !user && users && users.length > 1}
 <PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 1)}} />
 
 {:else if viewMode == pages.calendar }
@@ -217,7 +241,9 @@
 	<Chores chores={chores}/>
 </div>
 
+{#if Object.keys(rooms || {})?.length}
 <PlusButton func={() => updateViewMode(pages.addChore)} />
+{/if}
 
 {:else if viewMode == pages.addChore}
 

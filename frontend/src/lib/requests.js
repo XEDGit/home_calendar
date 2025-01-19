@@ -60,13 +60,12 @@ export async function postBackend(request, endpoint) {
 }
 
 export async function getFrontend(endpoint) {
-	let res = await fetch('api/' + endpoint, {
+	const res = await fetch('api/' + endpoint, {
 		method: 'GET',
 	})
-	res = await res.json()
-	return res
+	const obj = await res.json()
+	return obj
 }
-
 
 export async function postFrontend(endpoint, data) {
 	let res = await fetch('api/' + endpoint, {

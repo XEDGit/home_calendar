@@ -85,7 +85,7 @@
 		padding: 2%;
 		border-radius: 8px;
 		width: 70%;
-		height: 90%;
+		max-height: 90%;
 		overflow-x: hidden;
 		text-align: center;
 		display: flex;
@@ -233,7 +233,7 @@
 			{/if}
 			<div style='width: 100%; margin-top: 10px; gap: 40px; display: flex; justify-content: space-between'>
 				<button class='update-button' on:click={submit}>Sign {roomsChecked.length} rooms</button>
-				<button class='delete-button' on:click={() => {if (confirm("Are you sure you want to delete " + chore.name)) delFunc(chore._id)}}>Delete</button>
+				<button class='delete-button' on:click={() => {if (confirm("Are you sure you want to delete " + chore.name + '? This WILL DELETE ALL the statistics tied to it and is NOT revertible')) delFunc(chore._id)}}>Delete</button>
 			</div>
 			<div style='min-height: 20px'></div>
 			<Collapsible title='Edit'>

@@ -7,7 +7,7 @@
 	import Drag from "$lib/containers/drag.svelte";
     import Button from "$lib/buttons/button.svelte";
 
-	let chores = [];
+	let chores = undefined;
 	let sortedDays = [];
 	let stats = null;
 	let users = null;
@@ -99,10 +99,9 @@
 		rooms = await getRooms()
 		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		await sortChores()
-		const canvas = document.getElementById('statsGraph');
-		if (!canvas)
+		if (!stats) {
 			return;
-		graph = canvas.getContext('2d')
+		}
 		makeChart()
 	})
 
@@ -133,14 +132,17 @@
 
 	async function afterDelChore(id) {
 		await delChore({"id": id})
-		chores = sortChores();
-		await makeChart()
+		chores = await getChores()
+		await sortChores();
+		stats = await getStats();
+		makeChart()
 	}
 
 	async function afterSignChore(data) {
-		await signChore(data)
-		chores = sortChores();
-		await makeChart()
+		await signChore(data);
+		await sortChores();
+		stats = await getStats();
+		makeChart();
 	}
 
 	let isOpen = 0;
@@ -149,7 +151,18 @@
 		roomChoice = 0;
 	}
 
-	async function makeChart() {
+	function makeChart(firstTime = true) {
+		if (!stats)
+			return
+		if (!graph) {
+			const canvas = document.getElementById('statsGraph');
+			if (!canvas) {
+				if (firstTime)
+					setTimeout(makeChart.bind(false), 1000)
+				return
+			}
+			graph = canvas.getContext('2d')
+		}
 		let date = new Date()
 		let dates = []
 		for (let i = 0; i < 5; i++) {
@@ -159,7 +172,6 @@
 			date.setDate(date.getDate() - 1)
 		}
 		dates.reverse()
-		stats = await getStats()
 		let dataset = {}
 		for (let d of filterStats(stats, chores_filter)) {
 			date = new Date(d.date)
@@ -188,8 +200,7 @@
 		dataset = Object.values(dataset)
 
 		if (chart) {
-			chart.data.datasets = []
-			chart.data.datasets.push(...dataset)
+			chart.data.datasets = dataset
 			chart.update()
 		}
 		else {
@@ -224,6 +235,13 @@
 	}
 	p::first-letter {
 		text-transform: uppercase;
+	}
+
+	.tooltip {
+		text-transform: none;
+		color: gray;
+		font-style: italic;
+		white-space: wrap;
 	}
 	.choreContainer {
 		position: relative;
@@ -345,16 +363,18 @@
 	}
 </style>
 
-{#if chores}
-<Section title='Stats' />
-<canvas id="statsGraph" class='stats'></canvas>
-<p style='color: #96616B; margin: 0; margin-top: 10px; font-weight: bold; text-decoration: underline;'>Show:</p>
-<div class='filter-bar'>
-	<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
-	{#each rooms as room}
-		<Button title={room.name} func={handleFilter} inverted={true} active={chores_filter.includes(room.name)} />
-	{/each}
-</div>
+{#if chores && Object.keys(chores).length}
+	{#if stats?.length}
+		<Section title='Stats' />
+		<canvas id="statsGraph" class='stats'></canvas>
+		<p style='color: #96616B; margin: 0; margin-top: 10px; font-weight: bold;'>Filter:</p>
+		<div class='filter-bar'>
+			<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
+			{#each rooms as room}
+				<Button title={room.name} func={handleFilter} inverted={true} active={chores_filter.includes(room.name)} />
+			{/each}
+		</div>
+	{/if}
 {#each sortedDays as day}
 	{#if (filterChores(chores[day], chores_filter)).length}
 		<Section title={getDateLabel(day)} />
@@ -378,6 +398,17 @@
 		{/each}
 	{/if}
 {/each}
+{:else if chores == undefined}
+	<p class='tooltip'>Loading...</p>
 {:else}
-	<p>Loading...</p>
+	{#if !users.length}
+		<p class='tooltip'>Welcome to Home-Calendar!</p>
+		<p class='tooltip'>Please enter the <a href='/settings'>Settings tab</a> to set up your home users</p>
+	{:else if !rooms.length}
+		<p class='tooltip'>Nice you're almost there!</p>
+		<p class='tooltip'>Please enter the settings to set up the rooms in your house</p>
+	{:else}
+		<p class='tooltip'>Ok all ther settings is set up, now you can press the + button on the bottom right and start adding tasks</p>
+		<p class='tooltip'>I will take care of reminding you when you need to do them!</p>
+	{/if}
 {/if}

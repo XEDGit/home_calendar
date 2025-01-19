@@ -365,7 +365,7 @@
 
 {#if chores && Object.keys(chores).length}
 	{#if stats?.length}
-		<Section title='Stats' />
+		<Section title='Stats' subtitle='last 5 days' />
 		<canvas id="statsGraph" class='stats'></canvas>
 		<p style='color: #96616B; margin: 0; margin-top: 10px; font-weight: bold;'>Filter:</p>
 		<div class='filter-bar'>

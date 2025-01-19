@@ -1,6 +1,8 @@
 <script>
 	export let title = '';
+	export let subtitle = '';
 	export let color = '#96616B'
+	export let subcolor = '#96616B'
 	export let onClick = () => {};
 </script>
 
@@ -8,6 +10,14 @@
 	div {
 		display: flex;
 		flex-direction: column;
+		align-items: baseline;
+	}
+
+	h5 {
+		margin: 0;
+		color: gray;
+		font-weight: normal;
+		font-style: italic;
 	}
 
 	h2, hr {
@@ -29,6 +39,11 @@
 </style>
 
 <div style="--color: {color};" on:click={onClick}>
-	<h2>{title}</h2>
+	<div style="flex-direction: row; gap: 5px;">
+		<h2>{title}</h2>
+		{#if subtitle}
+			<h5 style="color: {subcolor};">{subtitle}</h5>
+		{/if}
+	</div>
 	<hr />
 </div>

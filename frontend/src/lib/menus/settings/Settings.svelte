@@ -4,6 +4,7 @@
 	import { getContext, onMount } from "svelte";
 	import { getUsers, getRooms, postFrontend } from "$lib/requests.js";
     import ColorPicker from "svelte-awesome-color-picker";
+    import Collapsible from "$lib/containers/collapsible.svelte";
 	export let user_id = '';
 	let users = []
 	let rooms = []
@@ -77,7 +78,7 @@
 	{/if}
 	<Form endpoint='addUser' inputs={{'person name:':'text', color: '#' + Math.round(Math.random() * 0xffffff).toString(16).padEnd(6, 0) + '-color'}} colorText='Color:' submitText='Add' hook={() => {if (!users?.length) document.location = '/settings'; updateUsers()}} />
 
-	<Section title='Rooms' />
+	<Section title='Rooms' subtitle='add or remove rooms from your household' />
 	{#each rooms as room}
 	<div class='container'>
 		<p>{room.name}</p>
@@ -89,11 +90,14 @@
 		<p class='tooltip'>Later you will be able to assign tasks to specific rooms</p>
 	{/if}
 	<Form endpoint='addRoom' inputs={{'room name:':'text'}} submitText='Add' hook={updateRooms} />
-	<Section title='Profile' />
+	<Section title='Profile' subtitle='do things with your account' />
 	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {document.cookie = `user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.location = '/'}}>Change User</button>
 	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {document.cookie = `session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.cookie = `user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.location = '/login'}}>Log out</button>
-	<Section title='Add new account' />
+	<Section title='Register new account' />
 	<p class='tooltip'>Here you can register a new account on the website</p>
 	<p class='tooltip'>Please make only one account per family (or single)</p>
-	<Form submitText='Add new account' inputs={{'username': 'text', 'password': 'password'}} endpoint='sessions' />
+	<Collapsible title='Click here to register'>
+		<div style='min-height: 10px;'></div>
+		<Form submitText='Register' inputs={{'username': 'text', 'password': 'password'}} endpoint='sessions' />
+	</Collapsible>
 </div>

@@ -55,10 +55,14 @@
 		border-radius: 10px;
 		padding: 1em 1em;
 		color: #FFEAD0;
-		min-width: 200px;
+		min-width: 100%;
 	}
 	label, h4, hr {
 		color: #FFEAD0;
+	}
+	label {
+		font-size: 20px;
+		min-height: 30px;
 	}
 	input[type="text"] {
 		background-color: transparent;
@@ -67,6 +71,7 @@
 		border-bottom: 2px solid #FFEAD0;
 		border-radius: 4px;
 		outline: none;
+		width: 100%;
 	}
 	input[type="text"]::placeholder {
 		color: #FFEAD060;
@@ -105,16 +110,16 @@
 
 {#if error == ''}
 
-<div style="width: 80%; margin: 0 auto;">
+<div style="width: 90%; margin: 0 auto;">
     <form on:submit|preventDefault={addChore} style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
 		<div class='card'>
 			<label>
 				<Section title="Name:" color='#FFEAD0' />
-				<input type="text" bind:value={newChore.name} placeholder="Type name here" required />
+				<input type="text" bind:value={newChore.name} placeholder="What do you need to do?" required />
 			</label>
 		</div>
         <div class='card' style="display: flex; flex-direction: column; gap: 0px;">
-			<Section title="Rooms:" color='#FFEAD0' />
+			<Section title="Rooms:" subcolor='#FFEAD077' subtitle='where do you need to do it?' color='#FFEAD0' />
             <label>
 				<input id='select-all-check' type="checkbox" on:change={(e) => {
 					// Get and check all checkboxes
@@ -128,16 +133,20 @@
 					}
 				}} />
 				Select all
+				<hr />
 			</label>
-            {#each rooms as room}
+            {#each rooms as room, index}
             <label>
                 <input class='select-all' type="checkbox" bind:group={newChore.rooms} on:change={() => {document.getElementById('select-all-check').checked = newChore.rooms.length == rooms.length}} value="{room}" />
                 {room.name}
+				{#if index != rooms.length-1}
+					<hr />
+				{/if}
             </label>
             {/each}
         </div>
 		<div class='card'>
-			<Section title='Repetition:' color='#FFEAD0' />
+			<Section title='Repetition:' subcolor='#FFEAD077' subtitle='How often?' color='#FFEAD0' />
 			<input class='range' type="range" min="1" max="42" step="1" bind:value={newChore.nextTime} />
 			<p style='margin: 0; margin-left: 5px;'>Every {formatNextTime(newChore.nextTime)}</p>
 		</div>
@@ -145,7 +154,7 @@
 			<Section title='Notes:' color='#FFEAD0' />
 			<textarea bind:value={newChore.notes} />
 		</div>
-		<button type="submit">Add new</button>
+		<button type="submit">Add new chore</button>
 		<small class='error'>{not_filled}</small>
     </form>
 </div>

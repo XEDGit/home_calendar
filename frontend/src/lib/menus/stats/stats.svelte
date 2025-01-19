@@ -53,10 +53,26 @@
 				labels: labels
 			},
 			options: {
+				responsive: true,
+				maintainAspectRatio: false,
 				indexAxis: 'y',
 				scales: {
+					y: {
+						beginAtZero: true,
+					},
 					x: {
-						beginAtZero: true
+						ticks: {
+							display: true,
+							font: {
+								size: 10
+							},
+							// Force ticks to display integers only
+							callback: function(value) {
+								return Number.isInteger(value) ? value : null;
+							}
+						},
+						min: 0,
+						suggestedMax: 4,
 					}
 				}
 			}
@@ -110,6 +126,7 @@
 			},
 			options: {
 				responsive: true,
+				maintainAspectRatio: false,
 				scales: {
 					x: {
 						ticks: {
@@ -187,7 +204,8 @@
 	}
 
 	.stats {
-		max-height: 90vh;
+		max-height: 50vh;
+		min-height: 50vh;
 	}
 
 	input {
@@ -253,7 +271,7 @@
 		<button class={chart_func == makeChart? 'active' : 'chartButton'} on:click={() => {chart_func = makeChart; chart_func()}}>Line</button>
 		<button class={chart_func == makeHistogram? 'active' : 'chartButton'} on:click={() => {chart_func = makeHistogram; chart_func()}}>Histogram</button>
 	</div>
-	<canvas id="statsGraph" class='stats' width="100%" height="40%"></canvas>
+	<canvas id="statsGraph" class='stats' width="100%"></canvas>
 	<input class='range' type="range" min="1" max="30" step="1" bind:value={history_len} on:change={(e) => {chart_func(); e.target.max = history_len < 30? 30 : history_len < 60? 60 : history_len < 90? 90 : 180}} />
 	<p style='color: #96616B; margin: 0;'>Showing since {history_len} days ago ({new Date(Date.now() - history_len * 24 * 60 * 60 * 1000).toDateString()})</p>
 </div>

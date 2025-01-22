@@ -16,7 +16,6 @@
 		own_color = users.find((u) => u._id == user_id)?.color
 		await updateUI()
 		own_color = users.find((u) => u._id == user_id)?.color
-		console.log(users.find((u) => u._id == user_id), own_color)
 	}
 
 	async function updateRooms() {

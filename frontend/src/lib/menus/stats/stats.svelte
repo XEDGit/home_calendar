@@ -4,6 +4,8 @@
 	import Chart from 'chart.js/auto'
 	import Section from "$lib/header/Section.svelte";
 	import Collapsible from "$lib/containers/collapsible.svelte";
+    import SelectButtons from "$lib/buttons/selectButtons.svelte";
+    import Button from "$lib/buttons/button.svelte";
 
 	let graph = null
 	let chart = null
@@ -13,9 +15,35 @@
 	let stats_per_user = null
 	let chores = null
 	let chores_by_id = null
-	let rooms = null
+	let rooms = null;
+	let rooms_by_id = null;
 
 	let history_len = 5
+
+	let chart_func = makeChart;
+
+	let chores_filter = [];
+
+	function clearFilter() {
+		chores_filter = []
+		chart_func()
+	}
+
+	function handleFilter(newel) {
+		if (chores_filter.includes(newel)) {
+			chores_filter = chores_filter.filter(item => item !== newel);
+		} else {
+			chores_filter = [...chores_filter, newel];
+		}
+		chart_func()
+	}
+
+	function filterStats(stats_list, chores_filter) {
+		if (chores_filter.length) {
+			stats_list = stats_list.filter((stat) => {return stat.rooms.some((room) => {return chores_filter.includes(rooms_by_id[room]);})})
+		}
+		return stats_list;
+	}
 
 	async function makeHistogram() {
 		let dataset = {}
@@ -25,9 +53,14 @@
 			dataset[chore.name] = {}
 			for (let user of users) {
 				dataset[chore.name][user.name] = 0;
-				for (let stat of stats_per_user[user._id]) {
-					if (date < new Date(stat.date) && stat.chore_ref == chore._id)
-						dataset[chore.name][user.name] += stat.rooms.length;
+				for (let stat of filterStats(stats_per_user[user._id], chores_filter)) {
+					if (date < new Date(stat.date) && stat.chore_ref == chore._id) {
+						if (chores_filter.length) {
+							dataset[chore.name][user.name] += stat.rooms.filter(room => chores_filter.includes(rooms_by_id[room])).length
+						} else {	
+							dataset[chore.name][user.name] += stat.rooms.length;
+						}
+					}
 				}
 			}
 		}
@@ -90,7 +123,7 @@
 		}
 		dates.reverse()
 		let dataset = {}
-		for (let d of stats) {
+		for (let d of filterStats(stats, chores_filter)) {
 			date = new Date(d.date)
 			const day = String(date.getDate())
 			const month = String(date.getMonth() + 1)
@@ -99,7 +132,11 @@
 			if (idx == -1)
 				continue;
 			if (d.who in dataset) {
-				dataset[d.who].data[idx] += d.rooms.length
+				if (chores_filter.length) {
+					dataset[d.who].data[idx] += d.rooms.filter(room => chores_filter.includes(rooms_by_id[room])).length
+				} else {	
+					dataset[d.who].data[idx] += d.rooms.length
+				}
 			}
 			else {
 				const color = users_by_id[d.who].color
@@ -110,7 +147,11 @@
 					backgroundColor: color? color.padEnd(6, '0') + '99' : '#96616B99',
 					borderColor: color || '#96616B',
 				}
-				dataset[d.who].data[idx] += d.rooms.length
+				if (chores_filter.length) {
+					dataset[d.who].data[idx] += d.rooms.filter(room => chores_filter.includes(rooms_by_id[room])).length
+				} else {	
+					dataset[d.who].data[idx] += d.rooms.length
+				}
 			}
 		}
 		dataset = Object.values(dataset);
@@ -166,10 +207,9 @@
 		}, {});
 	}
 
-	let chart_func = makeChart;
-
 	onMount(async () => {
 		rooms = await getRooms()
+		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		stats = await getStats()
 		chores = await getChores()
 		chores_by_id = chores.reduce((acc, obj) => {
@@ -267,13 +307,19 @@
 
 {#if stats?.length}
 <div class='bordered'>
-	<div class='chartButtons'>
-		<button class={chart_func == makeChart? 'active' : 'chartButton'} on:click={() => {chart_func = makeChart; chart_func()}}>Line</button>
-		<button class={chart_func == makeHistogram? 'active' : 'chartButton'} on:click={() => {chart_func = makeHistogram; chart_func()}}>Histogram</button>
-	</div>
+	<SelectButtons hooks={{
+		"Line": () => {chart_func = makeChart; chart_func()},
+		"Bars": () => {chart_func = makeHistogram; chart_func()}
+	}} />
 	<canvas id="statsGraph" class='stats' width="100%"></canvas>
+	<div style='display: flex; gap: 5px;'>
+		<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
+		{#each rooms as room}
+			<Button title={room.name} func={handleFilter} inverted={true} active={chores_filter.includes(room.name)} />
+		{/each}
+	</div>
+	<p style='color: #96616B; margin: 0; margin-top:10px;'>Showing since {history_len} days ago ({new Date(Date.now() - history_len * 24 * 60 * 60 * 1000).toDateString()})</p>
 	<input class='range' type="range" min="1" max="30" step="1" bind:value={history_len} on:change={(e) => {chart_func(); e.target.max = history_len < 30? 30 : history_len < 60? 60 : history_len < 90? 90 : 180}} />
-	<p style='color: #96616B; margin: 0;'>Showing since {history_len} days ago ({new Date(Date.now() - history_len * 24 * 60 * 60 * 1000).toDateString()})</p>
 </div>
 
 <div class='bordered'>

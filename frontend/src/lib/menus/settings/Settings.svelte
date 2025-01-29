@@ -10,7 +10,7 @@
 	let rooms = []
 	let own_color = 'red';
 	const updateUI = getContext('updateUI')
-	
+
 	async function updateUsers() {
 		users = await getUsers()
 		own_color = users.find((u) => u._id == user_id)?.color

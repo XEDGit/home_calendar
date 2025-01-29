@@ -200,17 +200,21 @@
 		margin: 0, 0;
 		overflow-x: hidden;
 		height: 100%;
-		width: 95%;
 		font-family: 'Roboto', sans-serif;
 		color: #113537;
 	}
 </style>
 </svelte:head>
 
-{#if user && users && users.length}
-<small style="display: block; font-size: 0.7em; color: gray; margin: 0; margin-bottom: -6px">{greet[1]}</small>
-<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0]?.name || ''} :)' />
-{/if}
+<div style='display: flex; gap: 10px; align-content: center;'>
+	<img style='height: 50px;' src='icon_big_nobg.png' />
+	{#if user && users && users.length}
+		<div>
+			<small style="display: block; font-size: 0.7em; color: gray; margin: 0; margin-bottom: -6px">{greet[1]}</small>
+			<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0]?.name || ''} :)' />
+		</div>
+	{/if}
+</div>
 
 <NavButton
 	active={viewMode}

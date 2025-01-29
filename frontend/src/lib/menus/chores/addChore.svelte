@@ -53,6 +53,7 @@
 
 	onMount(async () => {
 		await getRooms()
+		window.scrollTo(0, 0)
 	})
 </script>
 
@@ -124,7 +125,7 @@
 	    <form on:submit|preventDefault={addChore} style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
 			<div class='card'>
 				<label>
-					<Section title="Name:" color='#FFEAD0' />
+					<Section title="Task:" color='#FFEAD0' />
 					<input type="text" bind:value={newChore.name} placeholder="What do you need to do?" required />
 				</label>
 			</div>
@@ -161,7 +162,7 @@
 				<p style='margin: 0; margin-left: 5px;'>Every {formatNextTime(newChore.nextTime)}</p>
 			</div>
 			<div class='card'>
-				<Section title='Notes:' color='#FFEAD0' />
+				<Section title='Notes:' subcolor='#FFEAD077' subtitle='optional' color='#FFEAD0' />
 				<textarea bind:value={newChore.notes} />
 			</div>
 			<button type="submit">Add new chore</button>

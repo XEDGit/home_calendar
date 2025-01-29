@@ -3,6 +3,7 @@
 	export let subtitle = '';
 	export let color = '#96616B'
 	export let subcolor = '#96616B'
+	export let icon = ''
 	export let onClick = () => {};
 </script>
 
@@ -11,6 +12,10 @@
 		display: flex;
 		flex-direction: column;
 		align-items: baseline;
+	}
+
+	img {
+		height: 20px;
 	}
 
 	h5 {
@@ -40,6 +45,9 @@
 
 <div style="--color: {color};" on:click={onClick}>
 	<div style="flex-direction: row; gap: 5px;">
+		{#if icon}
+			<img src={icon} />
+		{/if}
 		<h2>{title}</h2>
 		{#if subtitle}
 			<h5 style="color: {subcolor};">{subtitle}</h5>

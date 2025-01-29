@@ -21,7 +21,7 @@
 		border-radius: 5px;
 		cursor: pointer;
 		flex-grow: 0.15;
-		min-height: 40px;
+		height: 3rem;
 		font-weight: bold;
 		font-size: clamp(12px, 2vw, 32px);
 		background-color: #96616B;

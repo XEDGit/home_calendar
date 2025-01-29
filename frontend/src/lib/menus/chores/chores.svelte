@@ -112,7 +112,7 @@
 		if (dayNumber < -7) {
 			return `Very late`;
 		}
-		if (dayNumber < 0 && dayNumber > -7) {
+		if (dayNumber < 0 && dayNumber >= -7) {
 			return `Late by ${Math.abs(dayNumber)} days`;
 		}
 		else if (dayNumber == 0) {

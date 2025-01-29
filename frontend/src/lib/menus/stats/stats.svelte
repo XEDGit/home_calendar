@@ -312,7 +312,7 @@
 		"Bars": () => {chart_func = makeHistogram; chart_func()}
 	}} />
 	<canvas id="statsGraph" class='stats' width="100%"></canvas>
-	<div style='display: flex; gap: 5px;'>
+	<div style='display: flex; gap: 5px; flex-wrap: wrap;'>
 		<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
 		{#each rooms as room}
 			<Button title={room.name} func={handleFilter} inverted={true} active={chores_filter.includes(room.name)} />

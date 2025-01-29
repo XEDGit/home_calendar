@@ -2,7 +2,9 @@
 	import { onMount } from 'svelte';
 	import SelectButtons from '$lib/buttons/selectButtons.svelte';
 	import Section from '$lib/header/Section.svelte'
-    import { getFrontend } from '$lib/requests';
+    import { getFrontend, getUsers } from '$lib/requests';
+    import Collapsible from '$lib/containers/collapsible.svelte';
+    import getCookie from '$lib/helpers/getCookie';
 	export let onSubmit = () => {};
 
 	export let reset = () => {};
@@ -10,17 +12,20 @@
 	export let delFunc = () => {};
 
 	export let chore = {};
+	export let users = [];
 	chore.stats = true;
 
 	let all_rooms = []
 	onMount(async () => {
-		all_rooms = await getFrontend('getRooms')
+		users = await getUsers();
+		chore.who = getCookie('user');
+		all_rooms = await getFrontend('getRooms');
 		all_rooms = all_rooms.map((room) => {
 			room.used = false;
 			if (chore.rooms.find((r) => {return r._id == room._id}))
 				room.used = true;
 			return room;
-		})
+		});
 	})
 
 	let roomsChecked = [];
@@ -220,9 +225,18 @@
 	.stats-checkbox {
 		border-radius: 5px;
 		padding: 10px;
-		margin-top: 10px;
 		width: 100%;
 		user-select: none;
+		margin-bottom: 10px;
+	}
+
+	.tooltip {
+		color: gray;
+		font-style: italic;
+		text-align: left;
+		font-size: 0.7em;
+		width: 90%;
+		margin-left: 1%;
 	}
 
 	@media (max-width: 1000px) {
@@ -236,8 +250,9 @@
 	<div class="modal" role='button' on:keydown={() => {}} tabindex=0 on:click={(e) => {e.stopPropagation(); reset()}}>
 		<div class="modal-content" on:click={(e) => {e.stopPropagation()}}>
 			<SelectButtons hooks={{"Sign": () => {if (editMode) editMode = false;}, "Edit": () => {if (!editMode) editMode = true;}}} />
-			<h1 style='color: #96616B; text-decoration: underline; margin: 0; width: 100%; font-weight: bold; font-size: 1.2em; padding: 10px 0;'>{chore.name}</h1>
+			<h1 style='color: #96616B; margin: 0; width: 100%; font-weight: bold; font-size: 1.2em; padding: 10px 0;'>{chore.name}</h1>
 			{#if !editMode}
+				<small class='tooltip'>Check the boxes for the rooms you’ve completed, then click the button below to sign off</small>
 				<div class="userButtons retro-red info-card">
 					{#each chore.rooms as button}
 						<label for={button._id} class='label-container'>
@@ -254,17 +269,26 @@
 						{/each}
 				</div>
 				{#if chore.notes}
-				<Section title='Notes' />
-				<div class='retro-red' style='border-radius: 5px; text-align: left;'>
+				<h3 style='color: #96616B; width: fit-content; margin: 0;'>Notes</h3>
+				<div class='retro-red' style='border-radius: 5px; text-align: left; margin-bottom: 15px;'>
 					<p style='white-space: pre-line; color: #FFEAD0; padding: 10px; margin: 0;'>{chore.notes}</p>
 				</div>
 				{/if}
+				<div style='width: 100%; margin-bottom: 20px; gap: 40px; display: flex; justify-content: space-between'>
+					<button disabled={roomsChecked.length == 0} class='update-button' on:click={submit}>{`Sign ${roomsChecked.length} rooms`}</button>
+				</div>
+				<h3 style='color: #96616B; width: fit-content; margin: 0;'>Options:</h3>
+				<small class='tooltip'>Set to record your signature in the statistics</small>
 				<div class='retro-red stats-checkbox'>
 					<label><input type="checkbox" bind:checked={chore.stats} /> Stats: {chore.stats? 'on' : 'off'}</label>
 				</div>
-				<div style='width: 100%; margin-top: 20px; gap: 40px; display: flex; justify-content: space-between'>
-					<button disabled={roomsChecked.length == 0} class='update-button' on:click={submit}>{`Sign ${roomsChecked.length} rooms`}</button>
-				</div>
+				<small class='tooltip'>Click here to change who is signing for these rooms</small>
+				<Collapsible title='Change user'>
+					<div style='min-height: 5px'></div>
+					<SelectButtons selected_value={users.findIndex((user) => {return user._id == chore.who})} hooks={
+						Object.fromEntries(users.map((user) => {return [user.name, () => {chore.who = user._id}]}))
+					} />
+				</Collapsible>
 				<div style='min-height: 20px'></div>
 			{:else}
 				<Section title='Name' />

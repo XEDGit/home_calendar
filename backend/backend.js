@@ -476,7 +476,7 @@ app.post('/chores/sign', async (req, res) => {
 	chore.name = sign.name;
 	if (sign.rooms.length && sign.stats) {
 		console.log('Recording stats in db')
-		await db.insert({date: Date.now(), delay: sign.nextTime, chore_ref: sign.id, who: req.cookies.user, rooms: sign.rooms}, 'signatures', req.cookies.session)
+		await db.insert({date: Date.now(), delay: sign.nextTime, chore_ref: sign.id, who: sign.who, rooms: sign.rooms}, 'signatures', req.cookies.session)
 	}
 	await db.updateRespond('chores', req.cookies.session, res,
 		{_id: sign.id},

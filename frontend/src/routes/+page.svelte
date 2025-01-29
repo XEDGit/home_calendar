@@ -10,23 +10,13 @@
 	import Settings from '$lib/menus/settings/Settings.svelte';
 	import { onMount, setContext } from 'svelte';
 	import { getRooms, getUsers } from '$lib/requests';
+	import getCookie from '$lib/helpers/getCookie';
 
 	let events = null;
 	let chores = null;
 	let rooms = null;
 	let user = undefined;
 	let users = undefined;
-
-	function getCookie(name) {
-		const cookieArr = document.cookie.split(';');
-		for (let i = 0; i < cookieArr.length; i++) {
-			let cookie = cookieArr[i].trim();
-			if (cookie.startsWith(name + '=')) {
-				return cookie.substring(name.length + 1, cookie.length);
-			}
-		}
-		return null;
-	}
 
 	function setCookie(name, value, days) {
 		const date = new Date();

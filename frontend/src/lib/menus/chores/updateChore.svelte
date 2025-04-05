@@ -4,7 +4,7 @@
 	import Section from '$lib/header/Section.svelte'
     import { getFrontend, getUsers } from '$lib/requests';
     import Collapsible from '$lib/containers/collapsible.svelte';
-    import getCookie from '$lib/helpers/getCookie';
+    import { getCookie } from '$lib/helpers/getCookie';
 	export let onSubmit = () => {};
 
 	export let reset = () => {};
@@ -20,12 +20,12 @@
 		users = await getUsers();
 		chore.who = getCookie('user');
 		all_rooms = await getFrontend('getRooms');
-		all_rooms = all_rooms.map((room) => {
-			room.used = false;
-			if (chore.rooms.find((r) => {return r._id == room._id}))
-				room.used = true;
-			return room;
-		});
+		// all_rooms = all_rooms.map((room) => {
+		// 	room.used = false;
+		// 	if (chore.rooms.find((r) => {return r._id == room._id}))
+		// 		room.used = true;
+		// 	return room;
+		// });
 	})
 
 	let roomsChecked = [];
@@ -218,10 +218,6 @@
 		word-break: break-word;
 	}
 
-	h2 {
-		width: 50%;
-	}
-
 	.stats-checkbox {
 		border-radius: 5px;
 		padding: 10px;
@@ -309,7 +305,6 @@
 							<input
 								type="checkbox"
 								id={button._id + '_add'}
-								checked={button.used}
 								on:change={(event) => updateRooms(button._id, event.target.checked)} 
 							/>
 							<label for={button._id + '_add'} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label>

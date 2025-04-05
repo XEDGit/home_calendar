@@ -10,21 +10,13 @@
 	import Settings from '$lib/menus/settings/Settings.svelte';
 	import { onMount, setContext } from 'svelte';
 	import { getRooms, getUsers } from '$lib/requests';
-	import getCookie from '$lib/helpers/getCookie';
+	import { getCookie, setCookie } from '$lib/helpers/getCookie';
 
 	let events = null;
 	let chores = null;
 	let rooms = null;
 	let user = undefined;
 	let users = undefined;
-
-	function setCookie(name, value, days) {
-		const date = new Date();
-		date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000)); // Expiry in days
-		const expires = `expires=${date.toUTCString()}`;
-		document.cookie = `${name}=${value}; ${expires}; path=/`; // Setting the cookie
-		user = value
-	}
 	
 	let pages = {
 		calendar:	0,
@@ -82,12 +74,11 @@
 		const expires = "expires=" + date.toUTCString();
 		if (user && !users.find((u) => u._id == user)) {
 			// Reset cookie if user is not found
-			document.cookie = `user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+			setCookie('user', '', -1000)
 			user = undefined;
 		}
 		if (!user && users.length == 1) {
 			// Set single cookie
-			document.cookie = "user=" + users[0]._id + ";" + expires + ";path=/";
 			user = users[0]._id;
 		}
 		// Renew cookies
@@ -216,13 +207,14 @@
 		"notes": pages.notes,
 		"settings": pages.settings,
 	}}
-	disableMask = {[true, false, false, true, false]}
+	disableMask = {[false, false, false, true, false]}
 />
 
 <h1 class='title'>{pageNames[viewMode].replace(/([a-z])([A-Z])/g, '$1 $2')}</h1>
 
 {#if !user && users && users.length > 1}
-<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 1)}} />
+
+<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 100); updateUI()}} />
 
 {:else if viewMode == pages.calendar }
 

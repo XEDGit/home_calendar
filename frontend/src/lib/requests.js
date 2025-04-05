@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 
 const BACK_ENDPOINT = 'https://backend:3000/'
 
+// Common backend
 export async function getBackend(request, endpoint) {
 	try {
 		const backendResponse = await fetch(BACK_ENDPOINT + endpoint, {
@@ -59,6 +60,7 @@ export async function postBackend(request, endpoint) {
     }
 }
 
+// Common frontend
 export async function getFrontend(endpoint) {
 	const res = await fetch('api/' + endpoint, {
 		method: 'GET',
@@ -79,6 +81,7 @@ export async function postFrontend(endpoint, data) {
 	return res
 }
 
+// Stats
 export async function delStats(_id) {
 	return postFrontend('delStats', {id: _id})
 }
@@ -87,14 +90,17 @@ export async function getStats() {
 	return getFrontend('getStats')
 }
 
+// Rooms
 export async function getRooms() {
 	return getFrontend('getRooms')
 }
 
+// Users
 export async function getUsers() {
 	return getFrontend('getUsers')
 }
 
+// Chores
 export async function getChores() {
 	return getFrontend('getChores')
 }
@@ -107,10 +113,16 @@ export async function delChore(data) {
 	return postFrontend('delChore', data)
 }
 
+// Events
+export async function getEvents() {
+	return getFrontend('getEvents')
+}
+
 export async function addEvent(data) {
 	return postFrontend('addEvent', data)
 }
 
+// Login
 export async function verify(data) {
 	return postFrontend('addEvent', data)
 }

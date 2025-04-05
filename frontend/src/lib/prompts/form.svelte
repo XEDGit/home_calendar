@@ -1,5 +1,4 @@
 <script>
-    import { color } from 'chart.js/helpers';
 	import ColorPicker from 'svelte-awesome-color-picker';
 
 	export let endpoint = ''
@@ -9,19 +8,21 @@
 	export let hook = null;
 	export let ask_confirm = '';
 	export let colorText = '';
+	export let required_mask = {}
 
 	let formData = {};
 	let done = false;
 
 	// Initialize formData with empty values for each input field
-	$: {
-		for (const key in inputs) {
-			if (key.endsWith('color') && !(key in formData)) {
-				formData['color'] = inputs[key].split('-')[0];
-			}
-			else if (!(key in formData)) {
-				formData[key] = '';
-			}
+	for (const key in inputs) {
+		if (key.endsWith('color') && !(key in formData)) {
+			formData['color'] = inputs[key].split('-')[0];
+		}
+		else if (inputs[key] == 'date') {
+			formData[key] = `${(new Date()).getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, 0)}-${String(new Date().getDate()).padStart(2, 0)}`
+		}
+		else if (!(key in formData)) {
+			formData[key] = '';
 		}
 	}
 
@@ -29,6 +30,12 @@
 		for (const key in inputs) {
 			if (key == 'color') continue;
 			formData[key] = '';
+		}
+	}
+
+	function change(e) {
+		if (e.target.type == 'date') {
+			console.log(e.target.value, e.target.id, formData[e.target.id])
 		}
 	}
 
@@ -40,24 +47,24 @@
 		}
 
 		try {
-		const response = await fetch('/api/' + endpoint, {
-			method: 'POST',
-			headers: {
-			'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({...formData, ...hidden}),
-		});
+			const response = await fetch('/api/' + endpoint, {
+				method: 'POST',
+				headers: {
+				'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({...formData, ...hidden}),
+			});
 
-		if (response.ok) {
-			const result = await response.json();
-			done = true;
-			setTimeout(() => {done = false;}, 1500);
-			if (hook)
-				await hook();
-			resetForm();
-		} else {
-			console.error('Error:', response.statusText);
-		}
+			if (response.ok) {
+				const result = await response.json();
+				done = true;
+				setTimeout(() => {done = false;}, 1500);
+				if (hook)
+					await hook();
+				resetForm();
+			} else {
+				console.error('Error:', response.statusText);
+			}
 		} catch (error) {
 			console.error('Error:', error);
 		}
@@ -143,18 +150,19 @@
 					id={name}
 					type={type}
 					bind:value={formData[name]}
+					on:change={change}
 					required
 				/>
 				</label>
 			{/if}
 		{/each}
 
-		{#each Object.entries(hidden) as [name, value]}
+		{#each Object.entries(hidden) as [name, value], idx}
 			<input
 				id={name}
 				type='hidden'
 				value={value}
-				required
+				required={required_mask[idx]}
 			/>
 		{/each}
 

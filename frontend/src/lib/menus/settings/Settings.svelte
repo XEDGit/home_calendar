@@ -5,6 +5,8 @@
 	import { getUsers, getRooms, postFrontend } from "$lib/requests.js";
     import ColorPicker from "svelte-awesome-color-picker";
     import Collapsible from "$lib/containers/collapsible.svelte";
+	import { setCookie } from "$lib/helpers/getCookie";
+
 	export let user_id = '';
 	let users = []
 	let rooms = []
@@ -90,8 +92,8 @@
 	{/if}
 	<Form endpoint='addRoom' inputs={{'room name:':'text'}} submitText='Add' hook={updateRooms} />
 	<Section title='Profile' subtitle='do things with your account' />
-	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {document.cookie = `user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.location = '/'}}>Change User</button>
-	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {document.cookie = `session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.cookie = `user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; document.location = '/login'}}>Log out</button>
+	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {setCookie('user', '', -1000)}}>Change User</button>
+	<button class='retro-red' style='border-radius: 5px; margin-left: 15px; padding: 5px; border: none; color: #FFEAD0;' on:click={() => {setCookie('user', '', -1000); setCookie('session', '', -1000); document.location = '/login'}}>Log out</button>
 	<Section title='Register new account' />
 	<p class='tooltip'>Here you can register a new account on the website</p>
 	<p class='tooltip'>Please make only one account per family (or single)</p>

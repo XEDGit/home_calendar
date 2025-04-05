@@ -10,7 +10,10 @@ const BLOCKED_IPS_LOG = 'blocked_ips.log';
 (async () => {
 	try {
 		const blocked_from_file = await fs.readFile(BLOCKED_IPS_LOG, {encoding: 'utf8'})
-		const parsed = JSON.parse(blocked_from_file)		
+		const parsed = JSON.parse(blocked_from_file)
+		for (let [key, value] of Object.entries(parsed)) {
+			blocked_ips[key] = value;
+		}
 		console.error(`Loaded blocked ips`)
 	} catch (err) {
 		console.error(`Couldn't load blocked ips because: ${err}`)
@@ -34,10 +37,6 @@ export async function handle({ event, resolve }) {
 	const ip = event.request.headers.get('x-forwarded-for')
 
 	if (blocked_ips[ip]?.[0]) {
-		// const day = 1000 * 60 * 60 * 24;
-		// if (blocked_ips[ip][1] < Date.now() - day)
-		// 	delete blocked_ips[ip]
-		// else
 		return new Response("Contact the administrator", {status: 418, headers: {'Connection': 'close'},})
 	}
 

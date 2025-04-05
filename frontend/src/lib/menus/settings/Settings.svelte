@@ -11,23 +11,19 @@
 	let users = []
 	let rooms = []
 	let own_color = 'red';
-	const updateUI = getContext('updateUI')
 
 	async function updateUsers() {
 		users = await getUsers()
-		own_color = users.find((u) => u._id == user_id)?.color
-		await updateUI()
 		own_color = users.find((u) => u._id == user_id)?.color
 	}
 
 	async function updateRooms() {
 		rooms = await getRooms()
-		await updateUI()
 	}
 
 	onMount(async () => {
-		updateUsers()
 		updateRooms()
+		updateUsers()
 	})
 </script>
 

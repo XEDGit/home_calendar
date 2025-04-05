@@ -11,12 +11,14 @@
 	import { onMount, setContext } from 'svelte';
 	import { getRooms, getUsers } from '$lib/requests';
 	import { getCookie, setCookie } from '$lib/helpers/getCookie';
+	import ContentLayout from '$lib/containers/contentLayout.svelte';
 
 	let events = null;
 	let chores = null;
 	let rooms = null;
 	let user = undefined;
 	let users = undefined;
+	let loading = true;
 	
 	let pages = {
 		calendar:	0,
@@ -91,6 +93,7 @@
 	}
 
 	async function updateUI() {
+		loading = true;
 		user = getCookie('user')
 		users = await getUsers()
 		rooms = await getRooms()
@@ -98,6 +101,7 @@
 			viewMode = pages.settings
 		}
 		updateCookies()
+		loading = false;
 	}
 
 	setContext('updateUI', updateUI)
@@ -108,7 +112,6 @@
 		}
 		await updateUI()
 	});
-
 
 	const greetings = {
 		"Hello": "(hɛˈloʊ) in English",
@@ -167,6 +170,10 @@
 	}
 
 	const greet = pickGreeting()
+
+	function formatPageName(name) {
+		return name.replace(/([a-z])([A-Z])/g, '$1 $2')
+	}
 </script>
 
 <svelte:head>
@@ -210,54 +217,36 @@
 	disableMask = {[false, false, false, true, false]}
 />
 
-<h1 class='title'>{pageNames[viewMode].replace(/([a-z])([A-Z])/g, '$1 $2')}</h1>
-
 {#if !user && users && users.length > 1}
-
-<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 100); updateUI()}} />
-
-{:else if viewMode == pages.calendar }
-
-<div style="width:90%; margin: 0 auto">
-	<Calendar events={events}/>
-</div>
-
-<PlusButton func={() => updateViewMode(pages.addEvent)} />
-
-{:else if viewMode == pages.addEvent}
-
-<AddEventForm />
-
-{:else if viewMode == pages.chores}
-
-<div style="width:90%; margin: 0 auto">
-	<Chores chores={chores}/>
-</div>
-
-{#if Object.keys(rooms || {})?.length}
-<PlusButton func={() => updateViewMode(pages.addChore)} />
-{/if}
-
-{:else if viewMode == pages.addChore}
-
-<AddChoreForm />
-
-{:else if viewMode == pages.settings}
-
-<Settings user_id={user} />
-
-{:else if viewMode == pages.notes}
-
-<Shoppinglist />
-
-{:else if viewMode == pages.stats}
-
-<Stats />
-
+	<ContentLayout title={formatPageName(pageNames[viewMode])}>
+		<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 100); updateUI()}} />
+	</ContentLayout>
+{:else if loading}
+	<ContentLayout title={formatPageName(pageNames[viewMode])} loading={true} />
 {:else}
-
-{viewMode}
-
-{ /if }
+	<ContentLayout title={formatPageName(pageNames[viewMode])}>
+		{#if viewMode == pages.calendar}
+			<Calendar events={events}/>
+			<PlusButton func={() => updateViewMode(pages.addEvent)} />
+		{:else if viewMode == pages.addEvent}
+			<AddEventForm />
+		{:else if viewMode == pages.chores}
+			<Chores chores={chores}/>
+			{#if Object.keys(rooms || {})?.length}
+				<PlusButton func={() => updateViewMode(pages.addChore)} />
+			{/if}
+		{:else if viewMode == pages.addChore}
+			<AddChoreForm />
+		{:else if viewMode == pages.settings}
+			<Settings user_id={user} />
+		{:else if viewMode == pages.notes}
+			<Shoppinglist />
+		{:else if viewMode == pages.stats}
+			<Stats />
+		{:else}
+			<p>Unknown view mode: {viewMode}</p>
+		{/if}
+	</ContentLayout>
+{/if}
 
 <div style="margin-bottom: 28vh;"></div>

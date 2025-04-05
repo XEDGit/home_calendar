@@ -2,10 +2,12 @@
 	import Section from "$lib/header/Section.svelte";
 	import UpdateTask from "./updateChore.svelte";
 	import { onMount } from "svelte";
-	import Chart from 'chart.js/auto'
 	import { getStats, getUsers, getChores, signChore, delChore, getRooms } from '$lib/requests'
 	import Drag from "$lib/containers/drag.svelte";
     import Button from "$lib/buttons/button.svelte";
+    import LineChart from "$lib/charts/lineChart.svelte";
+    import RoomFilter from "$lib/filters/roomFilter.svelte";
+    import ContentLayout from "$lib/containers/contentLayout.svelte";
 
 	let chores = undefined;
 	let sortedDays = [];
@@ -16,20 +18,18 @@
 	let rooms_by_id = null;
 
 	// Filter shown chores
-	let chores_filter = []
+	let chores_filter = [];
+	let lineChartComponent;
+	let chartDatasets = [];
+	let chartLabels = [];
+	
+	// Variables for time navigation
+	let currentOffset = 0; // Number of days to offset from current date (negative for past, positive for future)
+	let historyLen = 5; // Number of days to show in the chart
 
-	function clearFilter() {
-		chores_filter = []
-		makeChart()
-	}
-
-	function handleFilter(newel) {
-		if (chores_filter.includes(newel)) {
-			chores_filter = chores_filter.filter(item => item !== newel);
-		} else {
-			chores_filter = [...chores_filter, newel];
-		}
-		makeChart()
+	function handleFilterChange(newFilter) {
+		chores_filter = newFilter;
+		makeChart();
 	}
 
 	function filterChores(chores_list, chores_filter) {
@@ -44,6 +44,25 @@
 			stats_list = stats_list.filter((stat) => {return stat.rooms.some((room) => {return chores_filter.includes(rooms_by_id[room]);})})
 		}
 		return stats_list;
+	}
+	
+	// Navigate backward in time
+	function navigateBackward() {
+		currentOffset -= historyLen;
+		makeChart();
+	}
+
+	// Navigate forward in time
+	function navigateForward() {
+		currentOffset += historyLen;
+		if (currentOffset > 0) currentOffset = 0; // Don't navigate into the future
+		makeChart();
+	}
+
+	// Reset to current time
+	function resetTimeNavigation() {
+		currentOffset = 0;
+		makeChart();
 	}
 
 	async function sortChores() {
@@ -89,9 +108,6 @@
 		sortedDays = Object.keys(chores).sort((a, b) => {return a - b})
 	}
 
-	let graph = null 
-	let chart = null
-
 	onMount(async () => {
 		stats = await getStats()
 		users = await getUsers()
@@ -99,10 +115,9 @@
 		rooms = await getRooms()
 		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		await sortChores()
-		if (!stats) {
-			return;
+		if (stats?.length) {
+			makeChart()
 		}
-		makeChart()
 	})
 
 	function getDateLabel(dayNumber) {
@@ -151,79 +166,52 @@
 		roomChoice = 0;
 	}
 
-	function makeChart(firstTime = true) {
-		if (!stats)
-			return
-		if (!graph) {
-			const canvas = document.getElementById('statsGraph');
-			if (!canvas) {
-				if (firstTime)
-					setTimeout(makeChart.bind(false), 1000)
-				return
-			}
-			graph = canvas.getContext('2d')
+	function makeChart() {
+		if (!stats || !rooms_by_id)
+			return;
+            
+		let date = new Date();
+		// Apply the offset for time navigation
+		date.setDate(date.getDate() + currentOffset);
+		
+		let dates = [];
+		for (let i = 0; i < historyLen; i++) {
+			const day = String(date.getDate());
+			const month = String(date.getMonth() + 1);
+			dates.push(`${day}-${month}`);
+			date.setDate(date.getDate() - 1);
 		}
-		let date = new Date()
-		let dates = []
-		for (let i = 0; i < 5; i++) {
-			const day = String(date.getDate())
-			const month = String(date.getMonth() + 1)
-			dates.push(`${day}-${month}`)
-			date.setDate(date.getDate() - 1)
-		}
-		dates.reverse()
-		let dataset = {}
+		dates.reverse();
+		
+		let dataset = {};
 		for (let d of filterStats(stats, chores_filter)) {
-			date = new Date(d.date)
-			const day = String(date.getDate())
-			const month = String(date.getMonth() + 1)
-			date = `${day}-${month}`
-			let idx = dates.findIndex((cmp_date) => {return date == cmp_date})
-			if (idx == -1)
-				continue;
+			date = new Date(d.date);
+			const day = String(date.getDate());
+			const month = String(date.getMonth() + 1);
+			date = `${day}-${month}`;
+			let idx = dates.findIndex((cmp_date) => {return date == cmp_date});
+			if (idx == -1) continue;
+			
 			if (d.who in dataset) {
-				dataset[d.who].data[idx] += d.rooms.length
-			}
-			else {
-				const color = users_by_id[d.who].color
+				dataset[d.who].data[idx] += d.rooms.length;
+			} else {
+				const color = users_by_id[d.who].color;
 				dataset[d.who] = {
 					label: users_by_id[d.who].name,
-					data: Array(5).fill(0),
+					data: Array(historyLen).fill(0),
 					fill: true,
 					backgroundColor: color? color.padEnd(6, '0') + '99' : '#96616B99',
-					borderColor: color || '#96616B99',
-				}
-				dataset[d.who].data[idx] += d.rooms.length
+					borderColor: color || '#96616B',
+				};
+				dataset[d.who].data[idx] += d.rooms.length;
 			}
 		}
 
-		dataset = Object.values(dataset)
-
-		if (chart) {
-			chart.data.datasets = dataset
-			chart.update()
-		}
-		else {
-			chart = new Chart(graph, {
-				type: 'line',
-				data: {
-					labels: dates,
-					datasets: dataset,
-				},
-				options: {
-					responsive: true,
-					scales: {
-						y: {
-							ticks: {
-								// Force ticks to display integers only
-								callback: function(value) {
-									return Number.isInteger(value) ? value : null; // Show only integers
-								}
-							}
-						}
-					},
-				}
-			});
+		chartDatasets = Object.values(dataset);
+		chartLabels = dates;
+		
+		if (lineChartComponent) {
+			lineChartComponent.updateChart(chartDatasets, chartLabels);
 		}
 	}
 </script>
@@ -326,21 +314,49 @@
 		color: white;
 		transform: scale(1.1);
 	}
-
-	.stats {
-		border: solid #96616B 3px;
-		border-radius: 5px;
-		max-height: 25vh;
-	}
-
-	.filter-bar {
-		width: 100%;
-		padding: 10px 0;
+	
+	.navigation-container {
 		display: flex;
-		gap: 5px;
-		flex-wrap: wrap;
+		justify-content: center;
+		gap: 10px;
+		margin: 10px 0;
+	}
+	
+	.nav-button {
+		background-color: #FFEAD0;
+		border: solid #96616B 2px;
+		border-radius: 5px;
 		color: #96616B;
-		align-items: center;
+		padding: 5px 15px;
+		cursor: pointer;
+		font-weight: bold;
+	}
+	
+	.nav-button:hover {
+		background-color: #96616B;
+		color: #FFEAD0;
+	}
+	
+	.nav-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	
+	.time-info {
+		color: #96616B;
+		text-align: center;
+		margin: 5px 0;
+		font-style: italic;
+	}
+	
+	.range-container {
+		width: 100%;
+		text-align: center;
+		margin-top: 10px;
+	}
+	
+	.range {
+		background-color: #96616B;
 	}
 
 	@media (max-width: 1000px) {
@@ -363,52 +379,100 @@
 	}
 </style>
 
-{#if chores && Object.keys(chores).length}
+<ContentLayout 
+	loading={chores === undefined}
+	empty={chores !== undefined && !Object.keys(chores).length}
+	emptyMessage={!users?.length 
+		? "Welcome to Home-Calendar!" 
+		: !rooms?.length 
+		? "Nice you're almost there!" 
+		: "Ok all the settings are set up, now you can press the + button on the bottom right and start adding tasks"
+	}
+	emptyAction={!users?.length 
+		? "Please enter the <a href='/settings'>Settings tab</a> to set up your home users" 
+		: !rooms?.length 
+		? "Please enter the settings to set up the rooms in your house" 
+		: "I will take care of reminding you when you need to do them!"
+	}
+>
 	{#if stats?.length}
-		<Section title='Stats' subtitle='last 5 days' />
-		<canvas id="statsGraph" class='stats'></canvas>
-		<p style='color: #96616B; margin: 0; margin-top: 10px; font-weight: bold;'>Filter:</p>
-		<div class='filter-bar'>
-			<Button title='All' func={clearFilter} inverted={true} active={chores_filter.length == 0} />
-			{#each rooms as room}
-				<Button title={room.name} func={handleFilter} inverted={true} active={chores_filter.includes(room.name)} />
-			{/each}
+		<Section title='Stats' subtitle='chores activity' />
+		
+		<div class="navigation-container">
+			<button class="nav-button" on:click={navigateBackward}>
+				← Older
+			</button>
+			{#if currentOffset !== 0}
+				<button class="nav-button" on:click={resetTimeNavigation}>
+					Reset
+				</button>
+			{/if}
+			<button class="nav-button" on:click={navigateForward} disabled={currentOffset === 0}>
+				Newer →
+			</button>
 		</div>
+		
+		{#if currentOffset !== 0}
+			<p class="time-info">
+				Viewing data from {Math.abs(currentOffset) + historyLen} to {Math.abs(currentOffset)} days ago
+			</p>
+		{/if}
+		
+		<LineChart 
+			datasets={chartDatasets} 
+			labels={chartLabels}
+			bind:this={lineChartComponent} 
+		/>
+		
+		<div class="range-container">
+			<p style='color: #96616B; margin: 0;'>
+				Showing {historyLen} days {currentOffset === 0 ? '' : `(offset by ${-currentOffset} days)`}
+			</p>
+			<input 
+				class='range' 
+				type="range" 
+				min="3" 
+				max="14" 
+				step="1" 
+				bind:value={historyLen} 
+				on:change={makeChart} 
+			/>
+		</div>
+		
+		<RoomFilter 
+			rooms={rooms} 
+			selectedRooms={chores_filter} 
+			onFilterChange={handleFilterChange} 
+		/>
 	{/if}
-{#each sortedDays as day}
-	{#if (filterChores(chores[day], chores_filter)).length}
-		<Section title={getDateLabel(day)} />
-		{#each filterChores(chores[day], chores_filter) as chore}
-			<div class='choreContainer' style='z-index: {roomChoice == chore._id || isOpen == chore._id ? '1' : '0'};' on:click={() => {if (roomChoice != chore._id) roomChoice = chore._id; isOpen = 0}}>
-				<Drag>
-					<div class="choreName">
-						<p>{chore.name}</p>
-						<div class='fade'></div>
-					</div>
-					<div class='info-right'>
-						<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
-						<p class='room-text'>{chore.rooms.length} rooms</p>
-						<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />
-					</div>
-				</Drag>
-				{#if roomChoice == chore._id}
-					<UpdateTask chore={chore} onSubmit={(updateChore) => {afterSignChore(updateChore); reset();}} reset={reset} delFunc={afterDelChore} />
-				{/if}
-			</div>
-		{/each}
-	{/if}
-{/each}
-{:else if chores == undefined}
-	<p class='tooltip'>Loading...</p>
-{:else}
-	{#if !users.length}
-		<p class='tooltip'>Welcome to Home-Calendar!</p>
-		<p class='tooltip'>Please enter the <a href='/settings'>Settings tab</a> to set up your home users</p>
-	{:else if !rooms.length}
-		<p class='tooltip'>Nice you're almost there!</p>
-		<p class='tooltip'>Please enter the settings to set up the rooms in your house</p>
-	{:else}
-		<p class='tooltip'>Ok all ther settings is set up, now you can press the + button on the bottom right and start adding tasks</p>
-		<p class='tooltip'>I will take care of reminding you when you need to do them!</p>
-	{/if}
-{/if}
+	
+	{#each sortedDays as day}
+		{#if (filterChores(chores[day], chores_filter)).length}
+			<Section title={getDateLabel(day)} />
+			{#each filterChores(chores[day], chores_filter) as chore}
+				<div class='choreContainer' style='z-index: {roomChoice == chore._id || isOpen == chore._id ? '1' : '0'};' on:click={() => {if (roomChoice != chore._id) roomChoice = chore._id; isOpen = 0}}>
+					<Drag>
+						<div class="choreName">
+							<p>{chore.name}</p>
+							<div class='fade'></div>
+						</div>
+						<div class='info-right'>
+							<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
+							<p class='room-text'>{chore.rooms.length} rooms</p>
+							<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />
+						</div>
+					</Drag>
+					{#if roomChoice == chore._id}
+						<UpdateTask 
+							chore={chore} 
+							users={users}
+							onSubmit={(updateChore) => {afterSignChore(updateChore); reset();}} 
+							reset={reset} 
+							delFunc={afterDelChore} 
+						/>
+					{/if}
+				</div>
+			{/each}
+		{/if}
+	{/each}
+</ContentLayout>

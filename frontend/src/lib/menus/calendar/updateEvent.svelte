@@ -2,7 +2,6 @@
 	import SelectButtons from '$lib/buttons/selectButtons.svelte';
 	import { postFrontend } from '$lib/requests';
 	import DateTimePicker from '$lib/inputs/DateTimePicker.svelte';
-
 	export let event = null;
 	
 	// Use callback props instead of event dispatcher
@@ -31,7 +30,6 @@
 	
 	async function updateEvent() {
 		try {
-			// Use the datetime from our picker
 			const updatedEvent = {
 				...editedEvent,
 				when: eventDateTime
@@ -66,8 +64,14 @@
 			}
 		}
 	}
+	
+	// Handle escape key for Safari and other browsers
+	function handleKeydown(event) {
+		if (event.key === 'Escape') {
+			reset();
+		}
+	}
 </script>
-
 <style>
 	.modal {
 		display: flex;
@@ -79,13 +83,13 @@
 		width: 100%;
 		height: 100%;
 		background: rgba(0, 0, 0, 0.5);
-		z-index: 1;
+		z-index: 100; /* Higher z-index to ensure it's above all other elements */
+		-webkit-backdrop-filter: blur(2px); /* Safari blur effect */
+		backdrop-filter: blur(2px);
 	}
-
 	div {
 		box-sizing: border-box;
 	}
-
 	.modal-content {
 		background: #FFEAD0;
 		cursor: default;
@@ -98,8 +102,9 @@
 		display: flex;
         align-items: flex-start;
 		flex-direction: column;
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); /* More defined shadow for better visual hierarchy */
+		-webkit-overflow-scrolling: touch; /* Smooth scrolling for Safari */
 	}
-
     .modal-layout {
         width: 98%;
     }
@@ -123,6 +128,7 @@
 		border-radius: 4px;
 		background: #FFF8E8;
 		color: #96616B;
+		-webkit-appearance: none; /* Fix Safari input styling */
 	}
 	
 	.button-row {
@@ -138,6 +144,7 @@
 		font-weight: bold;
 		cursor: pointer;
 		border: none;
+		-webkit-appearance: none; /* Fix Safari button styling */
 	}
 	
 	.save-btn {
@@ -184,15 +191,70 @@
 		margin-bottom: 15px;
 	}
 	
+	/* Safari-specific fixes */
+	@supports (-webkit-touch-callout: none) {
+		.button-row {
+			display: -webkit-box;
+			display: -webkit-flex;
+			display: flex;
+		}
+		
+		.detail-row {
+			display: -webkit-box;
+			display: -webkit-flex;
+			display: flex;
+		}
+	}
+	
 	@media (max-width: 768px) {
 		.modal-content {
 			width: 90%;
+			padding: 15px 10px;
+		}
+		
+		.button-row {
+			flex-direction: column;
+			gap: 10px;
+		}
+		
+		button {
+			width: 100%;
+			padding: 10px;
+			margin: 0;
+		}
+		
+		.detail-row {
+			flex-direction: column;
+			margin-bottom: 15px;
+		}
+		
+		.detail-label {
+			width: 100%;
+			margin-bottom: 3px;
+		}
+		
+		.detail-value {
+			padding-left: 5px;
+		}
+	}
+	
+	@media (max-width: 480px) {
+		.modal-content {
+			width: 95%;
+			padding: 12px 8px;
+		}
+		
+		input, textarea {
+			padding: 6px;
+		}
+		
+		h1 {
+			font-size: 1.1em !important;
 		}
 	}
 </style>
-
 {#if event}
-	<div class="modal" role="button" on:keydown={() => {}} tabindex="0" on:click={(e) => {e.stopPropagation(); reset()}}>
+	<div class="modal" role="dialog" on:keydown={handleKeydown} tabindex="-1" on:click={(e) => {e.stopPropagation(); reset()}}>
 		<div class="modal-content" on:click={(e) => {e.stopPropagation()}}>
             <div class="modal-layout">
 			<SelectButtons hooks={{"View": () => {if (editMode) editMode = false;}, "Edit": () => {if (!editMode) editMode = true;}}} />

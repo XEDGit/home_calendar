@@ -99,6 +99,31 @@
         outline: none;
         border-color: #7a4e56;
     }
+    
+    /* Mobile responsive styles */
+    @media (max-width: 767px) {
+        .datetime-picker {
+            gap: 10px;
+        }
+        
+        input[type="date"] {
+            padding: 10px 8px;
+            font-size: 16px; /* Larger for better touch targets */
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .date-label {
+            font-size: 14px;
+        }
+        
+        input[type="date"] {
+            padding: 8px;
+        }
+    }
 </style>
 
 <div class="datetime-picker" id={id}>

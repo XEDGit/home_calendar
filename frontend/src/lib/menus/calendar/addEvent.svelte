@@ -3,32 +3,66 @@
 	import Section from "$lib/header/Section.svelte";
 	import DateTimePicker from "$lib/inputs/DateTimePicker.svelte";
 	import { onMount } from "svelte";
-
+	import { page } from '$app/stores';
+	
 	let newEvent = {
 		title: '',
 		when: new Date().toISOString(),
 		location: '',
 		description: ''
 	};
-
 	let error = '';
 	let success = false;
-
+	
+	// Initialize event date from localStorage if available
+	onMount(() => {
+		window.scrollTo(0, 0);
+		
+		// Check if we have a selected date in localStorage
+		const storedDate = localStorage.getItem('selectedCalendarDate');
+		if (storedDate) {
+			try {
+				// Parse the timestamp and set the event date
+				const timestamp = parseInt(storedDate, 10);
+				const selectedDate = new Date(timestamp);
+				
+				if (!isNaN(selectedDate.getTime())) {
+					console.log('Setting date from localStorage:', selectedDate.toISOString());
+					
+					// Keep the time as current time but use the selected date
+					const now = new Date();
+					selectedDate.setHours(now.getHours());
+					selectedDate.setMinutes(now.getMinutes());
+					
+					// Important: directly assign the ISO string to newEvent.when
+					newEvent.when = selectedDate.toISOString();
+					
+					// Clear the stored date to avoid reusing it unintentionally later
+					localStorage.removeItem('selectedCalendarDate');
+				} else {
+					console.error('Invalid date timestamp:', timestamp);
+				}
+			} catch (e) {
+				console.error('Error parsing stored date:', e);
+			}
+		}
+	});
+	
 	async function addEvent() {
 		if (!newEvent.title) {
 			error = 'Event title is required';
 			setTimeout(() => { error = ''; }, 3000);
 			return;
 		}
-
 		try {
 			const response = await postFrontend('addEvent', newEvent);
 			if (response.success || response.insertedId) {
 				success = true;
-				// Reset form after successful submission
+				// Reset form after successful submission but preserve the selected date
+				const currentDate = newEvent.when;
 				newEvent = {
 					title: '',
-					when: new Date().toISOString(),
+					when: currentDate, // Keep the selected date
 					location: '',
 					description: ''
 				};
@@ -45,14 +79,10 @@
 			setTimeout(() => { error = ''; }, 3000);
 		}
 	}
-
+	
 	function handleDateTimeChange(e) {
 		newEvent.when = e.detail.datetime;
 	}
-
-	onMount(() => {
-		window.scrollTo(0, 0);
-	});
 </script>
 
 <style>
@@ -134,6 +164,53 @@
 		padding: 10px;
 		border-radius: 5px;
 		margin-bottom: 15px;
+	}
+	
+	/* Mobile responsive styles */
+	@media (max-width: 767px) {
+		.form-container {
+			padding: 12px 15px;
+			margin-top: 10px;
+		}
+		
+		.form-group {
+			margin-bottom: 12px;
+		}
+		
+		input, textarea {
+			padding: 8px 2px;
+		}
+		
+		textarea {
+			min-height: 80px;
+		}
+		
+		.button-container {
+			margin-top: 15px;
+		}
+		
+		button {
+			width: 100%;
+			padding: 10px;
+		}
+	}
+	
+	@media (max-width: 480px) {
+		.modal {
+			margin: 0 10px;
+		}
+		
+		.form-container {
+			padding: 10px;
+		}
+		
+		label {
+			font-size: 14px;
+		}
+		
+		input, textarea {
+			font-size: 14px;
+		}
 	}
 </style>
 

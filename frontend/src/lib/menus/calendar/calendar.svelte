@@ -3,14 +3,17 @@
 	import { onMount } from 'svelte';
 	import UpdateEvent from './updateEvent.svelte';
 	import Section from "$lib/header/Section.svelte";
+	import { goto } from '$app/navigation';
 
 	let events = undefined;
 	let users = undefined;
 	let chores = undefined;
 	let selectedEvent = null;
+	let modalOpen = false; // Add this to track modal state
 
 	let currentDate = new Date();
 	let monthDays = [];
+	let isMobileView = false;
 
 	const day_names = [
 		'M',
@@ -24,7 +27,17 @@
 
 	onMount(async () => {
 		await generateCalendar(currentDate);
+		checkViewportWidth();
+		window.addEventListener('resize', checkViewportWidth);
+		
+		return () => {
+			window.removeEventListener('resize', checkViewportWidth);
+		};
 	});
+	
+	function checkViewportWidth() {
+		isMobileView = window.innerWidth < 768;
+	}
 
 	async function generateCalendar(date) {
 		events = await getEvents();
@@ -80,10 +93,12 @@
 
 	function handleEventClick(event) {
 		selectedEvent = event;
+		modalOpen = true; // Set modal state to open
 	}
 
 	function handleEventClose() {
 		selectedEvent = null;
+		modalOpen = false; // Set modal state to closed
 	}
 
 	function handleEventUpdated(updatedEvent) {
@@ -113,6 +128,22 @@
 		const newDate = new Date(currentDate);
 		newDate.setMonth(month);
 		generateCalendar(newDate);
+	}
+	
+	function handleDayClick(day, event) {
+		// Don't handle clicks on events
+		if (event.target.closest('.event')) {
+			return;
+		}
+		
+			// Store the selected date in localStorage instead of using URL parameters
+		const timestamp = day.getTime();
+		localStorage.setItem('selectedCalendarDate', timestamp.toString());
+		
+		// Use the app's view mode navigation system
+		window.history.pushState({viewMode: 3}, '', 'addEvent'); // viewMode 3 is for addEvent
+		// Trigger a page navigation without full reload
+		window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: 3 }));
 	}
 
 	// Generate array of years for the dropdown (current year ±10 years)
@@ -152,6 +183,13 @@
 		border-radius: 5px;
 		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 		overflow-y: auto;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+	
+	.day:hover {
+		background-color: #96616b;
+		color: #FFEAD0;
 	}
 	
 	.day.other-month {
@@ -159,7 +197,6 @@
 	}
 
 	.day-header {
-		color: #96616b;
 		font-weight: bold;
 		text-align: center;
 		margin-bottom: 5px;
@@ -174,6 +211,8 @@
 		border-radius: 10px;
 		padding: 10px 15px;
 		color: #FFEAD0;
+		flex-wrap: wrap;
+		gap: 10px;
 	}
 	
 	.nav-buttons {
@@ -241,34 +280,128 @@
 		font-size: 12px;
 		cursor: pointer;
 		transition: background-color 0.3s;
+		z-index: 2;
+		position: relative;
 	}
 
 	.event:hover {
 		background-color: #7a4e56;
 	}
 	
-	.calendar-container {
-		margin: 0 15px;
+	/* Hide events when modal is open */
+	.modal-open .event {
+		visibility: hidden;
 	}
 	
-	.date-display {
-		font-size: 18px;
-		font-weight: bold;
+	.calendar-container {
+		margin: 0 15px;
+		position: relative; /* Ensure positioned context for Safari */
+	}
+	
+	/* Safari-specific fixes */
+	@supports (-webkit-touch-callout: none) {
+		.day {
+			-webkit-overflow-scrolling: touch;
+		}
+		
+		.modal-content {
+			-webkit-overflow-scrolling: touch;
+		}
+		
+		/* Fix Safari flexbox issues */
+		.calendar-header {
+			display: -webkit-box;
+			display: -webkit-flex;
+			display: flex;
+		}
+		
+		.nav-buttons, .date-selectors {
+			display: -webkit-box;
+			display: -webkit-flex;
+			display: flex;
+		}
+	}
+	
+	@media (max-width: 767px) {
+		.calendar-header {
+			flex-direction: column;
+			align-items: center;
+			padding: 10px;
+		}
+		
+		.date-display {
+			order: -1;
+			margin-bottom: 10px;
+		}
+		
+		.nav-buttons {
+			width: 100%;
+			justify-content: center;
+		}
+		
+		.nav-button {
+			padding: 5px 10px;
+			font-size: 14px;
+		}
+		
+		.date-selectors {
+			width: 100%;
+			justify-content: center;
+		}
+		
+		.calendar {
+			gap: 2px;
+		}
+		
+		.day {
+			padding: 5px;
+			height: 80px;
+			font-size: 12px;
+		}
+		
+		.day-header {
+			margin-bottom: 2px;
+		}
+		
+		.event {
+			padding: 4px;
+			font-size: 10px;
+			margin-top: 2px;
+		}
+		
+		.add-event-hint {
+			font-size: 9px;
+		}
+	}
+	
+	@media (max-width: 480px) {
+		.day {
+			height: 60px;
+		}
+		
+		.event {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		
+		.add-event-hint {
+			display: none;
+		}
 	}
 </style>
 
-<div class="calendar-container">
-	<Section title="Calendar" />
+<div class="calendar-container" class:modal-open={modalOpen}>
 	
 	<div class="calendar-header">
+		<div class="date-display">
+			{currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
+		</div>
+		
 		<div class="nav-buttons">
 			<button class="nav-button" on:click={navigateToPreviousMonth}>Previous</button>
 			<button class="nav-button today-button" on:click={navigateToToday}>Today</button>
 			<button class="nav-button" on:click={navigateToNextMonth}>Next</button>
-		</div>
-		
-		<div class="date-display">
-			{currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
 		</div>
 		
 		<div class="date-selectors">
@@ -292,15 +425,20 @@
 		{/each}
 		
 		{#each monthDays as day}
-		<div class="day {day.getMonth() !== currentDate.getMonth() ? 'other-month' : ''}">
+		<div 
+			class="day {day.getMonth() !== currentDate.getMonth() ? 'other-month' : ''}"
+			on:click={(event) => handleDayClick(day, event)}
+		>
 			{#if day}
 			<div class="day-header">{day.getDate()}</div>
 			{#each getEventsForDate(day) as event}
 				<div class="event" on:click={() => handleEventClick(event)}>
 					{event.title}
+					{#if !isMobileView}
 					<small>
 						{new Date(event.when).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
 					</small>
+					{/if}
 				</div>
 			{/each}
 			{/if}

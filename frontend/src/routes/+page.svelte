@@ -8,6 +8,7 @@
 	import NavButton from '$lib/header/navButton.svelte';
 	import PromptUser from "$lib/prompts/promptUser.svelte";
 	import Settings from '$lib/menus/settings/Settings.svelte';
+	import Home from '$lib/menus/home/home.svelte';
 	import { onMount, setContext } from 'svelte';
 	import { getRooms, getUsers } from '$lib/requests';
 	import { getCookie, setCookie } from '$lib/helpers/getCookie';
@@ -21,16 +22,18 @@
 	let loading = true;
 	
 	let pages = {
-		calendar:	0,
-		chores:		1,
-		addEvent:	2,
-		addChore:	3,
-		settings:	4,
-		notes:		5,
-		stats:		6,
+		home:       0,
+		calendar:	1,
+		chores:		2,
+		addEvent:	3,
+		addChore:	4,
+		settings:	5,
+		notes:		6,
+		stats:		7,
 	};
 
 	let pageNames = [
+		'home',
 		'calendar',
 		'chores',
 		'addEvent',
@@ -40,7 +43,7 @@
 		'stats',
 	];
 
-	let viewMode = 1;
+	let viewMode = 0;
 
 	import { browser } from '$app/environment';
 	const updateViewMode = (value) => {
@@ -66,7 +69,7 @@
 		if (event.state && event.state.viewMode !== undefined) {
 			viewMode = event.state.viewMode;
 		} else {
-			viewMode = pages.calendar;
+			viewMode = pages.home;
 		}
 	};
 
@@ -109,6 +112,12 @@
 	onMount(async () => {
 		if (browser) {
 			window.addEventListener('popstate', handlePopState);
+			// Add listener for our custom viewModeChanged event
+			window.addEventListener('viewModeChanged', (event) => {
+				if (event.detail !== undefined) {
+					updateViewMode(event.detail);
+				}
+			});
 		}
 		await updateUI()
 	});
@@ -208,13 +217,14 @@
 	active={viewMode}
 	f = {updateViewMode}
 	buttons = {{
+		"home": pages.home,
 		"calendar": pages.calendar,
 		"chores": pages.chores,
 		"stats": pages.stats,
 		"notes": pages.notes,
 		"settings": pages.settings,
 	}}
-	disableMask = {[false, false, false, true, false]}
+	disableMask = {[false, false, false, false, true, false]}
 />
 
 {#if !user && users && users.length > 1}
@@ -225,7 +235,9 @@
 	<ContentLayout title={formatPageName(pageNames[viewMode])} loading={true} />
 {:else}
 	<ContentLayout title={formatPageName(pageNames[viewMode])}>
-		{#if viewMode == pages.calendar}
+		{#if viewMode == pages.home}
+			<Home />
+		{:else if viewMode == pages.calendar}
 			<Calendar events={events}/>
 			<PlusButton func={() => updateViewMode(pages.addEvent)} />
 		{:else if viewMode == pages.addEvent}

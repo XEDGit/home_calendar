@@ -54,8 +54,12 @@
                             font: {
                                 size: 10
                             },
-                            callback: function(value) {
-                                return !horizontal || (showIntegers && Number.isInteger(value)) ? value : null;
+                            callback: function(value, index) {
+                                if (horizontal) {
+                                    return labels[index];
+                                } else {
+                                    return (showIntegers && Number.isInteger(value)) ? value : null;
+                                }
                             }
                         }
                     },
@@ -66,7 +70,7 @@
                                 size: 10
                             },
                             callback: function(value) {
-                                return horizontal || (showIntegers && Number.isInteger(value)) ? value : null;
+                                return (horizontal || !showIntegers) ? value : (Number.isInteger(value) ? value : null);
                             }
                         },
                         min: 0,

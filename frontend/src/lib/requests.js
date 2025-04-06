@@ -122,6 +122,14 @@ export async function addEvent(data) {
 	return postFrontend('addEvent', data)
 }
 
+export async function updateEvent(data) {
+	return postFrontend('updateEvent', data)
+}
+
+export async function deleteEvent(data) {
+	return postFrontend('deleteEvent', data)
+}
+
 // Login
 export async function verify(data) {
 	return postFrontend('addEvent', data)

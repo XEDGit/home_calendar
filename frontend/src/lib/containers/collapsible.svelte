@@ -1,7 +1,7 @@
 <script>
     import { fly } from "svelte/transition";
 
-    export let title = 'Show More' 
+    export let title = 'Show More'
     let isOpen = false;
 </script>
 

@@ -327,7 +327,70 @@ app.post('/events', async (req, res) => {
 	await db.insertRespond(newEvent, 'events', req.cookies.session, res)
 });
 
+// Update event
+app.post('/updateEvent', async (req, res) => {
+	const updatedEvent = req.body;
+	if (!updatedEvent._id) {
+		return res.status(400).send({ success: false, message: 'Missing event ID' });
+	}
+	
+	try {
+		const id = new ObjectId(updatedEvent._id);
+		delete updatedEvent._id; // Remove _id from the update data
+		
+		// Check if event exists for this session
+		const existingEvent = await db.find('events', req.cookies.session, { _id: id });
+		if (!existingEvent || existingEvent.length === 0) {
+			return res.status(404).send({ success: false, message: 'Event not found' });
+		}
+		
+		// Update the event
+		const result = await db.update('events', req.cookies.session, { _id: id }, { $set: updatedEvent });
+		if (result) {
+			// Get the updated event to return to client
+			const updatedDoc = await db.find('events', req.cookies.session, { _id: id });
+			if (updatedDoc && updatedDoc.length > 0) {
+				return res.status(200).send({ success: true, event: updatedDoc[0] });
+			}
+			return res.status(200).send({ success: true });
+		} else {
+			return res.status(500).send({ success: false, message: 'Failed to update event' });
+		}
+	} catch (error) {
+		console.error('Error updating event:', error);
+		return res.status(500).send({ success: false, message: 'Internal server error' });
+	}
+});
+
 // Delete event
+app.post('/deleteEvent', async (req, res) => {
+	if (!req.body.id) {
+		return res.status(400).send({ success: false, message: 'Missing event ID' });
+	}
+	
+	try {
+		const id = new ObjectId(req.body.id);
+		
+		// Check if event exists for this session
+		const existingEvent = await db.find('events', req.cookies.session, { _id: id });
+		if (!existingEvent || existingEvent.length === 0) {
+			return res.status(404).send({ success: false, message: 'Event not found' });
+		}
+		
+		// Delete the event
+		const result = await db.delete('events', req.cookies.session, { _id: id });
+		if (result) {
+			return res.status(200).send({ success: true });
+		} else {
+			return res.status(500).send({ success: false, message: 'Failed to delete event' });
+		}
+	} catch (error) {
+		console.error('Error deleting event:', error);
+		return res.status(500).send({ success: false, message: 'Internal server error' });
+	}
+});
+
+// Delete event (legacy endpoint - keeping for compatibility)
 app.post('/events/del', async (req, res) => {
 	let id = getID(req, res)
 	if (id == false)

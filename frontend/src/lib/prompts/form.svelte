@@ -8,7 +8,8 @@
 	export let hook = null;
 	export let ask_confirm = '';
 	export let colorText = '';
-	export let required_mask = {}
+	export let required_mask = {};
+	export let placeholders = {};
 
 	let formData = {};
 	let done = false;
@@ -78,6 +79,7 @@
 		border-radius: 7px;
 		padding: 5px;
 		display: inline-block;
+		font-size: 1.4em;
 	}
 	.multi {
 		display: flex;

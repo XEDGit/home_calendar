@@ -1,30 +1,20 @@
 <script>
     // Props
-    export let value = '';  // Format: "HH:MM"
+    export let value = '';  // Format: "HH:MM" in 24-hour format
     export let label = "Time";
     export let required = false;
     export let id = "";
     
     // Internal state
-    let hours = 12;
+    let hours = 0;
     let minutes = 0;
-    let period = "AM";
     
     // Initialize from value if provided
     $: {
         if (value) {
             try {
                 const [h, m] = value.split(':');
-                let hour = parseInt(h, 10);
-                
-                if (hour >= 12) {
-                    period = "PM";
-                    hours = hour === 12 ? 12 : hour - 12;
-                } else {
-                    period = "AM";
-                    hours = hour === 0 ? 12 : hour;
-                }
-                
+                hours = parseInt(h, 10);
                 minutes = parseInt(m, 10);
             } catch (e) {
                 console.error('Invalid time format:', value);
@@ -34,17 +24,8 @@
     
     // Update the value when any component changes
     function updateValue() {
-        // Convert 12-hour to 24-hour format
-        let hour24 = hours;
-        
-        if (period === "PM" && hours < 12) {
-            hour24 = hours + 12;
-        } else if (period === "AM" && hours === 12) {
-            hour24 = 0;
-        }
-        
-        // Format as HH:MM
-        const formattedTime = `${hour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        // Format as HH:MM in 24-hour format
+        const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         value = formattedTime;
         
         // Dispatch a regular DOM event instead of using createEventDispatcher
@@ -61,9 +42,9 @@
         }
     }
     
-    const hoursArray = Array.from({ length: 24 }, (_, i) => i + 1);
-    
-    const minutesArray = Array.from({ length: 12 }, (_, i) => i * 5);
+    // Generate arrays for hours (0-23) and minutes (0-59)
+    const hoursArray = Array.from({ length: 24 }, (_, i) => i);
+    const minutesArray = Array.from({ length: 60 }, (_, i) => i);
 </script>
 
 <style>
@@ -113,10 +94,6 @@
     .hour-select, .minute-select {
         width: 70px;
     }
-
-    .period-select {
-        width: 60px;
-    }
     
     /* For small screens */
     @media (max-width: 480px) {
@@ -137,7 +114,7 @@
             on:change={updateValue}
         >
             {#each hoursArray as hour}
-                <option value={hour}>{hour}</option>
+                <option value={hour}>{hour.toString().padStart(2, '0')}</option>
             {/each}
         </select>
         

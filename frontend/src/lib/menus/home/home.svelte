@@ -30,80 +30,196 @@
 		roomActivity: {}
 	};
 	
-	// Date range
-	let startDate = new Date();
-	let endDate = new Date();
-	let customRange = false;
-	let dateRangeText = "Today";
+	// Date ranges for each section
+	// Events section
+	let eventsStartDate = new Date();
+	let eventsEndDate = new Date();
+	let eventsCustomRange = false;
+	let eventsDateRangeText = "Today";
+	
+	// Chores section
+	let choresStartDate = new Date();
+	let choresEndDate = new Date();
+	let choresCustomRange = false;
+	let choresDateRangeText = "Today";
+	
+	// Stats section
+	let statsStartDate = new Date();
+	let statsEndDate = new Date();
+	let statsCustomRange = false;
+	let statsDateRangeText = "Today";
 	
 	// UI state
 	let selectedEvent = null;
 	let selectedChoreId = null;
 	
 	// Set up initial dates
-	startDate.setHours(0, 0, 0, 0);
-	endDate.setHours(23, 59, 59, 999);
+	eventsStartDate.setHours(0, 0, 0, 0);
+	eventsEndDate.setHours(23, 59, 59, 999);
+	choresStartDate.setHours(0, 0, 0, 0);
+	choresEndDate.setHours(23, 59, 59, 999);
+	statsStartDate.setHours(0, 0, 0, 0);
+	statsEndDate.setHours(23, 59, 59, 999);
 	
-	function setDateRange(days) {
-		customRange = false;
-		startDate = new Date();
-		startDate.setHours(0, 0, 0, 0);
+	// Events section date range
+	function setEventsDateRange(days) {
+		eventsCustomRange = false;
+		eventsStartDate = new Date();
+		eventsStartDate.setHours(0, 0, 0, 0);
 		
-		endDate = new Date();
+		eventsEndDate = new Date();
 		if (days > 0) {
-			endDate.setDate(endDate.getDate() + days - 1);
+			eventsEndDate.setDate(eventsEndDate.getDate() + days - 1);
 		}
-		endDate.setHours(23, 59, 59, 999);
+		eventsEndDate.setHours(23, 59, 59, 999);
 		
 		// Update the range text
 		if (days === 1) {
-			dateRangeText = "Today";
+			eventsDateRangeText = "Today";
 		} else if (days === 2) {
-			dateRangeText = "Today & Tomorrow";
+			eventsDateRangeText = "Today & Tomorrow";
 		} else if (days === 7) {
-			dateRangeText = "This Week";
+			eventsDateRangeText = "This Week";
 		} else if (days === 30) {
-			dateRangeText = "This Month";
+			eventsDateRangeText = "This Month";
 		} else {
-			dateRangeText = `Next ${days} Days`;
+			eventsDateRangeText = `Next ${days} Days`;
 		}
 		
-		filterData();
+		filterEvents();
 	}
 	
-	function setCustomDateRange() {
-		customRange = true;
-		dateRangeText = "Custom Range";
-		filterData();
+	// Chores section date range
+	function setChoresDateRange(days) {
+		choresCustomRange = false;
+		choresStartDate = new Date();
+		choresStartDate.setHours(0, 0, 0, 0);
+		
+		choresEndDate = new Date();
+		if (days > 0) {
+			choresEndDate.setDate(choresEndDate.getDate() + days - 1);
+		}
+		choresEndDate.setHours(23, 59, 59, 999);
+		
+		// Update the range text
+		if (days === 1) {
+			choresDateRangeText = "Today";
+		} else if (days === 2) {
+			choresDateRangeText = "Today & Tomorrow";
+		} else if (days === 7) {
+			choresDateRangeText = "This Week";
+		} else if (days === 30) {
+			choresDateRangeText = "This Month";
+		} else {
+			choresDateRangeText = `Next ${days} Days`;
+		}
+		
+		filterChores();
+	}
+	
+	// Stats section date range
+	function setStatsDateRange(days) {
+		statsCustomRange = false;
+		statsEndDate = new Date();
+		statsEndDate.setHours(23, 59, 59, 999);
+		
+		statsStartDate = new Date();
+		if (days > 0) {
+			statsStartDate.setDate(statsStartDate.getDate() - days + 1);
+		}
+		statsStartDate.setHours(0, 0, 0, 0);
+		
+		// Update the range text
+		if (days === 1) {
+			statsDateRangeText = "Today";
+		} else if (days === 2) {
+			statsDateRangeText = "Yesterday & Today";
+		} else if (days === 7) {
+			statsDateRangeText = "Last Week";
+		} else if (days === 30) {
+			statsDateRangeText = "Last Month";
+		} else {
+			statsDateRangeText = `Last ${days} Days`;
+		}
+		
+		calculateStats();
+	}
+	
+	function setEventsCustomDateRange() {
+		eventsCustomRange = true;
+		eventsDateRangeText = "Custom Range";
+		filterEvents();
+	}
+	
+	function setChoresCustomDateRange() {
+		choresCustomRange = true;
+		choresDateRangeText = "Custom Range";
+		filterChores();
+	}
+	
+	function setStatsCustomDateRange() {
+		statsCustomRange = true;
+		statsDateRangeText = "Custom Range";
+		calculateStats();
 	}
 	
 	// Convert string dates to Date objects for the custom date range
-	function updateCustomDateRange() {
-		if (typeof startDate === 'string') {
-			startDate = new Date(startDate);
-			startDate.setHours(0, 0, 0, 0);
+	function updateEventsCustomDateRange() {
+		if (typeof eventsStartDate === 'string') {
+			eventsStartDate = new Date(eventsStartDate);
+			eventsStartDate.setHours(0, 0, 0, 0);
 		}
 		
-		if (typeof endDate === 'string') {
-			endDate = new Date(endDate);
-			endDate.setHours(23, 59, 59, 999);
+		if (typeof eventsEndDate === 'string') {
+			eventsEndDate = new Date(eventsEndDate);
+			eventsEndDate.setHours(23, 59, 59, 999);
 		}
 		
-		filterData();
+		filterEvents();
+	}
+	
+	function updateChoresCustomDateRange() {
+		if (typeof choresStartDate === 'string') {
+			choresStartDate = new Date(choresStartDate);
+			choresStartDate.setHours(0, 0, 0, 0);
+		}
+		
+		if (typeof choresEndDate === 'string') {
+			choresEndDate = new Date(choresEndDate);
+			choresEndDate.setHours(23, 59, 59, 999);
+		}
+		
+		filterChores();
+	}
+	
+	function updateStatsCustomDateRange() {
+		if (typeof statsStartDate === 'string') {
+			statsStartDate = new Date(statsStartDate);
+			statsStartDate.setHours(0, 0, 0, 0);
+		}
+		
+		if (typeof statsEndDate === 'string') {
+			statsEndDate = new Date(statsEndDate);
+			statsEndDate.setHours(23, 59, 59, 999);
+		}
+		
+		calculateStats();
 	}
 	
 	let todayEvents = [];
 	let upcomingChores = [];
 	
-	function filterData() {
+	function filterEvents() {
 		// Filter events between start and end date
 		if (events) {
 			todayEvents = events.filter(event => {
 				const eventDate = new Date(event.when);
-				return eventDate >= startDate && eventDate <= endDate;
+				return eventDate >= eventsStartDate && eventDate <= eventsEndDate;
 			}).sort((a, b) => new Date(a.when) - new Date(b.when));
 		}
-		
+	}
+	
+	function filterChores() {
 		// Filter chores for the date range
 		if (chores) {
 			// Flatten the chores object into an array
@@ -118,7 +234,7 @@
 				
 				// Include the chore if it falls within the selected date range
 				// or if it's overdue/due today (always show these)
-				if (dueDate >= startDate && dueDate <= endDate || dayNum <= 0) {
+				if (dueDate >= choresStartDate && dueDate <= choresEndDate || dayNum <= 0) {
 					chores[day].forEach(chore => {
 						chore.dueDate = dueDate;
 						allChores.push(chore);
@@ -126,9 +242,8 @@
 				}
 			}
 			upcomingChores = allChores.sort((a, b) => a.nextTime - b.nextTime);
+			calculateStats();
 		}
-		
-		calculateStats();
 	}
 	
 	function calculateStats() {
@@ -147,19 +262,32 @@
 			roomActivity: {}
 		};
 		
-		// Events in date range (already filtered in todayEvents)
-		totalStats.eventCount = todayEvents.length;
-		
-		// Count chores by status - filtered based on selected date range
-		totalStats.choreCount = upcomingChores.length;
-		
-		// Still count overall overdue and today's chores for reference
+			// Count chores by status - regardless of date range filtering
 		for (const day in chores) {
 			const dayNum = parseInt(day);
 			if (dayNum < 0) {
 				totalStats.overdueChores += chores[day].length;
 			} else if (dayNum === 0) {
 				totalStats.todayChores += chores[day].length;
+			}
+		}
+
+		// Count events in selected stats date range
+		totalStats.eventCount = events.filter(event => {
+			const eventDate = new Date(event.when);
+			return eventDate >= statsStartDate && eventDate <= statsEndDate;
+		}).length;
+		
+		// Count chores in selected stats date range
+		totalStats.choreCount = 0;
+		for (const day in chores) {
+			const dayNum = parseInt(day);
+			const today = new Date();
+			const dueDate = new Date(today);
+			dueDate.setDate(today.getDate() + dayNum);
+			dueDate.setHours(0, 0, 0, 0);
+			
+			if (dueDate >= statsStartDate && dueDate <= statsEndDate) {
 				totalStats.choreCount += chores[day].length;
 			}
 		}
@@ -182,9 +310,10 @@
 		});
 		
 		// Process completed chores statistics based on selected date range
+		console.log("Stats date range:", statsStartDate, statsEndDate);
 		stats.forEach(stat => {
 			const statDate = new Date(stat.date);
-			if (statDate >= startDate && statDate <= endDate) {
+			if (statDate >= statsStartDate && statDate <= statsEndDate) {
 				totalStats.completedInRange++;
 				
 				// Track user activity
@@ -269,32 +398,9 @@
 		}
 		
 		chores = final;
-		filterData();
-	}
-	
-	function getDateLabel(dayNumber) {
-		if (dayNumber > 42) {
-			return 'Far future';
-		}
-		if (dayNumber < -7) {
-			return `Very late`;
-		}
-		if (dayNumber < 0 && dayNumber >= -7) {
-			return `Late by ${Math.abs(dayNumber)} days`;
-		}
-		else if (dayNumber == 0) {
-			return 'Today';
-		} else if (dayNumber == 1) {
-			return 'Tomorrow';
-		} else if (7 <= dayNumber && dayNumber < 14) {
-			return 'Next week';
-		} else if (dayNumber < 7) {
-			return `In ${dayNumber} days`;
-		}  else if (dayNumber < 30) {
-			return `Later this month`;
-		} else {
-			return `In ${dayNumber - 30} month${(dayNumber - 30 > 1) ? 's' : ''}`;
-		}
+		filterEvents();
+		filterChores();
+		calculateStats();
 	}
 	
 	// Handlers for event details
@@ -312,12 +418,12 @@
 		if (index !== -1) {
 			events[index] = updatedEvent;
 		}
-		filterData();
+		filterEvents();
 	}
 	
 	function handleEventDeleted(eventId) {
 		events = events.filter(e => e._id !== eventId);
-		filterData();
+		filterEvents();
 	}
 	
 	// Handlers for chore details
@@ -356,7 +462,9 @@
 		await parseChores();
 		
 		// Set default date range to today
-		setDateRange(1);
+		setEventsDateRange(7);
+		setChoresDateRange(1);
+		setStatsDateRange(30);
 		
 		loading = false;
 	}
@@ -635,60 +743,58 @@
 </style>
 
 <ContentLayout loading={loading}>
-	<div class="dashboard">
-        <!-- Date Range Controls -->
-		<div class="date-controls">
-			<Section title="Select time period" subtitle={dateRangeText} />
-			
-			<div class="range-buttons">
-				<button class="range-button" class:active={dateRangeText === "Today"} on:click={() => setDateRange(1)}>
-					Today
-				</button>
-				<button class="range-button" class:active={dateRangeText === "Today & Tomorrow"} on:click={() => setDateRange(2)}>
-					+Tomorrow
-				</button>
-				<button class="range-button" class:active={dateRangeText === "This Week"} on:click={() => setDateRange(7)}>
-					This Week
-				</button>
-				<button class="range-button" class:active={dateRangeText === "This Month"} on:click={() => setDateRange(30)}>
-					This Month
-				</button>
-				<button class="range-button" class:active={customRange} on:click={setCustomDateRange}>
-					Custom
-				</button>
-			</div>
-			
-			{#if customRange}
-				<div class="custom-range">
-					<div class="custom-date-input">
-						<div>
-							<label for="start-date">Start Date:</label>
-							<input 
-								id="start-date" 
-								class="date-input" 
-								type="date" 
-								bind:value={startDate} 
-								on:change={updateCustomDateRange}
-							/>
-						</div>
-						<div>
-							<label for="end-date">End Date:</label>
-							<input 
-								id="end-date" 
-								class="date-input" 
-								type="date" 
-								bind:value={endDate} 
-								on:change={updateCustomDateRange}
-							/>
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
-		
+	<div class="dashboard">		
 		<!-- Upcoming Events -->
 		<div class="section">
-			<Section title="Upcoming Events" subtitle={`${todayEvents.length} event${todayEvents.length !== 1 ? 's' : ''} in ${dateRangeText.toLowerCase()}`} />
+			<Section title="Upcoming Events" subtitle={`${todayEvents.length} event${todayEvents.length !== 1 ? 's' : ''} in ${eventsDateRangeText.toLowerCase()}`} />
+			
+			<!-- Events Date Range Controls -->
+			<div class="date-controls">
+				<div class="range-buttons">
+					<button class="range-button" class:active={eventsDateRangeText === "Today"} on:click={() => setEventsDateRange(1)}>
+						Today
+					</button>
+					<button class="range-button" class:active={eventsDateRangeText === "Today & Tomorrow"} on:click={() => setEventsDateRange(2)}>
+						+Tomorrow
+					</button>
+					<button class="range-button" class:active={eventsDateRangeText === "This Week"} on:click={() => setEventsDateRange(7)}>
+						This Week
+					</button>
+					<button class="range-button" class:active={eventsDateRangeText === "This Month"} on:click={() => setEventsDateRange(30)}>
+						This Month
+					</button>
+					<button class="range-button" class:active={eventsCustomRange} on:click={setEventsCustomDateRange}>
+						Custom
+					</button>
+				</div>
+				
+				{#if eventsCustomRange}
+					<div class="custom-range">
+						<div class="custom-date-input">
+							<div>
+								<label for="events-start-date">Start Date:</label>
+								<input 
+									id="events-start-date" 
+									class="date-input" 
+									type="date" 
+									bind:value={eventsStartDate} 
+									on:change={updateEventsCustomDateRange}
+								/>
+							</div>
+							<div>
+								<label for="events-end-date">End Date:</label>
+								<input 
+									id="events-end-date" 
+									class="date-input" 
+									type="date" 
+									bind:value={eventsEndDate} 
+									on:change={updateEventsCustomDateRange}
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
 			
 			{#if todayEvents.length > 0}
 				<div class="event-list">
@@ -715,51 +821,59 @@
 				</div>
 			{/if}
 		</div>
+
 		
-		<!-- Chores Section -->
-		<div class="section">
-			<Section 
-				title="Upcoming Chores" 
-				subtitle={`${upcomingChores.length} chore${upcomingChores.length !== 1 ? 's' : ''} in ${dateRangeText.toLowerCase()}${totalStats.overdueChores > 0 ? ` (${totalStats.overdueChores} overdue)` : ''}`} 
-			/>
-			
-			{#if upcomingChores.length > 0}
-				<div class="chore-list">
-					{#each upcomingChores as chore}
-						<div class="chore-container" style='z-index: {selectedChoreId === chore._id ? "1" : "0"};' on:click={() => {if (selectedChoreId !== chore._id) handleChoreClick(chore._id);}}>
-							<Drag>
-								<div class="chore-name">
-									<p>{chore.name}</p>
-									<div class="fade"></div>
-								</div>
-								<div class="info-right">
-									<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
-									<p class="room-text">{chore.rooms.length} room{chore.rooms.length !== 1 ? 's' : ''}</p>
-									<hr class="urgency-indicator" style="background-color: {chore.nextTime < -2 ? '#DB324D' : chore.nextTime <= -1 ? 'orange' : chore.nextTime == 0 ? 'green' : 'gray'}" />
-								</div>
-							</Drag>
-							{#if selectedChoreId === chore._id}
-								<UpdateTask 
-									chore={chore} 
-									users={users}
-									onSubmit={(updateChore) => {afterSignChore(updateChore); resetChoreSelection();}} 
-									reset={resetChoreSelection} 
-									delFunc={afterDelChore} 
-								/>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<div class="empty-message">
-					<p>No chores scheduled for this time period.</p>
-				</div>
-			{/if}
-		</div>
-	</div>
-    <!-- Stats Overview -->
+		<!-- Stats Overview -->
 		<div class="section stat-section">
-			<Section title="Household Statistics" subtitle={`Data for ${dateRangeText.toLowerCase()}`} />
+			<Section title="Household Statistics" subtitle={`Data for ${statsDateRangeText.toLowerCase()}`} />
+			
+			<!-- Stats Date Range Controls -->
+			<div class="date-controls">
+				<div class="range-buttons">
+					<button class="range-button" class:active={statsDateRangeText === "Today"} on:click={() => setStatsDateRange(1)}>
+						Today
+					</button>
+					<button class="range-button" class:active={statsDateRangeText === "Yesterday & Today"} on:click={() => setStatsDateRange(2)}>
+						+Yesterday
+					</button>
+					<button class="range-button" class:active={statsDateRangeText === "Last Week"} on:click={() => setStatsDateRange(7)}>
+						Last Week
+					</button>
+					<button class="range-button" class:active={statsDateRangeText === "Last Month"} on:click={() => setStatsDateRange(30)}>
+						Last Month
+					</button>
+					<button class="range-button" class:active={statsCustomRange} on:click={setStatsCustomDateRange}>
+						Custom
+					</button>
+				</div>
+				
+				{#if statsCustomRange}
+					<div class="custom-range">
+						<div class="custom-date-input">
+							<div>
+								<label for="stats-start-date">Start Date:</label>
+								<input 
+									id="stats-start-date" 
+									class="date-input" 
+									type="date" 
+									bind:value={statsStartDate} 
+									on:change={updateStatsCustomDateRange}
+								/>
+							</div>
+							<div>
+								<label for="stats-end-date">End Date:</label>
+								<input 
+									id="stats-end-date" 
+									class="date-input" 
+									type="date" 
+									bind:value={statsEndDate} 
+									on:change={updateStatsCustomDateRange}
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
 			
 			<div class="stats-container">
 				<div class="stat-card">
@@ -831,7 +945,6 @@
 						</div>
 					</div>
 				{/if}
-				
 				{#if totalStats.completedInRange > 0}
 					<div class="achievement-card">
 						<div class="achievement-icon">✅</div>
@@ -845,6 +958,96 @@
 				{/if}
 			</div>
 		</div>
+		
+		<!-- Chores Section -->
+		<div class="section">
+			<Section 
+				title="Upcoming Chores" 
+				subtitle={`${upcomingChores.length} chore${upcomingChores.length !== 1 ? 's' : ''} in ${choresDateRangeText.toLowerCase()}${totalStats.overdueChores > 0 ? ` (${totalStats.overdueChores} overdue)` : ''}`} 
+			/>
+			
+			<!-- Chores Date Range Controls -->
+			<div class="date-controls">
+				<div class="range-buttons">
+					<button class="range-button" class:active={choresDateRangeText === "Today"} on:click={() => setChoresDateRange(1)}>
+						Today
+					</button>
+					<button class="range-button" class:active={choresDateRangeText === "Today & Tomorrow"} on:click={() => setChoresDateRange(2)}>
+						+Tomorrow
+					</button>
+					<button class="range-button" class:active={choresDateRangeText === "This Week"} on:click={() => setChoresDateRange(7)}>
+						This Week
+					</button>
+					<button class="range-button" class:active={choresDateRangeText === "This Month"} on:click={() => setChoresDateRange(30)}>
+						This Month
+					</button>
+					<button class="range-button" class:active={choresCustomRange} on:click={setChoresCustomDateRange}>
+						Custom
+					</button>
+				</div>
+				
+				{#if choresCustomRange}
+					<div class="custom-range">
+						<div class="custom-date-input">
+							<div>
+								<label for="chores-start-date">Start Date:</label>
+								<input 
+									id="chores-start-date" 
+									class="date-input" 
+									type="date" 
+									bind:value={choresStartDate} 
+									on:change={updateChoresCustomDateRange}
+								/>
+							</div>
+							<div>
+								<label for="chores-end-date">End Date:</label>
+								<input 
+									id="chores-end-date" 
+									class="date-input" 
+									type="date" 
+									bind:value={choresEndDate} 
+									on:change={updateChoresCustomDateRange}
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+			
+			{#if upcomingChores.length > 0}
+				<div class="chore-list">
+					{#each upcomingChores as chore}
+						<div class="chore-container" style='z-index: {selectedChoreId === chore._id ? "1" : "0"};' on:click={() => {if (selectedChoreId !== chore._id) handleChoreClick(chore._id);}}>
+							<Drag>
+								<div class="chore-name">
+									<p>{chore.name}</p>
+									<div class="fade"></div>
+								</div>
+								<div class="info-right">
+									<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
+									<p class="room-text">{chore.rooms.length} room{chore.rooms.length !== 1 ? 's' : ''}</p>
+									<hr class="urgency-indicator" style="background-color: {chore.nextTime < -2 ? '#DB324D' : chore.nextTime <= -1 ? 'orange' : chore.nextTime == 0 ? 'green' : 'gray'}" />
+								</div>
+							</Drag>
+							{#if selectedChoreId === chore._id}
+								<UpdateTask 
+									chore={chore} 
+									users={users}
+									onSubmit={(updateChore) => {afterSignChore(updateChore); resetChoreSelection();}} 
+									reset={resetChoreSelection} 
+									delFunc={afterDelChore} 
+								/>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<div class="empty-message">
+					<p>No chores scheduled for this time period.</p>
+				</div>
+			{/if}
+		</div>
+	</div>
 </ContentLayout>
 
 <!-- Event Detail Modal -->

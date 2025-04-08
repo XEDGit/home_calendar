@@ -13,6 +13,22 @@
 	let editedEvent = null;
 	let eventDateTime = '';
 	
+	// Format functions for displaying date and time
+	function formatDate(dateString) {
+		const date = new Date(dateString);
+		const day = date.getDate().toString().padStart(2, '0');
+		const month = (date.getMonth() + 1).toString().padStart(2, '0');
+		const year = date.getFullYear();
+		return `${day}/${month}/${year}`;
+	}
+	
+	function formatTime(dateString) {
+		const date = new Date(dateString);
+		const hours = date.getHours().toString().padStart(2, '0');
+		const minutes = date.getMinutes().toString().padStart(2, '0');
+		return `${hours}:${minutes}`;
+	}
+	
 	$: if (event) {
 		editedEvent = {
 			...event
@@ -267,11 +283,11 @@
 				<div class="event-details">
 					<div class="detail-row">
 						<div class="detail-label">Date:</div>
-						<div class="detail-value">{new Date(event.when).toLocaleDateString()}</div>
+						<div class="detail-value">{formatDate(event.when)}</div>
 					</div>
 					<div class="detail-row">
 						<div class="detail-label">Time:</div>
-						<div class="detail-value">{new Date(event.when).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+						<div class="detail-value">{formatTime(event.when)}</div>
 					</div>
 					{#if event.location}
 						<div class="detail-row">

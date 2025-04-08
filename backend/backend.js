@@ -168,12 +168,15 @@ class DB {
 
 	async update(collectionName, session, where, updated_data) {
 		try {
-			if (where == {})
+			if (Object.keys(where).length == 0)
 				return false
 			if (session)
 				where = {...where, 'session': this.getSession(session)}
+			else
+				return false
 			const result = await this.db.collection(collectionName).updateOne(where, updated_data);
-			if (!result.updatedCount)
+			console.log(result, updated_data)
+			if (!result.matchedCount)
 				return false
 		} catch (error) {
 			console.error('Error updating data from db:', error);

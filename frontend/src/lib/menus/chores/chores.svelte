@@ -1,11 +1,10 @@
 <script>
 	import Section from "$lib/header/Section.svelte";
 	import UpdateTask from "./updateChore.svelte";
+	import KanbanBoard from "$lib/containers/kanbanBoard.svelte";
 	import { onMount } from "svelte";
 	import { getStats, getUsers, getChores, signChore, delChore, getRooms } from '$lib/requests'
 	import Drag from "$lib/containers/drag.svelte";
-    import Button from "$lib/buttons/button.svelte";
-    import LineChart from "$lib/charts/lineChart.svelte";
     import RoomFilter from "$lib/filters/roomFilter.svelte";
     import ContentLayout from "$lib/containers/contentLayout.svelte";
 
@@ -19,50 +18,19 @@
 
 	// Filter shown chores
 	let chores_filter = [];
-	let lineChartComponent;
-	let chartDatasets = [];
-	let chartLabels = [];
-	
-	// Variables for time navigation
-	let currentOffset = 0; // Number of days to offset from current date (negative for past, positive for future)
-	let historyLen = 5; // Number of days to show in the chart
 
 	function handleFilterChange(newFilter) {
+		console.log('filters ', chores_filter);
 		chores_filter = newFilter;
-		makeChart();
 	}
 
 	function filterChores(chores_list, chores_filter) {
-		if (chores_filter.length) {
+		if (typeof(chores_filter) == "string") {
+			chores_list = chores_list.filter((chore) => {return chore.name.toLowerCase().includes(chores_filter.toLowerCase())})
+		} else if (chores_filter.length) {
 			chores_list = chores_list.filter((chore) => {return chore.rooms.some((room) => {return chores_filter.includes(room.name);})})
 		}
 		return chores_list;
-	}
-
-	function filterStats(stats_list, chores_filter) {
-		if (chores_filter.length) {
-			stats_list = stats_list.filter((stat) => {return stat.rooms.some((room) => {return chores_filter.includes(rooms_by_id[room]);})})
-		}
-		return stats_list;
-	}
-	
-	// Navigate backward in time
-	function navigateBackward() {
-		currentOffset -= historyLen;
-		makeChart();
-	}
-
-	// Navigate forward in time
-	function navigateForward() {
-		currentOffset += historyLen;
-		if (currentOffset > 0) currentOffset = 0; // Don't navigate into the future
-		makeChart();
-	}
-
-	// Reset to current time
-	function resetTimeNavigation() {
-		currentOffset = 0;
-		makeChart();
 	}
 
 	async function sortChores() {
@@ -115,9 +83,6 @@
 		rooms = await getRooms()
 		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		await sortChores()
-		if (stats?.length) {
-			makeChart()
-		}
 	})
 
 	function getDateLabel(dayNumber) {
@@ -150,69 +115,18 @@
 		chores = await getChores()
 		await sortChores();
 		stats = await getStats();
-		makeChart()
 	}
 
 	async function afterSignChore(data) {
 		await signChore(data);
 		await sortChores();
-		stats = await getStats();
-		makeChart();
+		stats = await getStats();;
 	}
 
 	let isOpen = 0;
 	let roomChoice = 0;
 	function reset() {
 		roomChoice = 0;
-	}
-
-	function makeChart() {
-		if (!stats || !rooms_by_id)
-			return;
-            
-		let date = new Date();
-		// Apply the offset for time navigation
-		date.setDate(date.getDate() + currentOffset);
-		
-		let dates = [];
-		for (let i = 0; i < historyLen; i++) {
-			const day = String(date.getDate());
-			const month = String(date.getMonth() + 1);
-			dates.push(`${day}-${month}`);
-			date.setDate(date.getDate() - 1);
-		}
-		dates.reverse();
-		
-		let dataset = {};
-		for (let d of filterStats(stats, chores_filter)) {
-			date = new Date(d.date);
-			const day = String(date.getDate());
-			const month = String(date.getMonth() + 1);
-			date = `${day}-${month}`;
-			let idx = dates.findIndex((cmp_date) => {return date == cmp_date});
-			if (idx == -1) continue;
-			
-			if (d.who in dataset) {
-				dataset[d.who].data[idx] += d.rooms.length;
-			} else {
-				const color = users_by_id[d.who].color;
-				dataset[d.who] = {
-					label: users_by_id[d.who].name,
-					data: Array(historyLen).fill(0),
-					fill: true,
-					backgroundColor: color? color.padEnd(6, '0') + '99' : '#96616B99',
-					borderColor: color || '#96616B',
-				};
-				dataset[d.who].data[idx] += d.rooms.length;
-			}
-		}
-
-		chartDatasets = Object.values(dataset);
-		chartLabels = dates;
-		
-		if (lineChartComponent) {
-			lineChartComponent.updateChart(chartDatasets, chartLabels);
-		}
 	}
 </script>
 
@@ -225,12 +139,6 @@
 		text-transform: uppercase;
 	}
 
-	.tooltip {
-		text-transform: none;
-		color: gray;
-		font-style: italic;
-		white-space: wrap;
-	}
 	.choreContainer {
 		position: relative;
 		width: 90%;
@@ -266,11 +174,6 @@
 		max-width: 70px;
 	}
 
-	.rep-text .room-text {
-		text-align: right;
-		font-size: 16px;
-	}
-
 	.choreName {
 		float:left;
 		padding-left: 10px;
@@ -295,75 +198,28 @@
 		background: linear-gradient(to left, #96616B, transparent);
 	}
 
-	.menu-container {
-		position: relative;
-		left: 0;
-		width: 50px;
-		text-align: center;
-	}
-
-	.menu-button {
-		background: none;
-		border: none;
-		font-size: 2em;
-		color: #FFEAD0;
-		cursor: pointer;
-	}
-
-	.menu-button:hover {
-		color: white;
-		transform: scale(1.1);
-	}
-	
-	.navigation-container {
+	.searchbar {
+		width: 100%;
 		display: flex;
-		justify-content: center;
-		gap: 10px;
-		margin: 10px 0;
+		flex-direction: row;
+		align-items: center;
+		gap: 1em;
+		color: #96616B;
+		margin-bottom: 20px;
 	}
-	
-	.nav-button {
+
+	.searchbar input {
+		height: 100%;
+		padding: 10px;
+		margin: 0;
 		background-color: #FFEAD0;
-		border: solid #96616B 2px;
+		border: 1px solid #96616B;
 		border-radius: 5px;
 		color: #96616B;
-		padding: 5px 15px;
-		cursor: pointer;
-		font-weight: bold;
-	}
-	
-	.nav-button:hover {
-		background-color: #96616B;
-		color: #FFEAD0;
-	}
-	
-	.nav-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	
-	.time-info {
-		color: #96616B;
-		text-align: center;
-		margin: 5px 0;
-		font-style: italic;
-	}
-	
-	.range-container {
 		width: 100%;
-		text-align: center;
-		margin-top: 10px;
-	}
-	
-	.range {
-		background-color: #96616B;
 	}
 
 	@media (max-width: 1000px) {
-		.rep-text {
-			display: none;
-			position: absolute;
-		}
 		.room-text {
 			font-size: 12px;
 			text-align: right;
@@ -395,57 +251,21 @@
 		: "I will take care of reminding you when you need to do them!"
 	}
 >
-	{#if stats?.length}
-		<Section title='Stats' subtitle='chores activity' />
-		
-		<div class="navigation-container">
-			<button class="nav-button" on:click={navigateBackward}>
-				← Older
-			</button>
-			{#if currentOffset !== 0}
-				<button class="nav-button" on:click={resetTimeNavigation}>
-					Reset
-				</button>
-			{/if}
-			<button class="nav-button" on:click={navigateForward} disabled={currentOffset === 0}>
-				Newer →
-			</button>
-		</div>
-		
-		{#if currentOffset !== 0}
-			<p class="time-info">
-				Viewing data from {Math.abs(currentOffset) + historyLen} to {Math.abs(currentOffset)} days ago
-			</p>
-		{/if}
-		
-		<LineChart 
-			datasets={chartDatasets} 
-			labels={chartLabels}
-			bind:this={lineChartComponent} 
+	<!-- <KanbanBoard
+		chores={chores}
+	/> -->
+	<RoomFilter 
+		rooms={rooms} 
+		onFilterChange={handleFilterChange} 
+		selected={chores_filter}
+	/>
+	<div class="searchbar">
+		<input
+			type="text" 
+			placeholder="Search chores..." 
+			on:input={(e) => {handleFilterChange(e.target.value)}} 
 		/>
-		
-		<div class="range-container">
-			<p style='color: #96616B; margin: 0;'>
-				Showing {historyLen} days {currentOffset === 0 ? '' : `(offset by ${-currentOffset} days)`}
-			</p>
-			<input 
-				class='range' 
-				type="range" 
-				min="3" 
-				max="14" 
-				step="1" 
-				bind:value={historyLen} 
-				on:change={makeChart} 
-			/>
-		</div>
-		
-		<RoomFilter 
-			rooms={rooms} 
-			selectedRooms={chores_filter} 
-			onFilterChange={handleFilterChange} 
-		/>
-	{/if}
-	
+	</div>
 	{#each sortedDays as day}
 		{#if (filterChores(chores[day], chores_filter)).length}
 			<Section title={getDateLabel(day)} />

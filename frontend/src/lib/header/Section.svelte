@@ -40,6 +40,7 @@
 		margin-top: 0.5vh;
 		margin-bottom: 0.5vh;
 		text-align: left;
+		word-break: break-word;
 	}
 </style>
 

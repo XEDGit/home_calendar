@@ -113,9 +113,35 @@ export async function delChore(data) {
 	return postFrontend('delChore', data)
 }
 
+// Todos
+export async function getTodos() {
+	return getFrontend('getTodos')
+}
+
+export async function addTodo(data) {
+	return postFrontend('addTodo', data)
+}
+
+export async function updateTodo(data) {
+	return postFrontend('updateTodo', data)
+}
+
+export async function deleteTodo(data) {
+	return postFrontend('delTodo', data)
+}
+
+// Tags
+export async function getTags() {
+	return getFrontend('getTags')
+}
+
 // Events
-export async function getEvents() {
-	return getFrontend('getEvents')
+export async function getEvents(startDate, endDate) {
+	let endpoint = 'getEvents';
+	if (startDate && endDate) {
+		endpoint += `?startDate=${startDate}&endDate=${endDate}`;
+	}
+	return getFrontend(endpoint);
 }
 
 export async function addEvent(data) {

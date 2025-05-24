@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from "svelte";
-	import { getStats, getUsers, getChores, getRooms, delStats } from '../../requests'
+	import { getStats, getUsers, getChores, getEvents, getRooms, delStats } from '../../requests'
 	import Section from "$lib/header/Section.svelte";
 	import Collapsible from "$lib/containers/collapsible.svelte";
     import SelectButtons from "$lib/buttons/selectButtons.svelte";
@@ -8,6 +8,7 @@
     import BarChart from "$lib/charts/barChart.svelte";
     import RoomFilter from "$lib/filters/roomFilter.svelte";
     import ContentLayout from "$lib/containers/contentLayout.svelte";
+    import HouseholdStats from "$lib/components/HouseholdStats.svelte";
 
 	let users = null;
 	let users_by_id = null;
@@ -17,6 +18,7 @@
 	let chores_by_id = null;
 	let rooms = null;
 	let rooms_by_id = null;
+	let events = null; // Added variable declaration
 
 	let history_len = 5;
 	let chartType = 'line';
@@ -184,6 +186,7 @@
 		rooms = await getRooms();
 		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
 		stats = await getStats();
+		events = await getEvents();
 		chores = await getChores();
 		chores_by_id = chores.reduce((acc, obj) => {
 			const { _id } = obj;
@@ -302,6 +305,19 @@
 	emptyAction="Finish a task in the <a href='/chores'>Chores tab</a> and sign it for any amount of rooms to start watching your progress"
 >
 	{#if stats?.length}
+		{#if stats && users && rooms && events && users_by_id && rooms_by_id}
+			<!-- Statistics Section -->
+			<HouseholdStats 
+				stats={stats}
+				users={users}
+				rooms={rooms}
+				events={events}
+				chores={chores}
+				users_by_id={users_by_id}
+				rooms_by_id={rooms_by_id}
+			/>
+		{/if}
+		<!-- Chart Section -->
 		<div>
 			<SelectButtons 
 				hooks={{

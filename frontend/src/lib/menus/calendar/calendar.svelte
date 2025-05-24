@@ -11,7 +11,8 @@
 	let selectedEvent = null;
 	let modalOpen = false; // Add this to track modal state
 
-	let currentDate = new Date();
+	const currentDate = new Date();
+	let calendarDate = new Date();
 	let monthDays = [];
 	let isMobileView = false;
 
@@ -26,7 +27,7 @@
 	];
 
 	onMount(async () => {
-		await generateCalendar(currentDate);
+		await generateCalendar(calendarDate);
 		checkViewportWidth();
 		window.addEventListener('resize', checkViewportWidth);
 		
@@ -40,15 +41,28 @@
 	}
 
 	async function generateCalendar(date) {
-		events = await getEvents();
-		chores = await getChores();
-		users = await getUsers();
-
-		currentDate = new Date(date);
+		// Calculate the date range for the current view
 		const year = date.getFullYear();
 		const month = date.getMonth();
 		const firstDay = new Date(year, month, 1);
 		const lastDay = new Date(year, month + 1, 0);
+		
+		// Get the first day of the display (might be in previous month)
+		const firstDisplayDay = new Date(year, month, 1 - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1));
+		
+		// Get the last day of the display (might be in next month)
+		const lastDisplayDay = new Date(year, month + 1, 13 - lastDay.getDay());
+		
+		// Format dates for API call
+		const startDate = firstDisplayDay.toISOString();
+		const endDate = lastDisplayDay.toISOString();
+		
+		// Request events with date range to get expanded occurrences efficiently
+		events = await getEvents(startDate, endDate);
+		chores = await getChores();
+		users = await getUsers();
+
+		calendarDate = new Date(date);
 		const pastMonthlastDay = new Date(year, month, 0);
 
 		monthDays = [];
@@ -63,7 +77,7 @@
 			monthDays.push(new Date(year, month, day));
 		}
 
-		// // Fill the monthDays array with slots for next month
+		// Fill the monthDays array with slots for next month
 		for (let i = lastDay.getDay(); i < 14; i++) {
 			monthDays.push(new Date(year, month + 1, i - lastDay.getDay() + 1));
 		}
@@ -71,18 +85,23 @@
 
 	function getEventsForDate(date) {
 		if (!events) return [];
-		let day_events = events.filter((event) => {return new Date(event.when).toDateString() === date.toDateString()});
-		return day_events;
+		
+		// The backend now provides pre-calculated occurrences for repeating events
+		// within the requested date range, so we just need to filter by the date
+		return events.filter(event => {
+			const eventDate = new Date(event.when);
+			return eventDate.toDateString() === date.toDateString();
+		});
 	}
 
 	function navigateToPreviousMonth() {
-		const newDate = new Date(currentDate);
+		const newDate = new Date(calendarDate);
 		newDate.setMonth(newDate.getMonth() - 1);
 		generateCalendar(newDate);
 	}
 
 	function navigateToNextMonth() {
-		const newDate = new Date(currentDate);
+		const newDate = new Date(calendarDate);
 		newDate.setMonth(newDate.getMonth() + 1);
 		generateCalendar(newDate);
 	}
@@ -107,25 +126,25 @@
 		if (index !== -1) {
 			events[index] = updatedEvent;
 		}
-		generateCalendar(currentDate);
+		generateCalendar(calendarDate);
 	}
 
 	function handleEventDeleted(eventId) {
 		// Remove the event from the events array
 		events = events.filter(e => e._id !== eventId);
-		generateCalendar(currentDate);
+		generateCalendar(calendarDate);
 	}
 
 	function handleYearChange(event) {
 		const year = parseInt(event.target.value);
-		const newDate = new Date(currentDate);
+		const newDate = new Date(calendarDate);
 		newDate.setFullYear(year);
 		generateCalendar(newDate);
 	}
 
 	function handleMonthChange(event) {
 		const month = parseInt(event.target.value);
-		const newDate = new Date(currentDate);
+		const newDate = new Date(calendarDate);
 		newDate.setMonth(month);
 		generateCalendar(newDate);
 	}
@@ -240,7 +259,7 @@
 		color: #96616b;
 		border: 1px solid #7a4e56;
 	}
-	
+
 	.today-button:hover {
 		background-color: #f8e0c0;
 	}
@@ -280,24 +299,31 @@
 		font-size: 12px;
 		cursor: pointer;
 		transition: background-color 0.3s;
-		z-index: 2;
 		position: relative;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+		align-items: center;
+		gap: 5px;
+	}
+
+	.event p {
+		margin: 0;
 	}
 
 	.event:hover {
-		background-color: #7a4e56;
-	}
-	
-	/* Hide events when modal is open */
-	.modal-open .event {
-		visibility: hidden;
+		background-color: #FFEAD0;
+		color: #96616b;
 	}
 	
 	.calendar-container {
-		margin: 0 15px;
-		position: relative; /* Ensure positioned context for Safari */
+		position: relative;
 	}
-	
+
+	.today-day {
+		box-shadow: inset 0 0 0 2px #96616b;
+	}
+
 	/* Safari-specific fixes */
 	@supports (-webkit-touch-callout: none) {
 		.day {
@@ -395,7 +421,7 @@
 	
 	<div class="calendar-header">
 		<div class="date-display">
-			{currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
+			{calendarDate.toLocaleString('default', { month: 'long' })} {calendarDate.getFullYear()}
 		</div>
 		
 		<div class="nav-buttons">
@@ -405,13 +431,13 @@
 		</div>
 		
 		<div class="date-selectors">
-			<select value={currentDate.getMonth()} on:change={handleMonthChange}>
+			<select value={calendarDate.getMonth()} on:change={handleMonthChange}>
 				{#each months as month}
 					<option value={month.value}>{month.name}</option>
 				{/each}
 			</select>
 			
-			<select value={currentDate.getFullYear()} on:change={handleYearChange}>
+			<select value={calendarDate.getFullYear()} on:change={handleYearChange}>
 				{#each years as year}
 					<option value={year}>{year}</option>
 				{/each}
@@ -426,19 +452,21 @@
 		
 		{#each monthDays as day}
 		<div 
-			class="day {day.getMonth() !== currentDate.getMonth() ? 'other-month' : ''}"
+			class="day {day.getMonth() !== calendarDate.getMonth() ? 'other-month' : ''} {day.toLocaleDateString() == currentDate.toLocaleDateString() ? 'today-day' : ''}"
 			on:click={(event) => handleDayClick(day, event)}
 		>
 			{#if day}
 			<div class="day-header">{day.getDate()}</div>
 			{#each getEventsForDate(day) as event}
 				<div class="event" on:click={() => handleEventClick(event)}>
-					{event.title}
 					{#if !isMobileView}
 					<small>
-						{new Date(event.when).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+						{new Date(event.when).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false})}
 					</small>
 					{/if}
+					<p>
+						{event.title}
+					</p>
 				</div>
 			{/each}
 			{/if}

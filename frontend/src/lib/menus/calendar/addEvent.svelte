@@ -1,15 +1,14 @@
 <script>
 	import { postFrontend } from "$lib/requests";
-	import Section from "$lib/header/Section.svelte";
 	import DateTimePicker from "$lib/inputs/DateTimePicker.svelte";
 	import { onMount } from "svelte";
-	import { page } from '$app/stores';
 	
 	let newEvent = {
 		title: '',
 		when: new Date().toISOString(),
 		location: '',
-		description: ''
+		description: '',
+		repeatInterval: ''
 	};
 	let error = '';
 	let success = false;
@@ -27,7 +26,6 @@
 				const selectedDate = new Date(timestamp);
 				
 				if (!isNaN(selectedDate.getTime())) {
-					console.log('Setting date from localStorage:', selectedDate.toISOString());
 					
 					// Keep the time as current time but use the selected date
 					const now = new Date();
@@ -64,7 +62,8 @@
 					title: '',
 					when: currentDate, // Keep the selected date
 					location: '',
-					description: ''
+					description: '',
+					repeatInterval: ''
 				};
 				setTimeout(() => { 
 					success = false;
@@ -110,7 +109,7 @@
 		font-weight: bold;
 	}
 	
-	input, textarea {
+	input, textarea, select {
 		width: 100%;
 		border: none;
 		border-radius: 5px;
@@ -119,7 +118,7 @@
 		padding: 10px 2px;
 	}
 
-	input:focus, textarea:focus {
+	input:focus, textarea:focus, select:focus {
 		outline: none;
 		box-shadow: 0 0 0 2px rgba(150, 97, 107, 0.3);
 	}
@@ -131,14 +130,14 @@
 	
 	.button-container {
 		display: flex;
-		justify-content: flex-end;
 		margin-top: 20px;
 	}
 	
 	button {
 		background-color: #FFEAD0;
 		color: #96616B;
-		border: none;
+		border: 3px solid #FFEAD0;
+		width: 100%;
 		padding: 10px 20px;
 		border-radius: 5px;
 		font-weight: bold;
@@ -147,7 +146,8 @@
 	}
 	
 	button:hover {
-		background-color: #f3d8b6;
+		background-color: #96616B;
+		color: #FFEAD0;
 	}
 	
 	.error-message {
@@ -177,7 +177,7 @@
 			margin-bottom: 12px;
 		}
 		
-		input, textarea {
+		input, textarea, select {
 			padding: 8px 2px;
 		}
 		
@@ -208,7 +208,7 @@
 			font-size: 14px;
 		}
 		
-		input, textarea {
+		input, textarea, select {
 			font-size: 14px;
 		}
 	}
@@ -261,6 +261,16 @@
 				bind:value={newEvent.description} 
 				placeholder="Enter event description"
 			></textarea>
+		</div>
+		
+		<div class="form-group">
+			<label for="repeat-interval">Repeat Interval (optional)</label>
+			<select id="repeat-interval" bind:value={newEvent.repeatInterval}>
+				<option value="">None</option>
+				<option value="weekly">Weekly</option>
+				<option value="monthly">Monthly</option>
+				<option value="yearly">Yearly</option>
+			</select>
 		</div>
 		
 		<div class="button-container">

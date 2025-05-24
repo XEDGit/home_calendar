@@ -1,4 +1,6 @@
 <script>
+    import { createEventDispatcher } from 'svelte';
+    const dispatcher = createEventDispatcher();
     // Props
     export let value = '';  // Format: "HH:MM" in 24-hour format
     export let label = "Time";
@@ -21,30 +23,17 @@
             }
         }
     }
-    
-    // Update the value when any component changes
+
     function updateValue() {
-        // Format as HH:MM in 24-hour format
         const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         value = formattedTime;
-        
-        // Dispatch a regular DOM event instead of using createEventDispatcher
-        const changeEvent = new CustomEvent('change', { 
-            detail: { time: formattedTime },
-            bubbles: true 
-        });
-        
-        if (id) {
-            const element = document.getElementById(id);
-            if (element) {
-                element.dispatchEvent(changeEvent);
-            }
-        }
+
+        dispatcher('change', { time: formattedTime });
     }
     
     // Generate arrays for hours (0-23) and minutes (0-59)
     const hoursArray = Array.from({ length: 24 }, (_, i) => i);
-    const minutesArray = Array.from({ length: 60 }, (_, i) => i);
+    const minutesArray = Array.from({ length: 4 }, (_, i) => i * 15);
 </script>
 
 <style>

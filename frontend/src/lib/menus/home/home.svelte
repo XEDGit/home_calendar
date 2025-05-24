@@ -1,34 +1,25 @@
 <script>
 	import { onMount } from 'svelte';
-	import { getEvents, getChores, getStats, getUsers, getRooms, signChore, delChore } from '$lib/requests';
+	import { getEvents, getChores, getUsers, getRooms, signChore, delChore, getTodos, getTags, updateTodo, deleteTodo } from '$lib/requests';
 	import Section from '$lib/header/Section.svelte';
 	import ContentLayout from '$lib/containers/contentLayout.svelte';
 	import Drag from '$lib/containers/drag.svelte';
 	import UpdateEvent from '$lib/menus/calendar/updateEvent.svelte';
 	import UpdateTask from '$lib/menus/chores/updateChore.svelte';
-	
+	import Card from '$lib/buttons/card.svelte'; // Import Card component
+	import UpdateTodo from '$lib/menus/todo/updateTodo.svelte'; // Import UpdateTodo component
+
 	// Data
 	let events = null;
 	let chores = null;
-	let stats = null;
 	let users = null;
 	let users_by_id = null;
 	let rooms = null;
 	let rooms_by_id = null;
+	let todos = []; // Add todos state
+	let tags = []; // Add tags state
+	let activeTags = []; // Add activeTags state
 	let loading = true;
-	
-	// Statistics
-	let totalStats = {
-		choreCount: 0,
-		eventCount: 0,
-		overdueChores: 0,
-		todayChores: 0,
-		completedInRange: 0,
-		userActivity: {},
-		mostActiveUser: null,
-		mostActiveRoom: null,
-		roomActivity: {}
-	};
 	
 	// Date ranges for each section
 	// Events section
@@ -43,23 +34,16 @@
 	let choresCustomRange = false;
 	let choresDateRangeText = "Today";
 	
-	// Stats section
-	let statsStartDate = new Date();
-	let statsEndDate = new Date();
-	let statsCustomRange = false;
-	let statsDateRangeText = "Today";
-	
 	// UI state
 	let selectedEvent = null;
 	let selectedChoreId = null;
+	let selectedTodo = null; // Add selectedTodo state
 	
 	// Set up initial dates
 	eventsStartDate.setHours(0, 0, 0, 0);
 	eventsEndDate.setHours(23, 59, 59, 999);
 	choresStartDate.setHours(0, 0, 0, 0);
 	choresEndDate.setHours(23, 59, 59, 999);
-	statsStartDate.setHours(0, 0, 0, 0);
-	statsEndDate.setHours(23, 59, 59, 999);
 	
 	// Events section date range
 	function setEventsDateRange(days) {
@@ -71,13 +55,16 @@
 		if (days > 0) {
 			eventsEndDate.setDate(eventsEndDate.getDate() + days - 1);
 		}
+		if (days == 2) {
+			eventsStartDate.setDate(eventsStartDate.getDate() + 1);
+		}
 		eventsEndDate.setHours(23, 59, 59, 999);
-		
+
 		// Update the range text
 		if (days === 1) {
 			eventsDateRangeText = "Today";
 		} else if (days === 2) {
-			eventsDateRangeText = "Today & Tomorrow";
+			eventsDateRangeText = "Tomorrow";
 		} else if (days === 7) {
 			eventsDateRangeText = "This Week";
 		} else if (days === 30) {
@@ -86,26 +73,30 @@
 			eventsDateRangeText = `Next ${days} Days`;
 		}
 		
-		filterEvents();
+		// Reload events with the new date range
+		loadEventsWithDateRange();
 	}
 	
 	// Chores section date range
 	function setChoresDateRange(days) {
 		choresCustomRange = false;
 		choresStartDate = new Date();
+		if (days == 2) {
+			choresStartDate.setDate(choresStartDate.getDate() + 1);
+		}
 		choresStartDate.setHours(0, 0, 0, 0);
-		
+
 		choresEndDate = new Date();
 		if (days > 0) {
 			choresEndDate.setDate(choresEndDate.getDate() + days - 1);
 		}
 		choresEndDate.setHours(23, 59, 59, 999);
-		
+
 		// Update the range text
 		if (days === 1) {
 			choresDateRangeText = "Today";
 		} else if (days === 2) {
-			choresDateRangeText = "Today & Tomorrow";
+			choresDateRangeText = "Tomorrow";
 		} else if (days === 7) {
 			choresDateRangeText = "This Week";
 		} else if (days === 30) {
@@ -116,51 +107,17 @@
 		
 		filterChores();
 	}
-	
-	// Stats section date range
-	function setStatsDateRange(days) {
-		statsCustomRange = false;
-		statsEndDate = new Date();
-		statsEndDate.setHours(23, 59, 59, 999);
-		
-		statsStartDate = new Date();
-		if (days > 0) {
-			statsStartDate.setDate(statsStartDate.getDate() - days + 1);
-		}
-		statsStartDate.setHours(0, 0, 0, 0);
-		
-		// Update the range text
-		if (days === 1) {
-			statsDateRangeText = "Today";
-		} else if (days === 2) {
-			statsDateRangeText = "Yesterday & Today";
-		} else if (days === 7) {
-			statsDateRangeText = "Last Week";
-		} else if (days === 30) {
-			statsDateRangeText = "Last Month";
-		} else {
-			statsDateRangeText = `Last ${days} Days`;
-		}
-		
-		calculateStats();
-	}
-	
+
 	function setEventsCustomDateRange() {
 		eventsCustomRange = true;
 		eventsDateRangeText = "Custom Range";
-		filterEvents();
+		// Don't reload events yet, wait for user to select dates
 	}
 	
 	function setChoresCustomDateRange() {
 		choresCustomRange = true;
 		choresDateRangeText = "Custom Range";
 		filterChores();
-	}
-	
-	function setStatsCustomDateRange() {
-		statsCustomRange = true;
-		statsDateRangeText = "Custom Range";
-		calculateStats();
 	}
 	
 	// Convert string dates to Date objects for the custom date range
@@ -175,7 +132,8 @@
 			eventsEndDate.setHours(23, 59, 59, 999);
 		}
 		
-		filterEvents();
+		// Reload events with the new date range
+		loadEventsWithDateRange();
 	}
 	
 	function updateChoresCustomDateRange() {
@@ -192,31 +150,15 @@
 		filterChores();
 	}
 	
-	function updateStatsCustomDateRange() {
-		if (typeof statsStartDate === 'string') {
-			statsStartDate = new Date(statsStartDate);
-			statsStartDate.setHours(0, 0, 0, 0);
-		}
-		
-		if (typeof statsEndDate === 'string') {
-			statsEndDate = new Date(statsEndDate);
-			statsEndDate.setHours(23, 59, 59, 999);
-		}
-		
-		calculateStats();
-	}
-	
 	let todayEvents = [];
 	let upcomingChores = [];
 	
 	function filterEvents() {
-		// Filter events between start and end date
-		if (events) {
-			todayEvents = events.filter(event => {
-				const eventDate = new Date(event.when);
-				return eventDate >= eventsStartDate && eventDate <= eventsEndDate;
-			}).sort((a, b) => new Date(a.when) - new Date(b.when));
-		}
+			// The events are already pre-expanded by the backend with date range filtering
+			// Just need to sort them chronologically
+			if (events) {
+					todayEvents = events.sort((a, b) => new Date(a.when) - new Date(b.when));
+			}
 	}
 	
 	function filterChores() {
@@ -234,7 +176,7 @@
 				
 				// Include the chore if it falls within the selected date range
 				// or if it's overdue/due today (always show these)
-				if (dueDate >= choresStartDate && dueDate <= choresEndDate || dayNum <= 0) {
+				if (dueDate >= choresStartDate && dueDate <= choresEndDate) {
 					chores[day].forEach(chore => {
 						chore.dueDate = dueDate;
 						allChores.push(chore);
@@ -242,125 +184,13 @@
 				}
 			}
 			upcomingChores = allChores.sort((a, b) => a.nextTime - b.nextTime);
-			calculateStats();
 		}
 	}
-	
-	function calculateStats() {
-		if (!events || !chores || !stats || !users_by_id || !rooms_by_id) return;
-		
-		// Reset statistics
-		totalStats = {
-			choreCount: 0,
-			eventCount: 0,
-			overdueChores: 0,
-			todayChores: 0,
-			completedInRange: 0,
-			userActivity: {},
-			mostActiveUser: null,
-			mostActiveRoom: null,
-			roomActivity: {}
-		};
-		
-			// Count chores by status - regardless of date range filtering
-		for (const day in chores) {
-			const dayNum = parseInt(day);
-			if (dayNum < 0) {
-				totalStats.overdueChores += chores[day].length;
-			} else if (dayNum === 0) {
-				totalStats.todayChores += chores[day].length;
-			}
-		}
 
-		// Count events in selected stats date range
-		totalStats.eventCount = events.filter(event => {
-			const eventDate = new Date(event.when);
-			return eventDate >= statsStartDate && eventDate <= statsEndDate;
-		}).length;
-		
-		// Count chores in selected stats date range
-		totalStats.choreCount = 0;
-		for (const day in chores) {
-			const dayNum = parseInt(day);
-			const today = new Date();
-			const dueDate = new Date(today);
-			dueDate.setDate(today.getDate() + dayNum);
-			dueDate.setHours(0, 0, 0, 0);
-			
-			if (dueDate >= statsStartDate && dueDate <= statsEndDate) {
-				totalStats.choreCount += chores[day].length;
-			}
-		}
-		
-		// User activity
-		users.forEach(user => {
-			totalStats.userActivity[user._id] = {
-				name: user.name,
-				count: 0,
-				rooms: {}
-			};
-		});
-		
-		// Room activity
-		rooms.forEach(room => {
-			totalStats.roomActivity[room._id] = {
-				name: room.name,
-				count: 0
-			};
-		});
-		
-		// Process completed chores statistics based on selected date range
-		console.log("Stats date range:", statsStartDate, statsEndDate);
-		stats.forEach(stat => {
-			const statDate = new Date(stat.date);
-			if (statDate >= statsStartDate && statDate <= statsEndDate) {
-				totalStats.completedInRange++;
-				
-				// Track user activity
-				if (totalStats.userActivity[stat.who]) {
-					totalStats.userActivity[stat.who].count++;
-					
-					// Track which rooms this user cleaned
-					stat.rooms.forEach(roomId => {
-						if (!totalStats.userActivity[stat.who].rooms[roomId]) {
-							totalStats.userActivity[stat.who].rooms[roomId] = 0;
-						}
-						totalStats.userActivity[stat.who].rooms[roomId]++;
-						
-						// Track room activity
-						if (totalStats.roomActivity[roomId]) {
-							totalStats.roomActivity[roomId].count++;
-						}
-					});
-				}
-			}
-		});
-		
-		// Find most active user
-		let maxUserActivity = 0;
-		for (const userId in totalStats.userActivity) {
-			if (totalStats.userActivity[userId].count > maxUserActivity) {
-				maxUserActivity = totalStats.userActivity[userId].count;
-				totalStats.mostActiveUser = totalStats.userActivity[userId];
-			}
-		}
-		
-		// Find most cleaned room
-		let maxRoomActivity = 0;
-		for (const roomId in totalStats.roomActivity) {
-			if (totalStats.roomActivity[roomId].count > maxRoomActivity) {
-				maxRoomActivity = totalStats.roomActivity[roomId].count;
-				totalStats.mostActiveRoom = totalStats.roomActivity[roomId];
-			}
-		}
-	}
-	
 	// Sort chores by days
 	async function parseChores() {
-		const sorted_stats = stats.sort((a, b) => {return a.date < b.date})
 		let res = await getChores()
 		let perDay = res.reduce((acc, chore, index) => {
-			chore.last_sign = users_by_id[sorted_stats.find((stat) => {return stat.chore_ref == chore._id})?.who]?.name || 'Nobody'
 			if (!acc[chore.nextTime]) {
 				acc[chore.nextTime] = [];
 			}
@@ -400,9 +230,27 @@
 		chores = final;
 		filterEvents();
 		filterChores();
-		calculateStats();
 	}
 	
+	// Function to load events with the current date range
+	async function loadEventsWithDateRange() {
+		// Show loading state
+		loading = true;
+		
+		// Get current date range for events
+		const start = eventsStartDate.toISOString();
+		const end = eventsEndDate.toISOString();
+		
+		// Load events with date range to efficiently handle repeating events
+		events = await getEvents(start, end);
+		
+		// Filter and sort events
+		filterEvents();
+		
+		// Hide loading state
+		loading = false;
+	}
+
 	// Handlers for event details
 	function handleEventClick(event) {
 		selectedEvent = event;
@@ -444,30 +292,126 @@
 		await delChore({"id": id});
 		await loadData();
 	}
+
+	// Todo section functions
+	const handleTagClick = (idx) => {
+		activeTags[idx] = !activeTags[idx];
+		activeTags = activeTags; // Trigger reactivity
+	}
+
+	const filterTodos = (todosToFilter) => {
+			// Filter for high priority first
+			let highestPriority = todosToFilter;
+			for (let targetPriority = 3; targetPriority >= 0; targetPriority--) {
+				highestPriority = todosToFilter.filter(todo => todo.priority == targetPriority);
+				if (highestPriority.length > 0) {
+					break;
+				}
+			}
+	
+			// Check if any tag is active. If not, return all high priority todos.
+			const anyTagActive = activeTags.some(tag => tag);
+			if (!anyTagActive) {
+				return highestPriority;
+			}
+	
+			// Get the status of special tags
+			const personalActive = activeTags[0];
+			const sharedActive = activeTags[1];
+	
+			// Get the list of active regular tags (tags excluding 'personal' and 'shared')
+			const activeRegularTags = tags.slice(2).filter((_, i) => activeTags[i + 2]);
+	
+			// Filter high priority todos based on active tags
+			return highestPriority.filter(todo => {
+				let matchesRegularTag = true;
+				// Check if the todo matches any active regular tag
+				if (activeRegularTags.length > 0) {
+					matchesRegularTag = activeRegularTags.includes(todo.tag);
+				}
+	
+				// Check if the todo matches the 'personal' criteria (if active)
+				const matchesPersonal = personalActive && !todo.shared;
+	
+				// Check if the todo matches the 'shared' criteria (if active)
+				const matchesShared = sharedActive && todo.shared;
+	
+				// Determine if the todo matches based on active special tags
+				let matchesSpecialTag = true;
+				if (personalActive || sharedActive) {
+					matchesSpecialTag = matchesPersonal || matchesShared;
+				}
+	
+				// The todo should be included if it matches active regular tags AND active special tags
+				// (It's already confirmed to be high priority)
+				return matchesRegularTag && matchesSpecialTag;
+			});
+		};
+
+	function handleTodoClick(todo) {
+		selectedTodo = todo;
+	}
+
+	function resetTodoSelection() {
+		selectedTodo = null;
+	}
+
+	async function handleTodoUpdate(updatedTodoData) {
+		try {
+			// The data from UpdateTodo might not have the _id, ensure it's included
+			const payload = { ...updatedTodoData, _id: selectedTodo._id };
+			await updateTodo(payload);
+			// Reload data to reflect changes
+			await loadData();
+			resetTodoSelection();
+		} catch (error) {
+			console.error('Error updating todo:', error);
+		}
+	}
+
+	async function handleTodoDelete(todoId) {
+		try {
+			await deleteTodo({ id: todoId });
+			// Reload data to reflect changes
+			await loadData();
+			resetTodoSelection();
+		} catch (error) {
+			console.error('Error deleting todo:', error);
+		}
+	}
 	
 	async function loadData() {
 		loading = true;
 		
-		// Load all the necessary data
-		stats = await getStats();
-		events = await getEvents();
-		
-		users = await getUsers();
-		users_by_id = Object.fromEntries(users.map(u => [u._id, u]));
-		
-		rooms = await getRooms();
-		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
-		
-		// Process and organize the data
-		await parseChores();
-		
-		// Set default date range to today
-		setEventsDateRange(7);
-		setChoresDateRange(1);
-		setStatsDateRange(30);
-		
-		loading = false;
-	}
+			// Get current date range for events
+			const start = eventsStartDate.toISOString();
+			const end = eventsEndDate.toISOString();
+			
+			// Load events with date range to efficiently handle repeating events
+			events = await getEvents(start, end);
+			
+			users = await getUsers();
+			users_by_id = Object.fromEntries(users.map(u => [u._id, u]));
+			
+			rooms = await getRooms();
+			rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
+	
+			// Load todos and tags
+			todos = await getTodos();
+			tags = await getTags();
+			tags.unshift('shared');
+			tags.unshift('personal');
+			activeTags = tags.map(() => false); // Initialize activeTags
+			
+			// Process and organize the data
+			await parseChores();
+			
+			// Filter events - no need to recalculate repeats as they're already expanded by the backend
+			filterEvents();
+			filterChores();
+	
+			loading = false;
+		}
 	
 	onMount(async () => {
 		await loadData();
@@ -483,87 +427,6 @@
 	
 	.section {
 		margin-bottom: 20px;
-	}
-	
-	.stat-section {
-		margin-bottom: 20px;
-	}
-	
-	.stats-container {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: 15px;
-		margin-top: 15px;
-	}
-	
-	.stat-card {
-		background-color: #FFEAD0;
-		border: solid #96616B 2px;
-		border-radius: 8px;
-		padding: 15px;
-		text-align: center;
-		transition: transform 0.3s;
-	}
-	
-	.stat-card:hover {
-		transform: translateY(-5px);
-	}
-	
-	.stat-value {
-		font-size: 2rem;
-		font-weight: bold;
-		color: #96616B;
-		margin: 10px 0;
-	}
-	
-	.stat-label {
-		font-size: 0.9rem;
-		color: #555;
-	}
-	
-	.achievements {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		margin-top: 10px;
-	}
-	
-	.achievement-card {
-		background-color: #FFEAD0;
-		border: solid #96616B 2px;
-		border-radius: 8px;
-		padding: 15px;
-		display: flex;
-		align-items: center;
-		gap: 15px;
-	}
-	
-	.achievement-icon {
-		background-color: #96616B;
-		color: #FFEAD0;
-		height: 40px;
-		width: 40px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 1.2rem;
-		font-weight: bold;
-	}
-	
-	.achievement-content {
-		flex: 1;
-	}
-	
-	.achievement-title {
-		font-weight: bold;
-		color: #96616B;
-		margin-bottom: 5px;
-	}
-	
-	.achievement-description {
-		font-size: 0.9rem;
-		color: #555;
 	}
 	
 	.date-controls {
@@ -612,6 +475,7 @@
 	.event-item {
 		background-color: #FFEAD0;
 		border: solid #96616B 2px;
+		color: #96616B;
 		border-radius: 5px;
 		padding: 10px;
 		display: flex;
@@ -625,7 +489,6 @@
 	}
 	
 	.event-time {
-		color: #96616B;
 		font-weight: bold;
 	}
 	
@@ -636,12 +499,10 @@
 	
 	.event-title {
 		font-weight: bold;
-		color: #96616B;
 	}
 	
 	.event-location {
 		font-size: 0.9em;
-		color: #666;
 	}
 	
 	.chore-container {
@@ -724,20 +585,64 @@
 		font-style: italic;
 		padding: 20px;
 	}
+
+	/* Styles copied/adapted from todo.svelte */
+	.todo-container {
+		width: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: flex-start; /* Align items to the start */
+		flex-direction: row;
+		gap: 1em;
+		padding: 0 10px; /* Add some padding */
+	}
+
+	@media (max-width: 670px) {
+		.todo-container {
+			justify-content: center; /* Center items on smaller screens */
+		}
+	}
+
+	.filter {
+		width: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center; /* Center filter buttons */
+		flex-direction: row;
+		gap: 1em;
+		color: #96616B;
+		margin-bottom: 20px;
+	}
+
+	.filter button { /* More specific selector */
+		background-color: #FFEAD0;
+		color: #96616B;
+		border: solid 2px #96616B;
+		border-radius: 5px;
+		padding: 5px 10px;
+		cursor: pointer;
+		font-weight: bold;
+	}
+
+	.filter button:hover { /* More specific selector */
+		background-color: #FFEAD0;
+		color: #96616B;
+	}
+
+	.filter button::before { /* More specific selector */
+		content: '# ';
+	}
+
+	.filter button.active, .filter button.active:hover { /* More specific selector */
+		background-color: #96616B;
+		color: #FFEAD0;
+	}
 	
 	@media (max-width: 768px) {
 		.custom-date-input {
 			flex-direction: column;
-		}
-		
-		.stats-container {
-			grid-template-columns: 1fr 1fr;
-		}
-	}
-	
-	@media (max-width: 480px) {
-		.stats-container {
-			grid-template-columns: 1fr;
 		}
 	}
 </style>
@@ -746,7 +651,7 @@
 	<div class="dashboard">		
 		<!-- Upcoming Events -->
 		<div class="section">
-			<Section title="Upcoming Events" subtitle={`${todayEvents.length} event${todayEvents.length !== 1 ? 's' : ''} in ${eventsDateRangeText.toLowerCase()}`} />
+			<Section title={eventsDateRangeText + "'s Events"} subtitle={`${todayEvents.length} event${todayEvents.length !== 1 ? 's' : ''} in ${eventsDateRangeText.toLowerCase()}`} />
 			
 			<!-- Events Date Range Controls -->
 			<div class="date-controls">
@@ -754,8 +659,8 @@
 					<button class="range-button" class:active={eventsDateRangeText === "Today"} on:click={() => setEventsDateRange(1)}>
 						Today
 					</button>
-					<button class="range-button" class:active={eventsDateRangeText === "Today & Tomorrow"} on:click={() => setEventsDateRange(2)}>
-						+Tomorrow
+					<button class="range-button" class:active={eventsDateRangeText === "Tomorrow"} on:click={() => setEventsDateRange(2)}>
+						Tomorrow
 					</button>
 					<button class="range-button" class:active={eventsDateRangeText === "This Week"} on:click={() => setEventsDateRange(7)}>
 						This Week
@@ -822,148 +727,65 @@
 			{/if}
 		</div>
 
-		
-		<!-- Stats Overview -->
-		<div class="section stat-section">
-			<Section title="Household Statistics" subtitle={`Data for ${statsDateRangeText.toLowerCase()}`} />
-			
-			<!-- Stats Date Range Controls -->
-			<div class="date-controls">
-				<div class="range-buttons">
-					<button class="range-button" class:active={statsDateRangeText === "Today"} on:click={() => setStatsDateRange(1)}>
-						Today
+		<!-- Upcoming Todos -->
+		<div class="section">
+			<Section title="Important Todos" />
+
+			<!-- Tag Filters -->
+			<div class='filter'>
+				<span style='font-weight: bold'>Tags:</span>
+				{#each tags as tag, idx}
+					<button class='tag {activeTags[idx]? 'active' : ''}' on:click={() => handleTagClick(idx)}>
+						{tag}
 					</button>
-					<button class="range-button" class:active={statsDateRangeText === "Yesterday & Today"} on:click={() => setStatsDateRange(2)}>
-						+Yesterday
-					</button>
-					<button class="range-button" class:active={statsDateRangeText === "Last Week"} on:click={() => setStatsDateRange(7)}>
-						Last Week
-					</button>
-					<button class="range-button" class:active={statsDateRangeText === "Last Month"} on:click={() => setStatsDateRange(30)}>
-						Last Month
-					</button>
-					<button class="range-button" class:active={statsCustomRange} on:click={setStatsCustomDateRange}>
-						Custom
-					</button>
-				</div>
-				
-				{#if statsCustomRange}
-					<div class="custom-range">
-						<div class="custom-date-input">
-							<div>
-								<label for="stats-start-date">Start Date:</label>
-								<input 
-									id="stats-start-date" 
-									class="date-input" 
-									type="date" 
-									bind:value={statsStartDate} 
-									on:change={updateStatsCustomDateRange}
-								/>
-							</div>
-							<div>
-								<label for="stats-end-date">End Date:</label>
-								<input 
-									id="stats-end-date" 
-									class="date-input" 
-									type="date" 
-									bind:value={statsEndDate} 
-									on:change={updateStatsCustomDateRange}
-								/>
-							</div>
-						</div>
-					</div>
-				{/if}
+				{/each}
 			</div>
-			
-			<div class="stats-container">
-				<div class="stat-card">
-					<div class="stat-value">{totalStats.eventCount}</div>
-					<div class="stat-label">Events</div>
+
+			<!-- Todo List -->
+			{#if filterTodos(todos).length > 0}
+				<div class="todo-container">
+					{#each filterTodos(todos) as todo}
+						<Card
+							title={todo.title}
+							shortTitle={todo.shortTitle}
+							subtitle={todo.subtitle || ''}
+							content={todo.description || ''}
+							tag={todo.tag || ''}
+							deadline={todo.deadline || ''}
+							priority={todo.priority || ''}
+							shared={todo.shared || ''}
+							done={todo.done || ''}
+							func={() => {handleTodoClick(todo)}}
+							updateDone={async () => {
+								const updatedDoneStatus = !todo.done;
+								// Optimistically update UI
+								todo.done = updatedDoneStatus;
+								todos = todos; // Trigger reactivity
+								try {
+									await updateTodo({ _id: todo._id, done: updatedDoneStatus });
+									// Optionally reload data if needed, or rely on optimistic update
+									// await loadData(); 
+								} catch (error) {
+									console.error('Error updating todo done status:', error);
+									// Revert UI change on error
+									todo.done = !updatedDoneStatus;
+									todos = todos; 
+								}
+							}}
+						/>
+					{/each}
 				</div>
-				
-				<div class="stat-card">
-					<div class="stat-value">{totalStats.choreCount}</div>
-					<div class="stat-label">Chores in Period</div>
+			{:else}
+				<div class="empty-message">
+					<p>No todos match the selected filters.</p>
 				</div>
-				
-				<div class="stat-card">
-					<div class="stat-value">{totalStats.overdueChores}</div>
-					<div class="stat-label">Overdue Chores</div>
-				</div>
-				
-				<div class="stat-card">
-					<div class="stat-value">{totalStats.todayChores}</div>
-					<div class="stat-label">Due Today</div>
-				</div>
-				
-				<div class="stat-card">
-					<div class="stat-value">{totalStats.completedInRange}</div>
-					<div class="stat-label">Completed in Period</div>
-				</div>
-				
-				{#if totalStats.mostActiveUser}
-					<div class="stat-card">
-						<div class="stat-value">{totalStats.mostActiveUser?.name || '-'}</div>
-						<div class="stat-label">Most Active User</div>
-					</div>
-				{/if}
-			</div>
-			
-			<div class="achievements">
-				{#if totalStats.mostActiveUser && totalStats.mostActiveUser.count > 0}
-					<div class="achievement-card">
-						<div class="achievement-icon">🏆</div>
-						<div class="achievement-content">
-							<div class="achievement-title">Most Active User</div>
-							<div class="achievement-description">
-								{totalStats.mostActiveUser.name} has completed {totalStats.mostActiveUser.count} chores in this period.
-							</div>
-						</div>
-					</div>
-				{/if}
-				
-				{#if totalStats.mostActiveRoom && totalStats.mostActiveRoom.count > 0}
-					<div class="achievement-card">
-						<div class="achievement-icon">🧹</div>
-						<div class="achievement-content">
-							<div class="achievement-title">Most Cleaned Room</div>
-							<div class="achievement-description">
-								{totalStats.mostActiveRoom.name} has been cleaned {totalStats.mostActiveRoom.count} times in this period.
-							</div>
-						</div>
-					</div>
-				{/if}
-				
-				{#if totalStats.overdueChores === 0 && totalStats.todayChores === 0}
-					<div class="achievement-card">
-						<div class="achievement-icon">🌟</div>
-						<div class="achievement-content">
-							<div class="achievement-title">All Caught Up!</div>
-							<div class="achievement-description">
-								No chores are currently overdue or due today. Great job keeping on top of things!
-							</div>
-						</div>
-					</div>
-				{/if}
-				{#if totalStats.completedInRange > 0}
-					<div class="achievement-card">
-						<div class="achievement-icon">✅</div>
-						<div class="achievement-content">
-							<div class="achievement-title">Total chores</div>
-							<div class="achievement-description">
-								Your household has completed {totalStats.completedInRange} chore{totalStats.completedInRange !== 1 ? 's' : ''} in this period!
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
+			{/if}
 		</div>
 		
 		<!-- Chores Section -->
 		<div class="section">
 			<Section 
-				title="Upcoming Chores" 
-				subtitle={`${upcomingChores.length} chore${upcomingChores.length !== 1 ? 's' : ''} in ${choresDateRangeText.toLowerCase()}${totalStats.overdueChores > 0 ? ` (${totalStats.overdueChores} overdue)` : ''}`} 
+				title={choresDateRangeText +"'s Chores"} 
 			/>
 			
 			<!-- Chores Date Range Controls -->
@@ -972,8 +794,8 @@
 					<button class="range-button" class:active={choresDateRangeText === "Today"} on:click={() => setChoresDateRange(1)}>
 						Today
 					</button>
-					<button class="range-button" class:active={choresDateRangeText === "Today & Tomorrow"} on:click={() => setChoresDateRange(2)}>
-						+Tomorrow
+					<button class="range-button" class:active={choresDateRangeText === "Tomorrow"} on:click={() => setChoresDateRange(2)}>
+						Tomorrow
 					</button>
 					<button class="range-button" class:active={choresDateRangeText === "This Week"} on:click={() => setChoresDateRange(7)}>
 						This Week
@@ -1024,7 +846,6 @@
 									<div class="fade"></div>
 								</div>
 								<div class="info-right">
-									<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
 									<p class="room-text">{chore.rooms.length} room{chore.rooms.length !== 1 ? 's' : ''}</p>
 									<hr class="urgency-indicator" style="background-color: {chore.nextTime < -2 ? '#DB324D' : chore.nextTime <= -1 ? 'orange' : chore.nextTime == 0 ? 'green' : 'gray'}" />
 								</div>
@@ -1047,6 +868,7 @@
 				</div>
 			{/if}
 		</div>
+
 	</div>
 </ContentLayout>
 
@@ -1057,5 +879,15 @@
 		onClose={handleEventClose}
 		onUpdated={handleEventUpdated}
 		onDeleted={handleEventDeleted}
+	/>
+{/if}
+
+<!-- Todo Detail Modal -->
+{#if selectedTodo}
+	<UpdateTodo 
+		todo={selectedTodo} 
+		onSubmit={handleTodoUpdate} 
+		reset={resetTodoSelection} 
+		delFunc={() => handleTodoDelete(selectedTodo._id)} 
 	/>
 {/if}

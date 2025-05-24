@@ -15,7 +15,7 @@
 		border: 3px solid #96616B;
 		border-radius: 50%;
 		position: fixed;
-		bottom: 15vh;
+		bottom: 5vh;
 		right: 40px;
 	}
 

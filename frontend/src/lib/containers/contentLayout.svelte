@@ -11,7 +11,7 @@
 
 <style>
     .content-container {
-        width: 90%;
+        width: 95%;
         margin: 0 auto;
     }
     

@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { MongoClient, ObjectId } from 'mongodb';
 const app = express();
 const PORT = 3000;
-const SECRET = 'use-env-file' // TODO
+const SECRET = process.env.SECRET
 const saltRounds = 10
 
 ////////////////////////////////////////////
@@ -43,6 +43,8 @@ class DB {
 			const collection = this.db.collection(collectionName)
 			if (session)
 				elem.session = this.getSession(session)
+			else
+				return false
 			const result = await collection.insertOne(elem)
 			console.log(`'${elem}' inserted in collection ${collectionName} in db.`);
 		} catch (err) {
@@ -56,6 +58,10 @@ class DB {
 		try {
 			if (session)
 				elem.session = this.getSession(session)
+			else {
+				res.status(401).send({error: "Missing session token"});
+				return
+			}
 			const collection = this.db.collection(collectionName)
 			const result = await collection.insertOne(elem)
 			console.log(`'${elem}' inserted in collection ${collectionName} in db.`);
@@ -72,6 +78,10 @@ class DB {
 				session = this.getSession(session)
 				elem.forEach((el) => {el.session = session;})
 			}
+			else {
+				res.status(401).send({error: "Missing session token"});
+				return
+			}
 			const collection = this.db.collection(collectionName)
 			const result = await collection.insertMany(elem)
 			console.log(`${result.insertedCount} ${collectionName} inserted in db.`);
@@ -86,6 +96,10 @@ class DB {
 		try {
 			if (session)
 				where = {...where, 'session': this.getSession(session)}
+			else {
+				res.status(401).send({error: "Missing session token"});
+				return
+			}
 			const collection = this.db.collection(collectionName)
 			const document = await collection.find(where).toArray();
 			console.log(`${document.length} document retrieved from ${collectionName} from db.`);
@@ -96,10 +110,38 @@ class DB {
 		}
 	}
 
+	async findLogin(username) {
+		try {
+			const collectionName = 'sessions'
+			const collection = this.db.collection(collectionName)
+			const document = await collection.find({"username": username}).toArray();
+			console.log(`${document.length} document retrieved from ${collectionName} from db.`);
+			return document;
+		} catch (err) {
+			console.error("Error retrieving data from db:", err);
+			return false;
+		}
+	}
+
+	async findVerify(session) {
+		try {
+			const collectionName = 'sessions'
+			const collection = this.db.collection(collectionName)
+			const document = await collection.find({"session": session}).toArray();
+			console.log(`${document.length} document retrieved from ${collectionName} from db.`);
+			return document;
+		} catch (err) {
+			console.error("Error retrieving data from db:", err);
+			return false;
+		}
+	}
+	
 	async find(collectionName, session, where = {}) {
 		try {
 			if (session)
 				where = {...where, 'session': this.getSession(session)}
+			else
+				return false;
 			const collection = this.db.collection(collectionName)
 			const document = await collection.find(where).toArray();
 			console.log(`${document.length} document retrieved from ${collectionName} from db.`);
@@ -116,6 +158,10 @@ class DB {
 				res.status(400).send({message: 'Cannot delete without where'});
 			if (session)
 				where = {...where, 'session': this.getSession(session)}
+			else {
+				res.status(401).send({error: "Missing session token"});
+				return
+			}
 			const result = await this.db.collection(collectionName).deleteOne(where);
 	
 			if (result.deletedCount === 0) {
@@ -135,6 +181,8 @@ class DB {
 				return false;
 			if (session)
 				where = {...where, 'session': this.getSession(session)}
+			else
+				return false;
 			const result = await this.db.collection(collectionName).deleteOne(where);
 	
 			console.log('Deleted ', result.deletedCount, ' from ', collectionName)
@@ -154,6 +202,10 @@ class DB {
 				res.status(400).send({message: 'Cannot update without where'});
 			if (session)
 				where = {...where, 'session': this.getSession(session)}
+			else {
+				res.status(401).send({error: "Missing session token"});
+				return
+			}
 			const result = await this.db.collection(collectionName).updateOne(where, updated_data);
 	
 			if (result.updatedCount === 0) {
@@ -175,7 +227,6 @@ class DB {
 			else
 				return false
 			const result = await this.db.collection(collectionName).updateOne(where, updated_data);
-			console.log(result, updated_data)
 			if (!result.matchedCount)
 				return false
 		} catch (error) {
@@ -274,14 +325,14 @@ const sslOptions = {
 
 app.post('/login', async (req, res) => {
 	let { username, password } = req.body
-	const result = await db.find('sessions', null, {'username': username})
+	const result = await db.findLogin(username)
 	if (result == false || result.length == 0 || !bcrypt.compareSync(password, result[0].password)) {
 		return res.status(401).send({error: 'Internal error'})
 	}
 	console.log('Logged in ', username)
 	const sessionToken = jwt.sign({session: result[0].session}, SECRET, {})
 	const expiry = new Date()
-	expiry.setFullYear(expiry.getFullYear() + 10)
+	expiry.setMonth(expiry.getMonth() + 1)
 	res.cookie('session', sessionToken, {expires: expiry})
 	return res.status(200).send({})
 });
@@ -305,7 +356,7 @@ app.post('/verify', async (req, res) => {
 			throw Error('session token not found in request body')
 		}
 		const decoded = jwt.verify(token, SECRET);
-		const result = await db.find('sessions', null, {'session': decoded.session})
+		const result = await db.findVerify(decoded.session)
 		if (result == false || result.length == 0) {
 			throw Error('session token not found in db')
 		}
@@ -321,13 +372,105 @@ app.post('/verify', async (req, res) => {
 
 // Get all events
 app.get('/events', async (req, res) => {
-	await db.findRespond('events', req.cookies.session, res)
+    try {
+        const events = await db.find('events', req.cookies.session);
+        
+        // If client requests expanded occurrences with date range, calculate them efficiently
+        const { startDate, endDate } = req.query;
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            // Only send events relevant to the requested date range
+            const relevantEvents = events.filter(event => {
+                // For non-repeating events, check if they're in range
+                if (!event.repeatDays) {
+                    const eventDate = new Date(event.when);
+                    return eventDate >= start && eventDate <= end;
+                }
+                
+                // For repeating events, check if any occurrence falls in the range
+                const eventStart = new Date(event.when);
+                // If event starts after end date, no occurrences in range
+                if (eventStart > end) return false;
+                
+                // Find the latest occurrence before or at the end date
+                const daysDiff = Math.floor((end - eventStart) / (1000 * 60 * 60 * 24));
+                // If at least one occurrence happens before the end date
+                if (daysDiff >= 0) {
+                    // Check if any occurrence falls within range
+                    const firstOccurrenceInRange = new Date(eventStart);
+                    // Adjust to first occurrence in or after start date
+                    while (firstOccurrenceInRange < start) {
+                        firstOccurrenceInRange.setDate(firstOccurrenceInRange.getDate() + event.repeatDays);
+                    }
+                    return firstOccurrenceInRange <= end;
+                }
+                
+                return false;
+            });
+            
+            // For repeating events, generate occurrences only within the date range
+            const expandedEvents = relevantEvents.flatMap(event => {
+                if (!event.repeatDays) {
+                    return event;
+                }
+                
+                const occurrences = [];
+                let occurrenceDate = new Date(event.when);
+                
+                // Find the first occurrence that falls within range
+                while (occurrenceDate < start) {
+                    occurrenceDate.setDate(occurrenceDate.getDate() + event.repeatDays);
+                }
+                
+                // Add all occurrences within range
+                while (occurrenceDate <= end) {
+                    occurrences.push({
+                        ...event,
+                        when: new Date(occurrenceDate).toISOString(),
+                        isOccurrence: true,
+                        originalEventId: event._id,
+                        originalEventDate: event.when
+                    });
+                    occurrenceDate.setDate(occurrenceDate.getDate() + event.repeatDays);
+                }
+                
+                return occurrences.length > 0 ? occurrences : [];
+            });
+            
+            return res.send(expandedEvents);
+        }
+        
+        // If no date range provided, return the base events without expansion
+        res.send(events);
+    } catch (err) {
+        console.error('Error retrieving events:', err);
+        res.status(500).send({ error: 'Internal server error' });
+    }
 });
 
 // Add a new event
 app.post('/events', async (req, res) => {
-	const newEvent = req.body;
-	await db.insertRespond(newEvent, 'events', req.cookies.session, res)
+    const newEvent = req.body;
+
+    // Check for repeat interval
+    if (newEvent.repeatInterval) {
+        const repeatMapping = {
+            daily: 1,
+            weekly: 7,
+            monthly: 30,
+            yearly: 365
+        };
+
+        if (!repeatMapping[newEvent.repeatInterval]) {
+            return res.status(400).send({ error: 'Invalid repeat interval' });
+        }
+
+        newEvent.repeatDays = repeatMapping[newEvent.repeatInterval];
+    }
+
+    await db.insertRespond(newEvent, 'events', req.cookies.session, res);
 });
 
 // Update event
@@ -345,6 +488,26 @@ app.post('/updateEvent', async (req, res) => {
 		const existingEvent = await db.find('events', req.cookies.session, { _id: id });
 		if (!existingEvent || existingEvent.length === 0) {
 			return res.status(404).send({ success: false, message: 'Event not found' });
+		}
+		
+		 // Process repetition if present
+		if (updatedEvent.repetition) {
+			const repeatMapping = {
+				daily: 1,
+				weekly: 7,
+				monthly: 30,
+				yearly: 365,
+				none: 0
+			};
+			
+			if (repeatMapping[updatedEvent.repetition] !== undefined) {
+				updatedEvent.repeatDays = repeatMapping[updatedEvent.repetition];
+			} else {
+				delete updatedEvent.repetition; // Invalid repetition value
+			}
+		} else if (updatedEvent.repetition === 'none') {
+			// If repetition is explicitly set to none, remove repetition
+			updatedEvent.repeatDays = 0;
 		}
 		
 		// Update the event
@@ -393,14 +556,205 @@ app.post('/deleteEvent', async (req, res) => {
 	}
 });
 
-// Delete event (legacy endpoint - keeping for compatibility)
-app.post('/events/del', async (req, res) => {
-	let id = getID(req, res)
-	if (id == false)
-		return
-	id = new ObjectId(id)
-	await db.deleteRespond('events', req.cookies.session, res, {_id: id})
+
+////////////////////////////////////////////
+// TODOS
+
+// Get all todos
+app.get('/todos', async (req, res) => {
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	await db.findRespond(
+		'todos',
+		req.cookies.session,
+		res,
+		{
+			$or: [
+				{ user: req.cookies.user },
+				{ shared: true }
+			]
+		}
+	);
 });
+
+// Add a new todo
+app.post('/todos', async (req, res) => {
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	const newTodo = req.body;
+	newTodo['user'] = req.cookies.user
+	newTodo['done'] = false
+	newTodo['date'] = new Date()
+	if (newTodo['deadline'])
+		newTodo['deadline'] = new Date(newTodo['deadline']);
+	newTodo['shortTitle'] = newTodo['title'].substring(0, 20) + (newTodo['title'].length > 20? '...' : '');
+	await db.insertRespond(newTodo, 'todos', req.cookies.session, res)
+});
+
+// Update todo
+app.post('/updateTodo', async (req, res) => {
+	const updatedTodo = req.body;
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	if (!updatedTodo._id) {
+		return res.status(400).send({ success: false, message: 'Missing todo ID' });
+	}
+	if (updatedTodo['title'])
+		updatedTodo.shortTitle = updatedTodo.title.substring(0, 20) + (updatedTodo.title.length > 20? '...' : '');
+
+	try {
+		const id = new ObjectId(updatedTodo._id);
+		delete updatedTodo._id; // Remove _id from the update data
+		delete updatedTodo.user; // Remove _id from the update data
+		
+		// Check if todo exists for this session
+		const existingTodo = await db.find('todos', req.cookies.session, { _id: id });
+		if (!existingTodo || existingTodo.length === 0 || (existingTodo[0].user != req.cookies.user && !existingTodo[0].shared)) {
+			return res.status(404).send({ success: false, message: 'Todo not found' });
+		}
+		
+		// Update the todo
+		const result = await db.update('todos', req.cookies.session, { _id: id }, { $set: updatedTodo });
+		if (result) {
+			// Get the updated todo to return to client
+			const updatedDoc = await db.find('todos', req.cookies.session, { _id: id });
+			if (updatedDoc && updatedDoc.length > 0) {
+				return res.status(200).send({ success: true });
+			}
+		}
+		return res.status(500).send({ success: false, message: 'Failed to update todo' });
+	} catch (error) {
+		console.error('Error updating todo:', error);
+		return res.status(500).send({ success: false, message: 'Internal server error' });
+	}
+});
+
+// Delete todo
+app.post('/deleteTodo', async (req, res) => {
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	if (!req.body.id) {
+		return res.status(400).send({ success: false, message: 'Missing todo ID' });
+	}
+	
+	try {
+		const id = new ObjectId(req.body.id);
+		
+		// Check if todo exists for this session
+		const existingTodo = await db.find('todos', req.cookies.session, { _id: id, user: req.cookies.user });
+		if (!existingTodo || existingTodo.length === 0 || existingTodo[0].user != req.cookies.user) {
+			return res.status(404).send({ success: false, message: 'Todo not found' });
+		}
+
+		// Delete the todo
+		const result = await db.delete('todos', req.cookies.session, { _id: id, user: req.cookies.user});
+		if (result) {
+			return res.status(200).send({ success: true });
+		} else {
+			return res.status(500).send({ success: false, message: 'Failed to delete todo' });
+		}
+	} catch (error) {
+		console.error('Error deleting todo:', error);
+		return res.status(500).send({ success: false, message: 'Internal server error' });
+	}
+});
+
+////////////////////////////////////////////
+// TAGS
+
+// Get all tags for the current user
+app.get('/tags', async (req, res) => {
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	try {
+		const tagsDoc = await db.find('tags', req.cookies.session, { user: req.cookies.user });
+		if (tagsDoc && tagsDoc.length > 0) {
+			res.status(200).send(tagsDoc[0].tags || []); // Send the array of tags or empty if none
+		} else {
+			res.status(200).send([]); // No tags found for this user, return empty array
+		}
+	} catch (error) {
+		console.error('Error fetching tags:', error);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+// Add a new tag for the current user
+app.post('/tags', async (req, res) => {
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	const { tag } = req.body;
+	if (!tag || typeof tag !== 'string' || tag.trim() === '') {
+		return res.status(400).send({ error: 'Invalid or missing tag' });
+	}
+
+	const session = req.cookies.session;
+	const user = req.cookies.user;
+	const trimmedTag = tag.trim();
+
+	try {
+		// Try to update first (add tag to existing array)
+		const updateResult = await db.update('tags', session,
+			{ user: user },
+			{ $addToSet: { tags: trimmedTag } } // $addToSet prevents duplicates
+		);
+
+		if (updateResult) {
+			// If update was successful (document existed and tag was added or already present)
+			res.status(200).send({ success: true, message: 'Tag added or already exists' });
+		} else {
+			// If update failed (likely because the document didn't exist), insert a new one
+			const insertData = {
+				user: user,
+				tags: [trimmedTag]
+			};
+			// Use insertRespond which handles session automatically
+			await db.insertRespond(insertData, 'tags', session, res);
+		}
+	} catch (error) {
+		console.error('Error adding tag:', error);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+// Delete a tag for the current user
+app.post('/deleteTag', async (req, res) => {
+	if (!req.cookies.user || !req.cookies.session) {
+		return res.status(400).send({ error: 'Missing authorization' });
+	}
+	const { tag } = req.body;
+	if (!tag || typeof tag !== 'string' || tag.trim() === '') {
+		return res.status(400).send({ error: 'Invalid or missing tag' });
+	}
+
+	const session = req.cookies.session;
+	const user = req.cookies.user;
+	const trimmedTag = tag.trim();
+
+	try {
+		const result = await db.update('tags', session,
+			{ user: user },
+			{ $pull: { tags: trimmedTag } } // $pull removes the specified tag from the array
+		);
+
+		if (result) {
+			res.status(200).send({ success: true, message: 'Tag deleted successfully' });
+		} else {
+			// This could mean the tag document wasn't found, or the tag wasn't in the array
+			res.status(404).send({ success: false, message: 'Tag or user tag document not found' });
+		}
+	} catch (error) {
+		console.error('Error deleting tag:', error);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
 
 ////////////////////////////////////////////
 // ROOMS
@@ -413,8 +767,6 @@ app.get('/rooms', async (req, res) => {
 // Add a new room
 app.post('/rooms', async (req, res) => {
 	const newRoom = req.body;
-	newRoom['name'] = newRoom['room name:']
-	delete newRoom['room name:']
 	await db.insertRespond(newRoom, 'rooms', req.cookies.session, res)
 });
 
@@ -597,8 +949,6 @@ app.get('/users', async (req, res) => {
 
 app.post('/users', async (req, res) => {
 	const newUser = req.body
-	newUser['name'] = newUser['person name:']
-	delete newUser['person name:']
 	await db.insertRespond(newUser, 'users', req.cookies.session, res)
 })
 

@@ -19,7 +19,8 @@
                     
                     // Format time as HH:MM
                     const hours = date.getHours().toString().padStart(2, '0');
-                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    const normalizedMinutesValue = (Math.round(date.getMinutes() / 15) * 15) % 60; // Normalize to 0, 15, 30, 45
+                    const minutes = normalizedMinutesValue.toString().padStart(2, '0');
                     timeValue = `${hours}:${minutes}`;
                 }
             } catch (e) {
@@ -61,10 +62,6 @@
         timeValue = event.detail.time;
         updateValue();
     }
-    
-    function handleDateChange() {
-        updateValue();
-    }
 </script>
 
 <style>
@@ -100,7 +97,6 @@
         border-color: #7a4e56;
     }
     
-    /* Mobile responsive styles */
     @media (max-width: 767px) {
         .datetime-picker {
             gap: 10px;
@@ -108,7 +104,7 @@
         
         input[type="date"] {
             padding: 10px 8px;
-            font-size: 16px; /* Larger for better touch targets */
+            font-size: 16px;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
@@ -133,7 +129,7 @@
             type="date" 
             id={`${id}-date`}
             bind:value={dateValue}
-            on:change={handleDateChange}
+            on:change={updateValue}
             required={required}
         />
     </div>

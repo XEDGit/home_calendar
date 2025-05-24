@@ -4,12 +4,12 @@
 		"Example": () => {selected_value = 0;},
 		"Other example": () => {selected_value = 1;},
 	};
+	export let justify = 'center';
 </script>
 
 <style>
 	.select-mode {
 		display: flex;
-		justify-content: center;
 		width: 100%;
 		margin-bottom: 5px;
 		gap: 10px;
@@ -34,7 +34,7 @@
 	}
 </style>
 
-<div class="select-mode">
+<div class="select-mode" style='justify-content: {justify};'>
 	{#each Object.entries(hooks) as button, idx}
 		<button class={'mode-button ' + (idx == selected_value? 'active' : '')} on:click={() => {selected_value = idx; button[1]()}}>{button[0]}</button>
 	{/each}

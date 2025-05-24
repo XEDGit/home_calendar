@@ -13,6 +13,15 @@
 	let editedEvent = null;
 	let eventDateTime = '';
 	
+	// Repetition options
+	const repetitionOptions = [
+		{ value: 'none', label: 'None' },
+		{ value: 'daily', label: 'Daily' },
+		{ value: 'weekly', label: 'Weekly' },
+		{ value: 'monthly', label: 'Monthly' },
+		{ value: 'yearly', label: 'Yearly' }
+	];
+	
 	// Format functions for displaying date and time
 	function formatDate(dateString) {
 		const date = new Date(dateString);
@@ -31,7 +40,8 @@
 	
 	$: if (event) {
 		editedEvent = {
-			...event
+			...event,
+			repetition: event.repetition || 'none' // Default to 'none' if not set
 		};
 		eventDateTime = event.when;
 	}
@@ -40,17 +50,13 @@
 		onClose();
 	}
 	
-	function handleDateTimeChange(e) {
-		eventDateTime = e.detail.datetime;
-	}
-	
 	async function updateEvent() {
 		try {
 			const updatedEvent = {
 				...editedEvent,
 				when: eventDateTime
 			};
-			
+			console.log(event.when);
 			const result = await postFrontend('updateEvent', updatedEvent);
 			if (result.success) {
 				onUpdated(result.event);
@@ -63,7 +69,7 @@
 			alert('Failed to update event');
 		}
 	}
-	
+
 	async function deleteEvent() {
 		if (confirm('Are you sure you want to delete this event?')) {
 			try {
@@ -108,6 +114,7 @@
 	}
 	.modal-content {
 		background: #FFEAD0;
+		color: #96616B;
 		cursor: default;
 		padding: 2%;
 		border-radius: 10px;
@@ -118,7 +125,7 @@
 		display: flex;
         align-items: flex-start;
 		flex-direction: column;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); /* More defined shadow for better visual hierarchy */
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 		-webkit-overflow-scrolling: touch; /* Smooth scrolling for Safari */
 	}
     .modal-layout {
@@ -142,7 +149,7 @@
 		padding: 8px;
 		border: 1px solid #96616B;
 		border-radius: 4px;
-		background: #FFF8E8;
+		background: #FFEAD0;
 		color: #96616B;
 		-webkit-appearance: none; /* Fix Safari input styling */
 	}
@@ -162,14 +169,23 @@
 		border: none;
 		-webkit-appearance: none; /* Fix Safari button styling */
 	}
+
+	#repetition {
+		width: 100%;
+		padding: 8px;
+		border: 1px solid #96616B;
+		border-radius: 4px;
+		background: #FFEAD0;
+		color: #96616B;
+	}
 	
 	.save-btn {
-		background: #96616B;
+		background: green;
 		color: #FFEAD0;
 	}
 	
 	.save-btn:hover {
-		background-color: #7a4e56;
+		background-color: #0c6508;
 	}
 	
 	.delete-btn {
@@ -198,7 +214,7 @@
 	
 	.detail-value {
 		flex: 1;
-		color: #333;
+		color: #96616B;
 	}
 	
 	h1 {
@@ -301,9 +317,26 @@
 							<div class="detail-value">{event.description}</div>
 						</div>
 					{/if}
-					<div class="button-row">
-						<button class="delete-btn" on:click={deleteEvent}>Delete Event</button>
-					</div>
+					{#if event.repeatDays !== undefined}
+						<div class="detail-row">
+							<div class="detail-label">Repetition:</div>
+							<div class="detail-value">
+								{#if event.repeatDays === 0}
+									None
+								{:else if event.repeatDays === 1}
+									Daily
+								{:else if event.repeatDays === 7}
+									Weekly
+								{:else if event.repeatDays === 30}
+									Monthly
+								{:else if event.repeatDays === 365}
+									Yearly
+								{:else}
+									Every {event.repeatDays} days
+								{/if}
+							</div>
+						</div>
+					{/if}
 				</div>
 			{:else}
 				<div class="form-group">
@@ -312,11 +345,10 @@
 				</div>
 				
 				<div class="form-group">
-					<DateTimePicker 
+					<DateTimePicker
 						id="event-datetime" 
 						bind:value={eventDateTime} 
 						required={true}
-						on:change={handleDateTimeChange}
 					/>
 				</div>
 				
@@ -330,9 +362,18 @@
 					<textarea id="description" rows="3" bind:value={editedEvent.description}></textarea>
 				</div>
 				
+				<div class="form-group">
+					<label for="repetition">Repetition</label>
+					<select id="repetition" bind:value={editedEvent.repetition}>
+						{#each repetitionOptions as option}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+				</div>
+				
 				<div class="button-row">
-					<button class="delete-btn" on:click={deleteEvent}>Delete</button>
 					<button class="save-btn" on:click={updateEvent}>Save Changes</button>
+					<button class="delete-btn" on:click={deleteEvent}>Delete</button>
 				</div>
                 {/if}
             </div>

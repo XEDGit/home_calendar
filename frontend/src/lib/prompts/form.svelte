@@ -2,41 +2,29 @@
 	import ColorPicker from 'svelte-awesome-color-picker';
 
 	export let endpoint = ''
-	export let inputs = {};
-	export let hidden = {};
-	export let submitText = 'Submit'
+	export let inputs = [];
 	export let hook = null;
+	export let width = null;
+	export let submitText = 'Submit'
 	export let ask_confirm = '';
-	export let colorText = '';
-	export let required_mask = {};
-	export let placeholders = {};
 
 	let formData = {};
 	let done = false;
 
 	// Initialize formData with empty values for each input field
-	for (const key in inputs) {
-		if (key.endsWith('color') && !(key in formData)) {
-			formData['color'] = inputs[key].split('-')[0];
+	for (const data of inputs) {
+		if (data.type == 'date' && data['value'] == null) {
+			formData[data.id] = `${(new Date()).getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, 0)}-${String(new Date().getDate()).padStart(2, 0)}`
 		}
-		else if (inputs[key] == 'date') {
-			formData[key] = `${(new Date()).getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, 0)}-${String(new Date().getDate()).padStart(2, 0)}`
-		}
-		else if (!(key in formData)) {
-			formData[key] = '';
+		else {
+			formData[data.id] = data['value'] || '';
 		}
 	}
 
 	function resetForm() {
-		for (const key in inputs) {
+		for (const key in formData) {
 			if (key == 'color') continue;
 			formData[key] = '';
-		}
-	}
-
-	function change(e) {
-		if (e.target.type == 'date') {
-			console.log(e.target.value, e.target.id, formData[e.target.id])
 		}
 	}
 
@@ -53,7 +41,7 @@
 				headers: {
 				'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({...formData, ...hidden}),
+				body: JSON.stringify(formData),
 			});
 
 			if (response.ok) {
@@ -87,26 +75,71 @@
 		gap: 10px;
 	}
 	.single {
+		width: 100%;
 		display: inline-flex;
 		flex-direction: row;
 		gap: 10px;
-		justify-content: center;
+		justify-content: space-between;
 	}
+
 	input {
 		outline: none;
 		background: none;
 		border: none;
-		width: 20vw;
 		border-radius: 4px;
 		border-bottom: 1px solid #96616B;
 		caret-color: #96616B80;
 		color: #96616B;
 	}
+
+	textarea {
+		width: 100%;
+		max-width: 100%;
+		height: 6em;
+		max-height: 50%;
+		overflow-x: hidden;
+		border: solid 1px #96616B;
+		text-wrap: wrap;
+		word-wrap: break-word;
+		background-color: #FFEAD0;
+		color: #96616B;
+		border-radius: 5px;
+		resize: none;
+		outline: none;
+	}
+
+	select {
+        padding: 5px;
+        border-radius: 4px;
+        border: 1px solid #96616B;
+        background-color: #FFEAD0;
+        color: #96616B;
+    }
+
+    option {
+        background-color: #FFEAD0;
+        color: #96616B;
+    }
 	
+	input[type="checkbox"] {
+		width: 20px;
+		height: 20px;
+		margin-right: 10px;
+		background-color: #FFEAD0;
+		border: 2px solid #96616B;
+	}
+
+	input[type="checkbox"]:checked {
+		background-color: #96616B;
+	}
+
 	label {
 		flex: 1;
 		color: #96616B;
 		margin-right: 10px;
+		display: flex;
+		gap: 20px;
+		justify-content: space-between;
 	}
 
 	button {
@@ -139,35 +172,65 @@
 
 </style>
 
-<div class='main-container'>
+<div class='main-container' style="min-width: {width || ''};">
 	<form on:submit|preventDefault={handleSubmit} class={Object.keys(inputs).length > 1? 'multi' : 'single'}>
-		{#each Object.entries(inputs) as [name, type]}
-			{#if type.endsWith('color')}
-				<label for={name} style='margin-right: 0'>{colorText}
-				<ColorPicker --picker-indicator-size="25px" bind:hex={formData['color']} label="" position='responsive' />
+		{#each inputs as data}
+			{#if data.type == 'color'}
+				<label for={data.id} style='margin-right: 0'><span>{data.name}</span>
+					<ColorPicker --picker-indicator-size="25px" bind:hex={formData[data.id]} label="" position='responsive' />
+				</label>
+			{:else if data.type == 'checkbox'}
+				<label for={data.id}>{data.name}
+					<input
+						id={data.id}
+						type='checkbox'
+						bind:checked={formData[data.id]}
+						required={data.required || false}
+						placeholder={data.placeholder || ''}
+						hidden={data.hidden || false}
+						/>
+				</label>
+			{:else if data.type == 'select'}
+				{#if !data.hidden}
+				<label for={data.id}><span>{data.name}</span>
+					<select
+						name={data.name}
+						id={data.id}
+						bind:value={formData[data.id]}
+						required={data.required || false}
+					>
+						{#each data.options as option}
+							<option value={option.value || option.name}>{option.name}</option>
+						{/each}
+					</select>
+					
+				</label>
+				{/if}
+			{:else if data.type == 'textarea'}
+				<label for={data.id}><span>{data.name}</span>
+					<textarea
+						id={data.id}
+						type={data.type}
+						bind:value={formData[data.id]}
+						required={data.required || false}
+						placeholder={data.placeholder || ''}
+						hidden={data.hidden || false}
+					></textarea>
 				</label>
 			{:else}
-				<label for={name}>{name.charAt(0).toUpperCase() + name.slice(1)}
-				<input
-					id={name}
-					type={type}
-					bind:value={formData[name]}
-					on:change={change}
-					required
-				/>
+				<label for={data.id}><span>{data.name}</span>
+					<input
+						id={data.id}
+						type={data.type}
+						bind:value={formData[data.id]}
+						required={data.required || false}
+						placeholder={data.placeholder || ''}
+						hidden={data.hidden || false}
+					/>
 				</label>
 			{/if}
 		{/each}
-
-		{#each Object.entries(hidden) as [name, value], idx}
-			<input
-				id={name}
-				type='hidden'
-				value={value}
-				required={required_mask[idx]}
-			/>
-		{/each}
-
+		<slot/>
 		<div style='display: inline-flex; flex-direction: row;'>
 			<p class="fade {done ? 'show' : ''}">Done!</p>
 			<button style='white-space: nowrap;' type="submit">{submitText}</button>

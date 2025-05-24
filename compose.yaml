@@ -5,7 +5,6 @@ networks:
 volumes:
   frontend_modules:
   backend_modules:
-  database_data:
 
 services:
   frontend:
@@ -44,7 +43,7 @@ services:
     restart: always
     image: mongo:latest
     volumes:
-      - database_data:/data/db
+      - ./backup/data/db:/data/db
       - ./database/mongod.conf:/etc/mongod.conf
     networks:
       - app-network

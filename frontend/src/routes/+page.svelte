@@ -2,6 +2,7 @@
 	import Stats from '$lib/menus/stats/stats.svelte';
 	import Calendar from '$lib/menus/calendar/calendar.svelte';
 	import AddEventForm from '$lib/menus/calendar/addEvent.svelte';
+	import AddTodoForm from '$lib/menus/todo/addTodo.svelte';
 	import AddChoreForm from '$lib/menus/chores/addChore.svelte';
 	import Chores from '$lib/menus/chores/chores.svelte';
 	import PlusButton from '$lib/buttons/plusButton.svelte';
@@ -9,6 +10,7 @@
 	import PromptUser from "$lib/prompts/promptUser.svelte";
 	import Settings from '$lib/menus/settings/Settings.svelte';
 	import Home from '$lib/menus/home/home.svelte';
+	import Todo from '$lib/menus/todo/todo.svelte';
 	import { onMount, setContext } from 'svelte';
 	import { getRooms, getUsers } from '$lib/requests';
 	import { getCookie, setCookie } from '$lib/helpers/getCookie';
@@ -28,8 +30,9 @@
 		addEvent:	3,
 		addChore:	4,
 		settings:	5,
-		notes:		6,
+		todo:		6,
 		stats:		7,
+		addTodo:	8,
 	};
 
 	let pageNames = [
@@ -39,8 +42,9 @@
 		'addEvent',
 		'addChore',
 		'settings',
-		'shopping-list',
+		'todo',
 		'stats',
+		'addTodo',
 	];
 
 	let viewMode = 0;
@@ -85,13 +89,13 @@
 		if (!user && users.length == 1) {
 			// Set single cookie
 			user = users[0]._id;
+			setCookie('user', users[0]._id, expires)
 		}
 		// Renew cookies
 		const cookies = document.cookie.split('; ');
 		for (let i = 0; i < cookies.length; i++) {
 			const [cookieName, cookieValue] = cookies[i].split('=');
-			document.cookie = cookieName + "=" + cookieValue + ";" + expires + ";path=/";
-			return;
+			setCookie(cookieName, cookieValue, expires);
 		}
 	}
 
@@ -220,13 +224,14 @@
 		"home": pages.home,
 		"calendar": pages.calendar,
 		"chores": pages.chores,
+		"todo": pages.todo,
 		"stats": pages.stats,
-		"notes": pages.notes,
 		"settings": pages.settings,
 	}}
-	disableMask = {[false, false, false, false, true, false]}
+	disableMask = {[false, false, false, false, false, false]}
 />
 
+<title>Home Calendar</title>
 {#if !user && users && users.length > 1}
 	<ContentLayout title={formatPageName(pageNames[viewMode])}>
 		<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 100); updateUI()}} />
@@ -251,12 +256,15 @@
 			<AddChoreForm />
 		{:else if viewMode == pages.settings}
 			<Settings user_id={user} />
-		{:else if viewMode == pages.notes}
-			<Shoppinglist />
+		{:else if viewMode == pages.todo}
+			<Todo />
+			<PlusButton func={() => updateViewMode(pages.addTodo)} />
+		{:else if viewMode == pages.addTodo}
+			<AddTodoForm />
 		{:else if viewMode == pages.stats}
 			<Stats />
 		{:else}
-			<p>Unknown view mode: {viewMode}</p>
+			<p>Error: Unknown view mode: {viewMode}</p>
 		{/if}
 	</ContentLayout>
 {/if}

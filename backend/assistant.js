@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import db from './db.js';
 import { toObjectId } from './helpers.js';
-import { TOOLS, TZ, createExecutor, runAction, actionDeps, dateToLocal, localToDate, labelOf } from './assistantTools.js';
+import { TOOLS, TZ, createExecutor, runAction, dateToLocal, localToDate, labelOf } from './assistantTools.js';
+import { createQueue, MAX_ACTIVE_PER_MEMBER } from './assistantQueue.js';
+import { mongoJobStore, ensureAssistantIndexes } from './assistantJobs.js';
+import { conversationStore, clientMessage, clientPlan } from './assistantConversations.js';
+import { createChatJobHandler } from './assistantChatJob.js';
+import { publish, subscribe, listenerTotal } from './assistantEvents.js';
 
 // Home assistant chat. A local model (llama.cpp, OpenAI-compatible API) plans
 // with the tools in assistantTools.js. Members who keep confirmations on get
@@ -20,20 +25,9 @@ const HISTORY_CHARS = Math.floor(LLM_CTX * 0.6) * 3;
 const DROPPED = JSON.stringify({ note: 'Older result removed to save space; call the tool again if you still need it.' });
 const MAX_HISTORY = 20;
 const MAX_MESSAGE = 2000;
-const PLAN_TTL_MS = 10 * 60 * 1000;
 // Thinking roughly triples latency (~5 s per request) but gets far more
 // requests right in llm/bench; ASSISTANT_THINK=0 turns it off.
 const THINK = process.env.ASSISTANT_THINK !== '0';
-
-// ── Pending plans ───────────────────────────────────────────────────────────
-// planId → { session, user, actions, expires }. In memory: a restart simply
-// expires open reviews.
-const plans = new Map();
-
-function prunePlans() {
-	const now = Date.now();
-	for (const [id, p] of plans) if (p.expires < now) plans.delete(id);
-}
 
 // ── Per-session rate limit ──────────────────────────────────────────────────
 const RATE_WINDOW_MS = 60 * 1000;
@@ -48,23 +42,29 @@ function rateLimited(session) {
 	return recent.length > RATE_MAX;
 }
 
-// One model request at a time: the GPU only fits one context.
-let queue = Promise.resolve();
-export function exclusive(fn) {
-	const run = queue.then(fn, fn);
-	queue = run.catch(() => {});
-	return run;
-}
-
 function cookieHeader(req) {
 	return `session=${req.cookies.session}; user=${req.cookies.user}`;
 }
 
-async function currentMember(req) {
-	const id = toObjectId(req.cookies.user);
-	if (!id) return null;
-	const found = await db.find('users', req.cookies.session, { _id: id });
-	return found && found[0] ? found[0] : null;
+async function loadMember(session, userId) {
+	const id = toObjectId(userId);
+	return id ? db.db.collection('users').findOne({ _id: id, session }) : null;
+}
+
+// The worker runs long after the asker's request, when their own cookie may
+// have expired: it gets a short-lived token of its own, like automations.
+function mintCookie(session, user) {
+	return `session=${jwt.sign({ session }, process.env.SECRET, { expiresIn: '15m' })}; user=${user}`;
+}
+
+function owner(req, res) {
+	const session = db.getSession(req.cookies.session);
+	const user = req.cookies.user;
+	if (!session || typeof user !== 'string' || !user) {
+		res.status(401).send({ error: 'Unauthorized' });
+		return null;
+	}
+	return { session, user };
 }
 
 // Small models are poor at date arithmetic: hand them a ready calendar,
@@ -164,15 +164,6 @@ function userTurn(message) {
 	return `[${time}${lang ? `, reply in ${lang}` : ''}] ${message}`;
 }
 
-// Client-held history: keep only plain user/assistant text turns
-function cleanHistory(history) {
-	if (!Array.isArray(history)) return [];
-	return history
-		.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-		.slice(-MAX_HISTORY)
-		.map(m => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE) }));
-}
-
 // Streams one completion; forwards text deltas, returns the full message.
 async function complete(messages, tools, onText, signal) {
 	const res = await fetch(`${LLM_URL}/v1/chat/completions`, {
@@ -261,97 +252,232 @@ export async function runAgent({ messages, tools = TOOLS, exec, onText = () => {
 	return { reply, finished: false };
 }
 
+// ── Queue wiring ────────────────────────────────────────────────────────────
+let queue = null;
+let conversations = null;
+
+function publishPositions(list) {
+	for (const { job, ahead } of list) {
+		if (job.kind !== 'chat') continue;
+		publish(job.session, job.user, { type: 'queue', conversationId: String(job.conversationId), messageId: String(job.messageId), ahead });
+	}
+}
+
+// Call once after db.connectDB(): indexes, the queue, the chat handler and
+// restart recovery. The caller starts the worker once automations are wired.
+export async function initAssistant(database) {
+	await ensureAssistantIndexes(database);
+	conversations = conversationStore(database);
+	queue = createQueue({ store: mongoJobStore(database.collection('assistant_jobs')), onPositions: publishPositions });
+	queue.on('chat', createChatJobHandler({
+		conversations, publish, loadMember, mintCookie, createExecutor, householdContext,
+		systemPrompt, userTurn, runAgent, maxHistory: MAX_HISTORY, maxMessage: MAX_MESSAGE,
+	}));
+	const { requeued, interrupted } = await queue.recover();
+	await conversations.markInterrupted(interrupted);
+	if (requeued || interrupted.length) console.log(`Assistant recovery: ${requeued} automation run(s) requeued, ${interrupted.length} chat question(s) interrupted`);
+	return queue;
+}
+
+// ── Routes ──────────────────────────────────────────────────────────────────
+
+const objectIdOr404 = (value, res) => {
+	const id = toObjectId(value);
+	if (!id) res.status(404).send({ error: 'Not found' });
+	return id;
+};
+
+// Stores the question and queues it. The answer arrives on /assistant/events
+// and stays in the conversation.
 router.post('/assistant', async (req, res) => {
-	const { session } = req.cookies;
+	const who = owner(req, res);
+	if (!who) return;
 	const message = req.body?.message;
-	if (!session || !req.cookies.user) return res.status(400).send({ error: 'Missing authorization' });
 	if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE) {
 		return res.status(400).send({ error: 'Invalid message' });
 	}
-	if (rateLimited(session)) return res.status(429).send({ error: 'Too many requests, slow down' });
+	if (rateLimited(who.session)) return res.status(429).send({ error: 'Too many requests, slow down' });
+	try {
+		if (!(await loadMember(who.session, who.user))) return res.status(400).send({ error: 'Pick a member first' });
+		if (await queue.activeCount({ ...who, kind: 'chat' }) >= MAX_ACTIVE_PER_MEMBER) {
+			return res.status(429).send({ error: 'Wait for your earlier questions first' });
+		}
+		let conversationId = null;
+		if (req.body.conversationId != null) {
+			conversationId = objectIdOr404(req.body.conversationId, res);
+			if (!conversationId) return;
+		}
+		const turn = await conversations.startTurn({ ...who, conversationId, text: message.trim(), now: new Date() });
+		if (!turn) return res.status(404).send({ error: 'Not found' });
+		const job = await queue.enqueue({ kind: 'chat', ...who, conversationId: turn.conversation._id, messageId: turn.reply._id });
+		res.status(201).send({
+			conversationId: String(turn.conversation._id),
+			userMessageId: String(turn.userMessage._id),
+			messageId: String(turn.reply._id),
+			ahead: await queue.ahead(job._id),
+		});
+	} catch (err) {
+		console.error('Assistant enqueue failed:', err);
+		if (!res.headersSent) res.status(503).send({ error: 'The assistant is unavailable right now' });
+	}
+});
 
-	const member = await currentMember(req);
-	if (!member) return res.status(400).send({ error: 'Pick a member first' });
-	const confirm = member.assistantConfirm !== false;
+router.get('/assistant/conversations', async (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
+	try {
+		res.send(await conversations.list(who));
+	} catch (err) {
+		console.error('Assistant list failed:', err);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
 
+router.get('/assistant/conversations/:id', async (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
+	const id = objectIdOr404(req.params.id, res);
+	if (!id) return;
+	try {
+		const found = await conversations.get(who, id);
+		if (!found) return res.status(404).send({ error: 'Not found' });
+		if (req.query.read !== '0' && found.conversation.unread) {
+			await conversations.markRead(who, id);
+			publish(who.session, who.user, { type: 'unread', count: await conversations.unreadCount(who) });
+		}
+		res.send({
+			conversation: { _id: String(found.conversation._id), title: found.conversation.title, updatedAt: found.conversation.updatedAt },
+			messages: found.messages.map(clientMessage),
+		});
+	} catch (err) {
+		console.error('Assistant conversation failed:', err);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+router.post('/assistant/conversations/del', async (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
+	const id = objectIdOr404(req.body?.id, res);
+	if (!id) return;
+	try {
+		if (!(await conversations.get(who, id))) return res.status(404).send({ error: 'Not found' });
+		const jobs = await queue.activeByConversation(id);
+		if (jobs.some(j => j.status === 'running')) return res.status(409).send({ error: 'Wait until the answer is finished' });
+		for (const j of jobs) await queue.cancel(j._id);
+		const result = await conversations.remove(who, id);
+		if (result === 'busy') return res.status(409).send({ error: 'Wait until the answer is finished' });
+		if (result === 'missing') return res.status(404).send({ error: 'Not found' });
+		publish(who.session, who.user, { type: 'unread', count: await conversations.unreadCount(who) });
+		res.send({ deleted: true });
+	} catch (err) {
+		console.error('Assistant delete failed:', err);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+// Cancels a waiting question or stops one being answered
+router.post('/assistant/cancel', async (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
+	const id = objectIdOr404(req.body?.messageId, res);
+	if (!id) return;
+	try {
+		const msg = await conversations.getMessage(who, id);
+		if (!msg) return res.status(404).send({ error: 'Not found' });
+		const job = await queue.activeByMessage(id);
+		if (!job) return res.status(409).send({ error: 'Already finished', status: msg.status });
+		const result = await queue.cancel(job._id);
+		if (result === 'cancelled') {
+			// It never ran, so no handler will record it
+			await conversations.finishReply(msg.conversationId, id, { status: 'cancelled' }, new Date(), { unread: false });
+			publish(who.session, who.user, { type: 'end', conversationId: String(msg.conversationId), messageId: String(id), status: 'cancelled' });
+		}
+		res.send({ status: result });
+	} catch (err) {
+		console.error('Assistant cancel failed:', err);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+// Runs the reviewed plan: selected actions in order, without the model.
+// Stops at the first failure and records what ran.
+router.post('/assistant/confirm', async (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
+	const id = objectIdOr404(req.body?.messageId, res);
+	if (!id) return;
+	try {
+		const msg = await conversations.claimPlan(who, id);
+		if (!msg) {
+			const current = await conversations.getMessage(who, id);
+			if (!current?.plan) return res.status(404).send({ error: 'Not found' });
+			return res.status(409).send({ error: 'This list was already handled', state: current.plan.state });
+		}
+		const selected = new Set(Array.isArray(req.body.refs) ? req.body.refs : []);
+		const ids = {};
+		const results = [];
+		let failed = false;
+		for (const action of msg.plan.actions) {
+			if (!selected.has(action.ref)) { results.push({ ref: action.ref, status: 'skipped' }); continue; }
+			if (failed) { results.push({ ref: action.ref, status: 'not_run' }); continue; }
+			try {
+				const created = await runAction(action, cookieHeader(req), ids);
+				if (created) ids[action.ref] = created;
+				results.push({ ref: action.ref, status: 'done' });
+			} catch (err) {
+				failed = true;
+				results.push({ ref: action.ref, status: 'failed', error: err.message });
+			}
+		}
+		const settled = await conversations.settlePlan(id, results);
+		publish(who.session, who.user, { type: 'plan', conversationId: String(msg.conversationId), messageId: String(id), plan: clientPlan(settled.plan) });
+		res.send({ results });
+	} catch (err) {
+		console.error('Assistant confirm failed:', err);
+		if (!res.headersSent) res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+router.post('/assistant/plan/cancel', async (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
+	const id = objectIdOr404(req.body?.messageId, res);
+	if (!id) return;
+	try {
+		const msg = await conversations.rejectPlan(who, id);
+		if (!msg) {
+			const current = await conversations.getMessage(who, id);
+			if (!current?.plan) return res.status(404).send({ error: 'Not found' });
+			return res.status(409).send({ error: 'This list was already handled', state: current.plan.state });
+		}
+		publish(who.session, who.user, { type: 'plan', conversationId: String(msg.conversationId), messageId: String(id), plan: clientPlan(msg.plan) });
+		res.send({ state: 'rejected' });
+	} catch (err) {
+		console.error('Assistant plan cancel failed:', err);
+		res.status(500).send({ error: 'Internal server error' });
+	}
+});
+
+// The member's live stream: queue positions, streaming answers, unread count
+router.get('/assistant/events', (req, res) => {
+	const who = owner(req, res);
+	if (!who) return;
 	res.writeHead(200, {
 		'Content-Type': 'text/event-stream',
 		'Cache-Control': 'no-cache, no-transform',
 		Connection: 'keep-alive',
 	});
-	// Headers out now, then an SSE comment every 15 s: thinking, tool steps and
-	// the queue can stay silent past nginx's 60 s read timeout (→ 504).
 	res.flushHeaders();
+	res.write(': connected\n\n');
+	const off = subscribe(who.session, who.user, (event) => res.write(`data: ${JSON.stringify(event)}\n\n`));
 	const heartbeat = setInterval(() => res.write(': ping\n\n'), 15000);
-	const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
-	let closed = false;
-	req.on('close', () => { closed = true; clearInterval(heartbeat); });
-
-	const exec = createExecutor({ cookie: cookieHeader(req), userId: String(member._id), stage: confirm });
-
-	try {
-		await exclusive(async () => {
-			const messages = [
-				{ role: 'system', content: systemPrompt(member, await householdContext(exec)) },
-				...cleanHistory(req.body.history),
-				{ role: 'user', content: userTurn(message.trim()) },
-			];
-			const { reply } = await runAgent({
-				messages, exec,
-				onText: (text) => send({ type: 'text', text }),
-				onTool: (name, result) => send({ type: 'tool', name, summary: result.summary, error: result.error, staged: !!result.staged, done: !!result.done }),
-				stop: () => closed,
-			});
-
-			if (exec.staged.length) {
-				prunePlans();
-				const planId = crypto.randomBytes(16).toString('hex');
-				plans.set(planId, { session, user: req.cookies.user, actions: exec.staged, expires: Date.now() + PLAN_TTL_MS });
-				send({ type: 'plan', planId, actions: exec.staged.map(a => ({ ref: a.ref, tool: a.tool, summary: a.summary, deps: actionDeps(a) })) });
-			}
-			if (exec.done.length) {
-				send({ type: 'done_actions', actions: exec.done.map(a => ({ ref: a.ref, tool: a.tool, summary: a.summary })) });
-			}
-			send({ type: 'end', reply });
-		});
-	} catch (err) {
-		console.error('Assistant error:', err);
-		send({ type: 'error', error: 'The assistant is unavailable right now' });
-	}
-	clearInterval(heartbeat);
-	res.end();
-});
-
-// Runs the reviewed plan: selected actions in order, without the model.
-// Stops at the first failure and reports what ran.
-router.post('/assistant/confirm', async (req, res) => {
-	const { session, user } = req.cookies;
-	const { planId, refs } = req.body || {};
-	if (!session || !user) return res.status(400).send({ error: 'Missing authorization' });
-	prunePlans();
-	const plan = typeof planId === 'string' ? plans.get(planId) : null;
-	if (!plan || plan.session !== session || plan.user !== user) {
-		return res.status(404).send({ error: 'This list expired, ask again' });
-	}
-	plans.delete(planId);
-
-	const selected = new Set(Array.isArray(refs) ? refs : []);
-	const ids = {};
-	const results = [];
-	let failed = false;
-	for (const action of plan.actions) {
-		if (!selected.has(action.ref)) { results.push({ ref: action.ref, status: 'skipped' }); continue; }
-		if (failed) { results.push({ ref: action.ref, status: 'not_run' }); continue; }
-		try {
-			const id = await runAction(action, cookieHeader(req), ids);
-			if (id) ids[action.ref] = id;
-			results.push({ ref: action.ref, status: 'done' });
-		} catch (err) {
-			failed = true;
-			results.push({ ref: action.ref, status: 'failed', error: err.message });
-		}
-	}
-	res.send({ results });
+	console.log(`Assistant stream opened (${listenerTotal()} open)`);
+	req.on('close', () => {
+		clearInterval(heartbeat);
+		off();
+		console.log(`Assistant stream closed (${listenerTotal()} open)`);
+	});
 });
 
 export default router;

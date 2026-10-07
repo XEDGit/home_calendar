@@ -60,25 +60,57 @@ export async function postBackend(request, endpoint) {
     }
 }
 
-// Common frontend
-export async function getFrontend(endpoint) {
-	const res = await fetch('api/' + endpoint, {
-		method: 'GET',
-	})
-	const obj = await res.json()
-	return obj
+// In-flight tracking: page transitions wait briefly for a new view's first
+// fetches, so the view arrives with its data instead of popping in later.
+let inFlight = 0;
+const idleWaiters = new Set();
+
+function track(promise) {
+	inFlight++;
+	return promise.finally(() => {
+		inFlight--;
+		if (inFlight !== 0) return;
+		// Give chained requests (await a; await b) a tick to start before calling it idle
+		setTimeout(() => {
+			if (inFlight !== 0) return;
+			for (const resolve of idleWaiters) resolve();
+			idleWaiters.clear();
+		}, 0);
+	});
 }
 
-export async function postFrontend(endpoint, data) {
-	let res = await fetch('api/' + endpoint, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify(data),
-	})
-	res = await res.json()
-	return res
+/** Resolves once no client requests are pending, or after `maxWait` ms. */
+export function networkIdle(maxWait = 300) {
+	return new Promise((resolve) => {
+		const timer = setTimeout(done, maxWait);
+		function done() {
+			clearTimeout(timer);
+			idleWaiters.delete(done);
+			resolve();
+		}
+		setTimeout(() => (inFlight === 0 ? done() : idleWaiters.add(done)), 0);
+	});
+}
+
+// Common frontend
+export function getFrontend(endpoint) {
+	return track(
+		fetch('api/' + endpoint, {
+			method: 'GET',
+		}).then((res) => res.json())
+	);
+}
+
+export function postFrontend(endpoint, data) {
+	return track(
+		fetch('api/' + endpoint, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(data),
+		}).then((res) => res.json())
+	);
 }
 
 // Stats
@@ -100,6 +132,11 @@ export async function getUsers() {
 	return getFrontend('getUsers')
 }
 
+// Save the current member's colour theme (a palette id from $lib/theme.js)
+export async function updateTheme(theme) {
+	return postFrontend('updateTheme', { theme })
+}
+
 // Chores
 export async function getChores() {
 	return getFrontend('getChores')
@@ -107,6 +144,10 @@ export async function getChores() {
 
 export async function signChore(data) {
 	return postFrontend('signChore', data)
+}
+
+export async function skipChore(data) {
+	return postFrontend('skipChore', data)
 }
 
 export async function delChore(data) {
@@ -154,6 +195,27 @@ export async function updateEvent(data) {
 
 export async function deleteEvent(data) {
 	return postFrontend('deleteEvent', data)
+}
+
+// Automations
+export async function getAutomations() {
+	return getFrontend('getAutomations')
+}
+
+export async function addAutomation(data) {
+	return postFrontend('addAutomation', data)
+}
+
+export async function updateAutomation(data) {
+	return postFrontend('updateAutomation', data)
+}
+
+export async function deleteAutomation(id) {
+	return postFrontend('delAutomation', { id })
+}
+
+export async function runAutomation(id) {
+	return postFrontend('runAutomation', { id })
 }
 
 // Login

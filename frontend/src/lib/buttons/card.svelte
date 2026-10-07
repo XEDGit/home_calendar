@@ -1,5 +1,8 @@
 <script>
     import Tag from "./tag.svelte";
+    import GroupIcon from "$lib/icons/GroupIcon.svelte";
+
+    const PRIORITY_NAMES = ['none', 'low', 'medium', 'high'];
     export let
         func = (v) => {console.error('Card with no functionality')},
         updateDone = () => {console.error('Checkbox with no functionality')},
@@ -27,73 +30,86 @@
 
 <style>
     .card-container {
+        position: relative;
         margin: 0;
-        max-width: 48%;
-        min-width: 300px;
+        width: 100%;
         display: flex;
         flex-direction: column;
         gap: 5%;
     }
 
-    @media (max-width: 670px) {
-        .card-container {
-            max-width: 100%;
-            min-width: 100%;
-        }
-    }
 
     .card {
-        border-radius: 10px;
-        border: solid 2px #96616B;
-        background-color: #FFEAD0;
-        color: #96616B;
+        border-radius: var(--radius-lg);
+        border: var(--bw) solid var(--primary);
+        background-color: var(--paper);
+        color: var(--primary);
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: flex-start;
-        padding: 10px;
+        padding: var(--space-sm);
+        padding-right: calc(44px + var(--space-md));
+        font: inherit;
+        text-align: left;
         cursor: pointer;
+        transition: transform var(--dur-fast) var(--ease-out);
     }
 
-    .card:hover {
-        transform: scale(1.02);
+    @media (hover: hover) {
+        .card:hover {
+            transform: scale(1.02);
+        }
     }
 
     .text-display {
         text-align: left;
-        font-size: 1.2em;
-        background-color: #96616B;
+        font-size: var(--text-base);
+        background-color: var(--primary);
         text-wrap: wrap;
         overflow-wrap: break-word;
         word-break: break-word;
-        color: #FFEAD0;
-        border-radius: 5px;
+        color: var(--paper);
+        border-radius: var(--radius-sm);
         padding: 1em;
-        margin-bottom: 10px;
+        margin-bottom: var(--space-sm);
         margin-top: -10px;
     }
 
+    /* Sibling of the card button (not nested inside it) so it stays its own control */
+    .done-toggle {
+        position: absolute;
+        top: var(--space-sm);
+        right: var(--space-sm);
+    }
+
     input[type="checkbox"] {
-        width: 2em;
-        height: 2em;
-        background-color: #FFEAD0;
-        border: 3px solid #96616B;
-        border-radius: 5px;
+        width: 44px;
+        height: 44px;
+        background-color: var(--paper);
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-sm);
         cursor: pointer;
         display: flex;
         justify-content: center;
         align-items: center;
     }
 
-    input[type="checkbox"]:hover, input[type="checkbox"]:checked {
-        background-color: #96616B;
+    input[type="checkbox"]:checked {
+        background-color: var(--primary);
+    }
+
+    @media (hover: hover) {
+        input[type="checkbox"]:hover {
+            background-color: var(--primary);
+        }
     }
 
     input[type="checkbox"]:checked::before {
         content: '✓';
-        color: #FFEAD0;
-        font-size: 1.4em;
-        font-weight: bold;
+        color: var(--paper);
+        font-size: var(--text-lg);
+        font-weight: var(--weight-bold);
     }
 
     .horizontal-organizer {
@@ -118,23 +134,33 @@
     }
 
     .priority {
-        width: 2.2em;
-        height: 2.2em;
-        border-radius: 5px;
-        background: gray;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-bold);
+        text-transform: capitalize;
+    }
+
+    .priority-dot {
+        width: 1.4em;
+        height: 1.4em;
+        border-radius: var(--radius-sm);
+        background: var(--idle);
     }
 
     h2 {
         margin-top: 0;
-        color: #96616B;
-        font-weight: bold;
+        font-size: var(--text-md);
+        color: var(--primary);
+        font-weight: var(--weight-bold);
         text-align: left;
         word-break: break-word;
     }
 
     .inverted {
-        background-color: #FFEAD0;
-        color: #96616B;
+        background-color: var(--paper);
+        color: var(--primary);
     }
 </style>
 
@@ -144,9 +170,6 @@
             <div style="max-width: 90%;">
                 <h2>{shortTitle}</h2>
             </div>
-            <form>
-                <input type="checkbox" on:click={e => {e.stopPropagation(); updateDone();}} bind:checked={done} on:change={() => {"TODO: update the backend"}} />
-            </form>
         </div>
         {#if content}
         <div class="text-display">
@@ -156,7 +179,7 @@
         <div class="horizontal-organizer">
             <div class="tags">
                 {#if shared}
-                    <i style='opacity: 0.8;' class="material-icons">group</i>
+                    <GroupIcon label="Shared" />
                 {/if}
                 {#if tag}
                     <Tag>{tag}</Tag>
@@ -164,8 +187,18 @@
             </div>
             <div class="footer-right">
                 <h4>{formatDate(deadline)}</h4>
-                <div class='priority' style="background-color: {priority == 3? 'red' : priority == 2? 'orange' : priority == 1? 'green' : 'gray'}"></div>
+                <div class="priority">
+                    <span class="priority-dot" style="background-color: {priority == 3? 'var(--urgent)' : priority == 2? 'var(--warn)' : priority == 1? 'var(--ok)' : 'var(--idle)'}"></span>
+                    {#if priority > 0}{PRIORITY_NAMES[priority]}{/if}
+                </div>
             </div>
         </div>
     </button>
+    <input
+        class="done-toggle"
+        type="checkbox"
+        aria-label="Mark {shortTitle || title} done"
+        bind:checked={done}
+        on:change={() => updateDone()}
+    />
 </div>

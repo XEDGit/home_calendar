@@ -10,34 +10,40 @@
 
 <style>
 	button {
-		padding: 5px 10px;
-		border-radius: 10px;
-		border: solid 2px #96616B;
+		padding: var(--chip-pad-y) var(--chip-pad-x);
+		border-radius: var(--radius-pill);
+		border: var(--bw) solid var(--primary);
+		font-weight: var(--weight-bold);
+		font-family: inherit;
+		cursor: pointer;
 		touch-action: manipulation;
+		transition: var(--swap);
 	}
 
-	button:hover {
-		text-decoration: underline;
+	@media (hover: hover) {
+		button:hover {
+			text-decoration: underline;
+		}
 	}
 
 	.inverted {
-		background-color: #FFEAD0;
-		color: #96616B;
+		background-color: var(--paper);
+		color: var(--primary);
 	}
 
 	.standard {
-		background-color: #96616B;
-		color: #FFEAD0;
+		background-color: var(--primary);
+		color: var(--paper);
 	}
 
 	.active-inverted {
-		background-color: #96616B;
-		color: #FFEAD0;
+		background-color: var(--primary);
+		color: var(--paper);
 	}
 
 	.active {
-		background-color: #FFEAD0;
-		color: #96616B;
+		background-color: var(--paper);
+		color: var(--primary);
 	}
 </style>
 

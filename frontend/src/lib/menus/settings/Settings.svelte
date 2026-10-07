@@ -2,9 +2,11 @@
 	import Form from "$lib/prompts/form.svelte";
 	import Section from "$lib/header/Section.svelte";
 	import { onMount } from "svelte";
-	import { getUsers, getRooms, getTags, postFrontend } from "$lib/requests.js";
+	import { getUsers, getRooms, getTags, postFrontend, updateTheme } from "$lib/requests.js";
     import ColorPicker from "svelte-awesome-color-picker";
     import Collapsible from "$lib/containers/collapsible.svelte";
+	import { reveal, vanish, move, expand, viewTransition } from "$lib/motion";
+	import { THEMES, DEFAULT_THEME, themeById, applyTheme } from "$lib/theme";
 	import { setCookie } from "$lib/helpers/getCookie";
 
 	export let user_id = '';
@@ -15,7 +17,64 @@
 
 	async function updateUsers() {
 		users = await getUsers()
-		own_color = users.find((u) => u._id == user_id)?.color
+		const me = users.find((u) => u._id == user_id)
+		own_color = me?.color
+		currentTheme = savedTheme = themeById(me?.theme).id
+		assistantConfirm = me?.assistantConfirm !== false
+	}
+
+	// ── Assistant ──────────────────────────────────────────────────────────
+	// Per member: review the assistant's changes before they run (default)
+	// or let it act on its own. A failed save flips the switch back.
+	let assistantConfirm = true
+	let assistantError = ''
+
+	async function setAssistantConfirm(value) {
+		assistantConfirm = value
+		assistantError = ''
+		try {
+			const res = await postFrontend('assistantSetting', { confirm: value })
+			if (res?.error) throw new Error(res.error)
+		} catch {
+			assistantConfirm = !value
+			assistantError = "Couldn't save this setting. Try again in a moment."
+		}
+	}
+
+	// ── Theme ──────────────────────────────────────────────────────────────
+	// Each member picks their own palette. It applies at once (crossfade) and
+	// saves shortly after, so arrowing through the options doesn't flood the
+	// server. A failed save puts the last saved theme back.
+	$: me = users.find((u) => u._id == user_id)
+	let currentTheme = DEFAULT_THEME
+	let savedTheme = DEFAULT_THEME
+	let themeError = ''
+	let saveTimer
+
+	function showTheme(id) {
+		viewTransition(() => applyTheme(id), { scope: 'theme', dir: 'fade' })
+	}
+
+	function chooseTheme(id) {
+		if (id === currentTheme) return
+		currentTheme = id
+		themeError = ''
+		showTheme(id)
+		clearTimeout(saveTimer)
+		saveTimer = setTimeout(() => saveTheme(id), 400)
+	}
+
+	async function saveTheme(id) {
+		try {
+			const res = await updateTheme(id)
+			if (res?.error) throw new Error(res.error)
+			savedTheme = id
+		} catch {
+			if (currentTheme !== id) return
+			currentTheme = savedTheme
+			showTheme(savedTheme)
+			themeError = "Couldn't save your theme, so the previous one is back. Try again in a moment."
+		}
 	}
 
 	async function updateRooms() {
@@ -26,11 +85,29 @@
 		tags = await getTags()
 	}
 
+	// Render once everything has loaded, so the "add your name" prompts
+	// never flash before the household's data arrives
+	let ready = false;
+
+	// Called once the first data is in, so the page knows this tab can
+	// slide in whole
+	export let onReady = () => {};
+
 	onMount(async () => {
-		updateRooms()
-		updateUsers()
-		updateTags()
+		await Promise.all([updateRooms(), updateUsers(), updateTags()])
+		ready = true
+		onReady()
 	})
+
+	// Kept alive in the background between visits: coming back to this tab
+	// refreshes it in place
+	export let active = true;
+	let wasActive = active;
+	$: onActiveChange(active);
+	function onActiveChange(isActive) {
+		if (isActive && !wasActive && ready) Promise.all([updateRooms(), updateUsers(), updateTags()]);
+		wasActive = isActive;
+	}
 </script>
 
 <style>
@@ -38,47 +115,287 @@
 		display: flex;
 		flex-direction: row;
 		justify-content: space-between;
+		align-items: center;
+		gap: var(--space-sm);
+		box-sizing: border-box;
 		margin: 15px 15px;
 		margin-bottom: 15px;
-		background-color: #96616B;
+		background-color: var(--primary);
 		width: 50%;
 		min-width: 80vw;
-		border-radius: 7px;
+		max-width: calc(100% - 30px);
+		border-radius: var(--radius-md);
 		padding: 2px 10px;
 	}
 
+	/* The row's Delete button sits on the row's own colour: give it an edge
+	 * so it reads as a button without hover (phones) */
+	.container :global(.main-container button) {
+		border-color: var(--paper-a60);
+	}
+
 	p {
-		color: #FFEAD0;
+		color: var(--paper);
 		align-content: center;
 		margin: 0;
 	}
 
 	.tooltip {
-		color: gray;
+		color: var(--primary);
 		font-style: italic;
 		margin-bottom: 20px;
 	}
 
 	.userAction {
-		border-radius: 5px;
-		margin-left: 15px;
-		padding: 5px;
-		border: none;
-		color: #FFEAD0;
-		border: 3px solid #96616B;
+		border-radius: var(--radius-md);
+		margin-left: var(--space-md);
+		padding: var(--control-pad-y) var(--control-pad-x);
+		min-height: var(--control-min-h);
+		color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: var(--swap);
 	}
 
-	.userAction:hover {
-		background-color: #FFEAD0;
-		color: #96616B;
+	@media (hover: hover) {
+		.userAction:hover {
+			background-color: var(--paper);
+			color: var(--primary);
+		}
 	}
 
 	.spacer {
 		height: 20px;
 	}
+
+	/* ── Theme picker ─────────────────────────────────────────────────────── */
+	.theme-picker {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+		gap: var(--space-md);
+		/* Three across on wide screens (six palettes, two even rows), two on phones */
+		max-width: 560px;
+		margin: 0 0 var(--space-sm);
+		padding: 0;
+		border: none;
+	}
+
+	.theme-option {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		color: var(--primary);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+	}
+
+	/* The native radio stays for keyboard and screen readers, but is hidden */
+	.theme-option input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: 0;
+		opacity: 0;
+	}
+
+	/* A miniature of the app, drawn in that palette's own two colours */
+	.swatch {
+		display: flex;
+		flex-direction: column;
+		height: 84px;
+		overflow: hidden;
+		border: var(--bw) solid var(--swatch-primary);
+		border-radius: var(--radius-lg);
+		background: var(--swatch-paper);
+		transition: var(--swap);
+	}
+
+	.swatch-band {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		height: 24px;
+		padding: 0 10px;
+		background: var(--swatch-primary);
+	}
+
+	.swatch-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: var(--radius-circle);
+		background: var(--swatch-paper);
+	}
+
+	.swatch-bar,
+	.swatch-line {
+		height: 6px;
+		border-radius: var(--radius-pill);
+	}
+
+	.swatch-bar {
+		width: 40%;
+		background: var(--swatch-paper);
+	}
+
+	.swatch-page {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 10px;
+	}
+
+	.swatch-line {
+		width: 70%;
+		background: var(--swatch-primary);
+	}
+
+	.swatch-line.short {
+		width: 45%;
+	}
+
+	.swatch-pill {
+		width: 34px;
+		height: 12px;
+		margin-top: 2px;
+		border-radius: var(--radius-sm);
+		background: var(--swatch-primary);
+	}
+
+	.theme-option:active .swatch {
+		transform: scale(0.97);
+	}
+
+	/* Selected: a double ring plus a tick, never colour alone */
+	.theme-option.selected .swatch {
+		box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--primary);
+	}
+
+	.theme-option.selected .theme-name::before {
+		content: '✓ ';
+	}
+
+	.theme-option:has(input:focus-visible) .swatch {
+		outline: var(--bw) solid var(--primary-deep);
+		outline-offset: 7px;
+	}
+
+	.assistant-toggle {
+		display: flex;
+		gap: var(--space-sm);
+		align-items: flex-start;
+		max-width: var(--measure);
+		margin: 0 0 var(--space-sm);
+		cursor: pointer;
+	}
+
+	.assistant-toggle input {
+		width: 20px;
+		height: 20px;
+		margin-top: 2px;
+		flex-shrink: 0;
+		accent-color: var(--primary);
+	}
+
+	.toggle-title {
+		display: block;
+		font-weight: var(--weight-bold);
+		color: var(--primary);
+	}
+
+	.toggle-hint {
+		display: block;
+		font-size: var(--text-sm);
+		line-height: var(--leading-snug);
+		color: var(--ink);
+	}
+
+	.theme-error {
+		color: var(--urgent);
+		font-weight: var(--weight-bold);
+		margin: 0 0 var(--space-sm);
+	}
+
+	@media (max-width: 480px) {
+		/* Rows use the full width of their list */
+		.container {
+			width: auto;
+			min-width: 0;
+			max-width: none;
+			margin: 10px 0;
+		}
+
+		/* Two palettes across, even on the smallest phones */
+		.theme-picker {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: var(--space-sm);
+		}
+	}
 </style>
 
-<div>
+{#if ready}
+<div in:reveal>
+	{#if me}
+		<Section title='Your theme' subtitle="Just for {me.name}, on every device" />
+		<fieldset class="theme-picker">
+			<legend class="sr-only">Theme for {me.name}</legend>
+			{#each THEMES as theme (theme.id)}
+				<label
+					class="theme-option"
+					class:selected={theme.id === currentTheme}
+					style="--swatch-primary: {theme.primary}; --swatch-paper: {theme.paper};"
+				>
+					<input
+						type="radio"
+						name="theme"
+						value={theme.id}
+						checked={theme.id === currentTheme}
+						on:change={() => chooseTheme(theme.id)}
+					/>
+					<span class="swatch" aria-hidden="true">
+						<span class="swatch-band">
+							<span class="swatch-dot"></span>
+							<span class="swatch-bar"></span>
+						</span>
+						<span class="swatch-page">
+							<span class="swatch-line"></span>
+							<span class="swatch-line short"></span>
+							<span class="swatch-pill"></span>
+						</span>
+					</span>
+					<span class="theme-name">{theme.name}</span>
+				</label>
+			{/each}
+		</fieldset>
+		{#if themeError}
+			<p class="theme-error" role="alert" transition:expand>{themeError}</p>
+		{/if}
+		<div class='spacer'></div>
+
+		<Section title='Assistant' subtitle="Just for {me.name}" />
+		<label class="assistant-toggle">
+			<input
+				type="checkbox"
+				checked={assistantConfirm}
+				on:change={(e) => setAssistantConfirm(e.currentTarget.checked)}
+			/>
+			<span>
+				<span class="toggle-title">Show me the changes before they happen</span>
+				<span class="toggle-hint">
+					{assistantConfirm
+						? 'The assistant lists everything it plans to change and waits for your OK.'
+						: 'The assistant makes changes right away and tells you what it did.'}
+				</span>
+			</span>
+		</label>
+		{#if assistantError}
+			<p class="theme-error" role="alert" transition:expand>{assistantError}</p>
+		{/if}
+		<div class='spacer'></div>
+	{/if}
+
 	<Section title='Users' />
 	{#if !users.length}
 		<p class='tooltip'>I don't know who you are!</p>
@@ -93,8 +410,8 @@
 		/>
 	{:else}
 		<Collapsible title='Click here to show users'>
-			{#each users as user}
-			<div class='container'>
+			{#each users as user (user._id)}
+			<div class='container' animate:move in:reveal out:vanish>
 				{#if user._id == user_id}
 				<div style='display: flex; gap: 10px; align-items: center;'>
 					<p>{user.name}</p>
@@ -141,8 +458,8 @@
 		/>
 	{:else}
 		<Collapsible title='Click here to show rooms'>
-		{#each rooms as room}
-		<div class='container'>
+		{#each rooms as room (room._id)}
+		<div class='container' animate:move in:reveal out:vanish>
 			<p>{room.name}</p>
 			<Form
 				endpoint='delRoom'
@@ -190,8 +507,8 @@
 		/>
 	{:else}
 		<Collapsible title='Click here to show tags'>
-		{#each tags as tag}
-		<div class='container'>
+		{#each tags as tag (tag)}
+		<div class='container' animate:move in:reveal out:vanish>
 			<p>{tag}</p>
 			<Form
 				endpoint='delTag'
@@ -241,3 +558,4 @@
 		/>
 	</Collapsible>
 </div>
+{/if}

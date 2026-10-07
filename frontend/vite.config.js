@@ -10,8 +10,8 @@ export default defineConfig({
 		strictPort: true,
 		host: '0.0.0.0',
 		https: false,
-	},
-	csrf: {
-		checkOrigin: false,
+		// Vite >=5.4.12 rejects unknown Host headers; allow the public domain
+		// so requests proxied through nginx keep working after upgrades.
+		allowedHosts: ['homecalendar.casa'],
 	}
 });

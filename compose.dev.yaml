@@ -1,0 +1,12 @@
+# Dev override: `vite dev` with hot reload on the mounted source.
+# Used by `make dev`. HMR works at http://localhost:5173 only; nginx refuses
+# the websocket on the public site.
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: build
+    volumes:
+      - ./frontend:/app
+      - frontend_modules:/app/node_modules
+    command: ["npm", "run", "dev"]

@@ -79,22 +79,21 @@
     }
     
     .date-label {
-        font-weight: bold;
+        font-weight: var(--weight-bold);
         margin-bottom: 5px;
     }
     
     input[type="date"] {
         padding: 8px;
-        border-radius: 4px;
-        border: 1px solid #96616B;
-        background-color: #FFEAD0;
-        color: #96616B;
-        font-size: 14px;
+        border-radius: var(--radius-md);
+        border: var(--bw) solid var(--primary);
+        background-color: var(--paper);
+        color: var(--primary);
+        font-size: var(--text-sm);
     }
     
     input[type="date"]:focus {
-        outline: none;
-        border-color: #7a4e56;
+        border-color: var(--primary-deep);
     }
     
     @media (max-width: 767px) {
@@ -104,7 +103,7 @@
         
         input[type="date"] {
             padding: 10px 8px;
-            font-size: 16px;
+            font-size: var(--text-base);
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
@@ -113,7 +112,7 @@
     
     @media (max-width: 480px) {
         .date-label {
-            font-size: 14px;
+            font-size: var(--text-sm);
         }
         
         input[type="date"] {

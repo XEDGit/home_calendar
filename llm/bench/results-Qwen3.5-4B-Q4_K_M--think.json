@@ -1,0 +1,1113 @@
+[
+ {
+  "lang": "it",
+  "prompt": "Cosa devo fare oggi?",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "today_recap",
+    "args": {},
+    "result": {
+     "events": [],
+     "chores_due": [
+      {
+       "name": "Dishes",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 1,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Take out trash",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 2,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Water plants",
+       "rooms": [
+        "Living room"
+       ],
+       "every_days": 3,
+       "due": "2026-09-24"
+      }
+     ],
+     "todos": [
+      {
+       "title": "Chiamare idraulico",
+       "done": false,
+       "tag": "House"
+      },
+      {
+       "title": "Fix bike",
+       "done": false,
+       "tag": "Personal"
+      },
+      {
+       "title": "Buy bread",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Buy detergent",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Send invoice",
+       "done": false,
+       "tag": "Work"
+      }
+     ]
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "Oggi devi fare queste cose:\n\n**Chores (da completare):**\n- Dishes (Cucina)\n- Take out trash (Cucina)\n- Water plants (Soggiorno)\n\n**Todos (da fare):**\n- Chiamare idraulico (House)\n- Fix bike (Personal)\n- Buy bread (Groceries)\n- Buy detergent (Groceries)\n- Send invoice (Work)\n\nVuoi segnare come completate alcune di queste?",
+  "secs": 10.923491477966309,
+  "tok_s": 64.3462775678427
+ },
+ {
+  "lang": "it",
+  "prompt": "Ho lavato i piatti",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "sign_chore",
+    "args": {
+     "chore": "Dishes"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "sign_chore",
+    {
+     "chore": "Dishes"
+    }
+   ]
+  ],
+  "reply": "Ho registrato che hai lavato i piatti.",
+  "secs": 4.076902627944946,
+  "tok_s": 65.3677814939
+ },
+ {
+  "lang": "it",
+  "prompt": "Aggiungi latte e uova alla lista della spesa",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_todo",
+    "args": {
+     "title": "Latte e uova",
+     "tag": "Groceries",
+     "shared": true
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_todo",
+    {
+     "title": "Latte e uova",
+     "tag": "Groceries",
+     "shared": true
+    }
+   ]
+  ],
+  "reply": "Ho aggiunto \"Latte e uova\" alla tua lista della spesa (tag: Groceries).",
+  "secs": 5.992552280426025,
+  "tok_s": 64.50961630163582
+ },
+ {
+  "lang": "it",
+  "prompt": "Dopodomani alle 15 dentista",
+  "ok": false,
+  "calls": [],
+  "staged": [],
+  "reply": "Mi dispiace, ma non posso aggiornare l'evento del dentista senza sapere esattamente cosa vuoi fare. L'evento attuale è per domani (2026-09-25) alle 10:00.\n\nVuoi:\n- Aggiornare l'evento del dentista esistente a dopodomani (2026-09-26) alle 15:00?\n- Oppure aggiungere un nuovo evento per dopodomani?\n\nFammi sapere come preferisci procedere.",
+  "secs": 10.40000319480896,
+  "tok_s": 64.66143391306197
+ },
+ {
+  "lang": "it",
+  "prompt": "Ho chiamato l'idraulico, segnalo come fatto",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "update_todo",
+    "args": {
+     "todo": "Chiamare idraulico",
+     "done": true
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "update_todo",
+    {
+     "todo": "Chiamare idraulico",
+     "done": true
+    }
+   ]
+  ],
+  "reply": "",
+  "secs": 3.7684361934661865,
+  "tok_s": 64.64179415200898
+ },
+ {
+  "lang": "it",
+  "prompt": "Oggi salto la spazzatura",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "skip_chore",
+    "args": {
+     "chore": "Take out trash"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "skip_chore",
+    {
+     "chore": "Take out trash"
+    }
+   ]
+  ],
+  "reply": "Ho saltato la spazzatura per oggi.",
+  "secs": 3.4714131355285645,
+  "tok_s": 65.42653843519484
+ },
+ {
+  "lang": "it",
+  "prompt": "Cosa c'è in calendario la settimana prossima?",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "list_events",
+    "args": {
+     "start_date": "2026-09-28",
+     "end_date": "2026-10-04"
+    },
+    "result": {
+     "events": [
+      {
+       "title": "Riunione condominio",
+       "when": "2026-09-30T21:00"
+      },
+      {
+       "title": "Anna's birthday dinner",
+       "when": "2026-10-02T19:30"
+      }
+     ]
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "La settimana prossima ci sono due eventi in calendario:\n\n- **Riunione condominio**: 30 settembre 2026, 21:00\n- **Anna's birthday dinner**: 2 ottobre 2026, 19:30",
+  "secs": 7.168437242507935,
+  "tok_s": 65.04514225573463
+ },
+ {
+  "lang": "it",
+  "prompt": "Elimina la riunione di condominio",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "delete_event",
+    "args": {
+     "event": "Riunione condominio"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "delete_event",
+    {
+     "event": "Riunione condominio"
+    }
+   ]
+  ],
+  "reply": "La riunione di condominio è stata eliminata.",
+  "secs": 4.521414518356323,
+  "tok_s": 65.28077260296534
+ },
+ {
+  "lang": "it",
+  "prompt": "Nuova faccenda: pulire il bagno ogni 7 giorni",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_chore",
+    "args": {
+     "name": "Pulire il bagno",
+     "every_days": 7,
+     "rooms": [
+      "Bathroom"
+     ]
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_chore",
+    {
+     "name": "Pulire il bagno",
+     "every_days": 7,
+     "rooms": [
+      "Bathroom"
+     ]
+    }
+   ]
+  ],
+  "reply": "",
+  "secs": 4.7637152671813965,
+  "tok_s": 65.12321432749307
+ },
+ {
+  "lang": "it",
+  "prompt": "Ho passato l'aspirapolvere",
+  "ok": true,
+  "calls": [],
+  "staged": [],
+  "reply": "Ho visto che ci sono due compiti di aspirapolvere: \"Vacuum living room\" e \"Vacuum bedroom\". In quale stanza hai fatto l'aspirapolvere?",
+  "secs": 3.5287797451019287,
+  "tok_s": 65.1321055627079
+ },
+ {
+  "lang": "en",
+  "prompt": "What's on today?",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "today_recap",
+    "args": {},
+    "result": {
+     "events": [],
+     "chores_due": [
+      {
+       "name": "Dishes",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 1,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Take out trash",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 2,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Water plants",
+       "rooms": [
+        "Living room"
+       ],
+       "every_days": 3,
+       "due": "2026-09-24"
+      }
+     ],
+     "todos": [
+      {
+       "title": "Chiamare idraulico",
+       "done": false,
+       "tag": "House"
+      },
+      {
+       "title": "Fix bike",
+       "done": false,
+       "tag": "Personal"
+      },
+      {
+       "title": "Buy bread",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Buy detergent",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Send invoice",
+       "done": false,
+       "tag": "Work"
+      }
+     ]
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "Today (2026-09-24):\n\n**Chores due:**\n- Dishes (Kitchen)\n- Take out trash (Kitchen)\n- Water plants (Living room)\n\n**Todos:**\n- Chiamare idraulico (House)\n- Fix bike (Personal)\n- Buy bread (Groceries)\n- Buy detergent (Groceries)\n- Send invoice (Work)\n\n**Events:** None scheduled today.",
+  "secs": 5.004521608352661,
+  "tok_s": 65.10073563831271
+ },
+ {
+  "lang": "en",
+  "prompt": "I took out the trash and watered the plants",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "sign_chore",
+    "args": {
+     "chore": "Take out trash"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   },
+   {
+    "tool": "sign_chore",
+    "args": {
+     "chore": "Water plants"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#2"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "sign_chore",
+    {
+     "chore": "Take out trash"
+    }
+   ],
+   [
+    "sign_chore",
+    {
+     "chore": "Water plants"
+    }
+   ]
+  ],
+  "reply": "Done! I've recorded that you took out the trash and watered the plants.",
+  "secs": 4.831923723220825,
+  "tok_s": 65.09787132336606
+ },
+ {
+  "lang": "en",
+  "prompt": "Add a todo to renew my passport by October 15, tag it personal",
+  "ok": false,
+  "calls": [
+   {
+    "tool": "add_todo",
+    "args": {
+     "title": "renew my passport",
+     "deadline": "2026-10-15",
+     "tag": "personal"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_todo",
+    {
+     "title": "renew my passport",
+     "deadline": "2026-10-15",
+     "tag": "personal"
+    }
+   ]
+  ],
+  "reply": "Done. Added \"renew my passport\" as a personal todo with deadline October 15.",
+  "secs": 5.933043718338013,
+  "tok_s": 65.0524800926135
+ },
+ {
+  "lang": "en",
+  "prompt": "Make fix bike high priority",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "update_todo",
+    "args": {
+     "todo": "Fix bike",
+     "priority": "high"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "update_todo",
+    {
+     "todo": "Fix bike",
+     "priority": "high"
+    }
+   ]
+  ],
+  "reply": "Done. \"Fix bike\" is now set to high priority.",
+  "secs": 4.041654348373413,
+  "tok_s": 65.36388218465268
+ },
+ {
+  "lang": "en",
+  "prompt": "Football training every Monday at 8pm, starting next week",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_event",
+    "args": {
+     "title": "Football training",
+     "when": "2026-09-28T20:00",
+     "repeat": "weekly"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_event",
+    {
+     "title": "Football training",
+     "when": "2026-09-28T20:00",
+     "repeat": "weekly"
+    }
+   ]
+  ],
+  "reply": "",
+  "secs": 4.829792737960815,
+  "tok_s": 65.05844416901184
+ },
+ {
+  "lang": "en",
+  "prompt": "Push the dentist appointment to 4pm",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "update_event",
+    "args": {
+     "event": "Dentist",
+     "when": "2026-09-25T16:00"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "update_event",
+    {
+     "event": "Dentist",
+     "when": "2026-09-25T16:00"
+    }
+   ]
+  ],
+  "reply": "",
+  "secs": 5.257624387741089,
+  "tok_s": 65.13873691044607
+ },
+ {
+  "lang": "en",
+  "prompt": "Add a room called Garage and a chore to sweep it every 14 days",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_room",
+    "args": {
+     "name": "Garage"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   },
+   {
+    "tool": "add_chore",
+    "args": {
+     "name": "Sweep garage",
+     "every_days": 14,
+     "rooms": [
+      "Garage"
+     ]
+    },
+    "result": {
+     "staged": true,
+     "ref": "#2"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_room",
+    {
+     "name": "Garage"
+    }
+   ],
+   [
+    "add_chore",
+    {
+     "name": "Sweep garage",
+     "every_days": 14,
+     "rooms": [
+      "Garage"
+     ]
+    }
+   ]
+  ],
+  "reply": "Done. Added the Garage room and the \"Sweep garage\" chore (every 14 days). Both changes are staged.",
+  "secs": 5.8972086906433105,
+  "tok_s": 65.12116315700422
+ },
+ {
+  "lang": "en",
+  "prompt": "Delete the Work tag",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "delete_tag",
+    "args": {
+     "tag": "Work"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "delete_tag",
+    {
+     "tag": "Work"
+    }
+   ]
+  ],
+  "reply": "Done. The \"Work\" tag has been deleted.",
+  "secs": 3.106154441833496,
+  "tok_s": 65.72003885648688
+ },
+ {
+  "lang": "en",
+  "prompt": "Who did the most chores this month?",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "get_stats",
+    "args": {
+     "period": "month"
+    },
+    "result": {
+     "period": "month",
+     "counts": {
+      "Marco": 12,
+      "Anna": 17,
+      "Pieter": 9
+     }
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "Anna did the most chores this month with 17 chores. Marco completed 12 and Pieter completed 9.",
+  "secs": 4.047498941421509,
+  "tok_s": 65.3254907904123
+ },
+ {
+  "lang": "en",
+  "prompt": "I bought everything on the grocery list, tick it off",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "update_todo",
+    "args": {
+     "todo": "Buy bread",
+     "done": true
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   },
+   {
+    "tool": "update_todo",
+    "args": {
+     "todo": "Buy detergent",
+     "done": true
+    },
+    "result": {
+     "staged": true,
+     "ref": "#2"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "update_todo",
+    {
+     "todo": "Buy bread",
+     "done": true
+    }
+   ],
+   [
+    "update_todo",
+    {
+     "todo": "Buy detergent",
+     "done": true
+    }
+   ]
+  ],
+  "reply": "Done! I've marked both grocery items as completed:\n- Buy bread ✓\n- Buy detergent ✓",
+  "secs": 5.928383111953735,
+  "tok_s": 64.57360087699259
+ },
+ {
+  "lang": "nl",
+  "prompt": "Wat moet ik vandaag doen?",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "today_recap",
+    "args": {},
+    "result": {
+     "events": [],
+     "chores_due": [
+      {
+       "name": "Dishes",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 1,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Take out trash",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 2,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Water plants",
+       "rooms": [
+        "Living room"
+       ],
+       "every_days": 3,
+       "due": "2026-09-24"
+      }
+     ],
+     "todos": [
+      {
+       "title": "Chiamare idraulico",
+       "done": false,
+       "tag": "House"
+      },
+      {
+       "title": "Fix bike",
+       "done": false,
+       "tag": "Personal"
+      },
+      {
+       "title": "Buy bread",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Buy detergent",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Send invoice",
+       "done": false,
+       "tag": "Work"
+      }
+     ]
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "Vandaag moet je doen:\n\n**Chores:**\n- Dishes (Kitchen)\n- Take out trash (Kitchen)\n- Water plants (Living room)\n\n**Todos:**\n- Chiamare idraulico (House)\n- Fix bike (Personal)\n- Buy bread (Groceries)\n- Buy detergent (Groceries)\n- Send invoice (Work)",
+  "secs": 4.0929505825042725,
+  "tok_s": 65.28472529621419
+ },
+ {
+  "lang": "nl",
+  "prompt": "Ik heb de afwas gedaan",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "sign_chore",
+    "args": {
+     "chore": "Dishes"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "sign_chore",
+    {
+     "chore": "Dishes"
+    }
+   ]
+  ],
+  "reply": "Oké, de afwas is geregistreerd als gedaan.",
+  "secs": 3.816688060760498,
+  "tok_s": 65.45490857014819
+ },
+ {
+  "lang": "nl",
+  "prompt": "Zet melk kopen op mijn lijstje",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_todo",
+    "args": {
+     "title": "Melk kopen"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_todo",
+    {
+     "title": "Melk kopen"
+    }
+   ]
+  ],
+  "reply": "Oké, ik heb \"Melk kopen\" toegevoegd aan je lijstje.",
+  "secs": 5.011945486068726,
+  "tok_s": 65.26452247379362
+ },
+ {
+  "lang": "nl",
+  "prompt": "Morgen om 9 uur afspraak bij de huisarts",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_event",
+    "args": {
+     "title": "Afspraak bij de huisarts",
+     "when": "2026-09-25T09:00"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_event",
+    {
+     "title": "Afspraak bij de huisarts",
+     "when": "2026-09-25T09:00"
+    }
+   ]
+  ],
+  "reply": "Oké, ik heb de afspraak bij de huisarts voor morgen om 9:00 uur toegevoegd.",
+  "secs": 5.659106254577637,
+  "tok_s": 65.08986469444376
+ },
+ {
+  "lang": "nl",
+  "prompt": "Volgende week dinsdag is oma jarig, de hele dag",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_event",
+    "args": {
+     "title": "Oma's jarig",
+     "when": "2026-09-29"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_event",
+    {
+     "title": "Oma's jarig",
+     "when": "2026-09-29"
+    }
+   ]
+  ],
+  "reply": "Ik heb het evenement \"Oma's jarig\" toegevoegd voor dinsdag 2026-09-29, de hele dag.",
+  "secs": 5.543959856033325,
+  "tok_s": 65.08845744411212
+ },
+ {
+  "lang": "nl",
+  "prompt": "Sla het water geven van de planten over",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "skip_chore",
+    "args": {
+     "chore": "Water plants"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "skip_chore",
+    {
+     "chore": "Water plants"
+    }
+   ]
+  ],
+  "reply": "Het water geven van de planten is overslagen.",
+  "secs": 3.8070333003997803,
+  "tok_s": 65.40596166171485
+ },
+ {
+  "lang": "nl",
+  "prompt": "Verwijder de taak fiets repareren",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "delete_todo",
+    "args": {
+     "todo": "Fix bike"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "delete_todo",
+    {
+     "todo": "Fix bike"
+    }
+   ]
+  ],
+  "reply": "De taak \"Fix bike\" is verwijderd.",
+  "secs": 3.4505972862243652,
+  "tok_s": 65.56796273817307
+ },
+ {
+  "lang": "nl",
+  "prompt": "Wat staat er deze week in de agenda?",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "list_events",
+    "args": {
+     "start_date": "2026-09-21",
+     "end_date": "2026-09-27"
+    },
+    "result": {
+     "events": [
+      {
+       "title": "Dentist",
+       "when": "2026-09-25T10:00"
+      }
+     ]
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "Deze week staat er in de agenda:\n\n- **Dentist** – 2026-09-25, 10:00",
+  "secs": 5.319913148880005,
+  "tok_s": 65.15841266441055
+ },
+ {
+  "lang": "nl",
+  "prompt": "Maak een nieuwe tag Tuin",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "add_tag",
+    "args": {
+     "name": "Tuin"
+    },
+    "result": {
+     "staged": true,
+     "ref": "#1"
+    }
+   }
+  ],
+  "staged": [
+   [
+    "add_tag",
+    {
+     "name": "Tuin"
+    }
+   ]
+  ],
+  "reply": "Tag 'Tuin' is aangemaakt.",
+  "secs": 2.9075982570648193,
+  "tok_s": 65.74178649090571
+ },
+ {
+  "lang": "nl",
+  "prompt": "Ik heb gestofzuigd",
+  "ok": true,
+  "calls": [
+   {
+    "tool": "today_recap",
+    "args": {},
+    "result": {
+     "events": [],
+     "chores_due": [
+      {
+       "name": "Dishes",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 1,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Take out trash",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 2,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Water plants",
+       "rooms": [
+        "Living room"
+       ],
+       "every_days": 3,
+       "due": "2026-09-24"
+      }
+     ],
+     "todos": [
+      {
+       "title": "Chiamare idraulico",
+       "done": false,
+       "tag": "House"
+      },
+      {
+       "title": "Fix bike",
+       "done": false,
+       "tag": "Personal"
+      },
+      {
+       "title": "Buy bread",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Buy detergent",
+       "done": false,
+       "tag": "Groceries"
+      },
+      {
+       "title": "Send invoice",
+       "done": false,
+       "tag": "Work"
+      }
+     ]
+    }
+   },
+   {
+    "tool": "list_chores",
+    "args": {},
+    "result": {
+     "chores": [
+      {
+       "name": "Dishes",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 1,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Take out trash",
+       "rooms": [
+        "Kitchen"
+       ],
+       "every_days": 2,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Water plants",
+       "rooms": [
+        "Living room"
+       ],
+       "every_days": 3,
+       "due": "2026-09-24"
+      },
+      {
+       "name": "Vacuum living room",
+       "rooms": [
+        "Living room"
+       ],
+       "every_days": 7,
+       "due": "2026-09-25"
+      },
+      {
+       "name": "Vacuum bedroom",
+       "rooms": [
+        "Bedroom"
+       ],
+       "every_days": 7,
+       "due": "2026-09-27"
+      }
+     ]
+    }
+   }
+  ],
+  "staged": [],
+  "reply": "Ik zie dat er twee stofzuig-chores zijn: \"Vacuum living room\" en \"Vacuum bedroom\". Welke kamer hebt u opgeruimd?",
+  "secs": 9.066536903381348,
+  "tok_s": 64.84655459746693
+ }
+]

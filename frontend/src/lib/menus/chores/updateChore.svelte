@@ -1,60 +1,63 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { DUR, ms, morphHeight, reducedMotion } from '$lib/motion';
 	import SelectButtons from '$lib/buttons/selectButtons.svelte';
-	import Section from '$lib/header/Section.svelte'
-    import { getFrontend, getUsers } from '$lib/requests';
-    import Collapsible from '$lib/containers/collapsible.svelte';
-    import { getCookie } from '$lib/helpers/getCookie';
+	import Section from '$lib/header/Section.svelte';
+	import { getFrontend, getUsers } from '$lib/requests';
+	import { getCookie } from '$lib/helpers/getCookie';
+
 	export let onSubmit = () => {};
-
 	export let reset = () => {};
-
+	export let skip = () => {};
 	export let delFunc = () => {};
-
 	export let chore = {};
 	export let users = [];
+
 	chore.stats = true;
 
-	let all_rooms = []
+	// Pre-select all rooms not yet completed in this cycle
+	let roomsChecked = chore.rooms.filter(r => !r.done).map(r => r._id);
+	let newRooms = chore.rooms.map(r => r._id);
+	let all_rooms = [];
+
+	// Repetition state for edit mode
+	const rep = Number(chore.repetition) || 1;
+	let repeatNum = rep <= 30 ? rep : rep - 30;
+	let repeatUnit = rep <= 30 ? 'days' : 'months';
+
+	$: chore.repetition = repeatUnit === 'days'
+		? Math.min(30, Math.max(1, Number(repeatNum) || 1))
+		: 30 + Math.min(12, Math.max(1, Number(repeatNum) || 1));
+
+	let panelEl;
+
 	onMount(async () => {
+		// Move focus into the panel so keyboard users land on what just opened
+		panelEl?.focus({ preventScroll: true });
+		// Bring it into view once the expand has finished growing it
+		setTimeout(
+			() => panelEl?.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }),
+			ms(DUR.base)
+		);
 		users = await getUsers();
 		chore.who = getCookie('user');
 		all_rooms = await getFrontend('getRooms');
-		all_rooms = all_rooms.map((room) => {
-			room.used = false;
-			if (chore.rooms.find((r) => {return r._id == room._id}))
-				room.used = true;
-			return room;
-		});
-	})
+	});
 
-	let roomsChecked = [];
-
-	function checkRooms(newel, event) {
-		if (event.target.checked) {
-			roomsChecked = [...roomsChecked, newel._id];
+	function toggleSignRoom(roomId) {
+		if (roomsChecked.includes(roomId)) {
+			roomsChecked = roomsChecked.filter(id => id !== roomId);
 		} else {
-			roomsChecked = roomsChecked.filter(item => item !== newel._id);
+			roomsChecked = [...roomsChecked, roomId];
 		}
 	}
 
-	let newRooms = chore.rooms.map(room => room._id)
-
-	function updateRooms(newel, checked) {
-		if (checked) {
-			newRooms.push(newel);
+	function toggleEditRoom(roomId) {
+		if (newRooms.includes(roomId)) {
+			newRooms = newRooms.filter(id => id !== roomId);
 		} else {
-			newRooms = newRooms.filter(item => item !== newel);
+			newRooms = [...newRooms, roomId];
 		}
-	}
-
-	function update() {
-		chore.newRooms = newRooms;
-		const swap_tmp = chore.rooms;
-		chore.rooms = [];
-		chore.id = chore._id;
-		onSubmit(chore);
-		chore.rooms = swap_tmp;
 	}
 
 	function submit() {
@@ -63,305 +66,539 @@
 		onSubmit(chore);
 	}
 
-	function formatNextTime(value) {
-        if (value <= 30) {
-            return `${value} day${value === 1 ? '' : 's'}`;
-        } else {
-            // Convert 31–42 to 1–12 for months
-            let month = (value - 31) % 12 + 1;
-            return `${month} month${month === 1 ? '' : 's'}`;
-        }
-    }
+	function update() {
+		chore.newRooms = newRooms;
+		const savedRooms = chore.rooms;
+		chore.rooms = [];
+		chore.id = chore._id;
+		onSubmit(chore);
+		chore.rooms = savedRooms;
+	}
+
+	function formatRepetition() {
+		const n = Number(repeatNum) || 1;
+		return repeatUnit === 'days'
+			? `every ${n} day${n !== 1 ? 's' : ''}`
+			: `every ${n} month${n !== 1 ? 's' : ''}`;
+	}
 
 	let editMode = false;
+
+	// Sign ↔ edit changes the panel's height: morph it so rows below glide
+	async function switchMode(next) {
+		if (editMode === next) return;
+		const settle = morphHeight(panelEl);
+		editMode = next;
+		await tick();
+		settle();
+	}
+
+	$: allDone = chore.rooms?.length > 0 && chore.rooms.every(r => r.done);
 </script>
 
 <style>
-	.modal {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: rgba(0, 0, 0, 0.5);
-		z-index: 1;
-		-webkit-backdrop-filter: blur(2px); /* Safari blur effect */
-		backdrop-filter: blur(2px);
-	}
-
-	div {
+	/* Inline panel: expands in place under the chore row it belongs to */
+	.panel {
+		background: var(--paper);
+		color: var(--primary);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-lg);
+		padding: var(--space-md) var(--space-md) var(--space-lg);
+		margin: 6px 0 var(--space-md);
 		box-sizing: border-box;
-	}
-
-	.modal-content {
-		background: #FFEAD0;
-		cursor: default;
-		padding: 2%;
-		border-radius: 8px;
-		width: 70%;
-		max-height: 90%;
-		overflow-x: hidden;
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		justify-items: flex-start;
-		position: relative;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-	}
-
-	.userButtons {
-		flex-direction: column;
-		width: 100%;
-		height: auto;
-		min-height: auto;
-		align-items: flex-start;
-		gap: 0;
-		padding: 10px;
-		border: solid 2px #96616B;
-		color: #96616B;
-	}
-	
-	.checkbox-label {
-		cursor: pointer;
-		user-select: none;
-	}
-
-	.sign-checkbox {
-		background-color: #96616B;
-		width: 1.2em;
-		height: 1.2em;
-	}
-	
-	.sign-checkbox:checked {
-		background-color: green;
-	}
-
-	.label-container {
-		width: 100%;
-		height: 40px;
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		gap: 10px;
-	}
-
-	.done {
-		text-decoration: line-through;
-		color: #FFEAD080;
-		cursor: default;
-	}
-
-	textarea {
-		background-color: #FFEAD0;
-		border: none;
-		border-radius: 5px;
-		padding: 10px;
-		color: #96616B;
-		resize: none;
-		margin: 5px;
-		outline: none;
-		width: 100%;
-	}
-
-	button {
-		cursor: pointer;
-		color: #FFEAD0;
-		padding: 10px;
-		border-radius: 5px;
-	}
-
-	.update-button {
-		float: left;
-		font-size: 1.2em;
-		flex: 2;
-		background-color: green;
-		border: solid green 3px;
-	}
-
-	.update-button:disabled {
-		background-color: gray;
-		border: solid 3px gray;
-	}
-
-	.update-button:disabled:hover {
-		color: #FFEAD0;
-	}
-
-	.delete-button {
-		float: right;
-		flex: 1;
-		font-size: 1.2em;
-		border: 3px solid #f50a21;
-		background-color: #f50a21;
-	}
-
-	button:hover {
-		background-color: #FFEAD0;
-	}
-
-	.delete-button:hover {
-		color: #f50a21;
-	}
-
-	.update-button:hover {
-		color: green;
-	}
-
-	.name {
-		color: #96616B;
+		cursor: auto;
 		text-align: left;
-		background-color: #FFEAD0;
-		border: solid 2px #96616B;
-		margin: 0;
-		outline: none;
-		font-size: large;
-		box-sizing: border-box;
-		padding: 10px;
-		width: 100%;
-		min-height: 3em;
-		overflow: hidden;
-		border-radius: 5px;
-		white-space: normal;
-		word-wrap: break-word;
+	}
+
+	.panel-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+	}
+
+	.close-btn {
+		flex-shrink: 0;
+		width: 44px;
+		height: 44px;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-circle);
+		background: var(--paper);
+		color: var(--primary);
+		font: inherit;
+		font-size: var(--text-lg);
+		font-weight: var(--weight-bold);
+		line-height: 1;
+		cursor: pointer;
+		transition: var(--swap);
+	}
+
+	@media (hover: hover) {
+		.close-btn:hover {
+			background: var(--primary);
+			color: var(--paper);
+		}
+	}
+
+	.chore-title {
+		color: var(--primary);
+		font-size: var(--text-md);
+		font-weight: var(--weight-bold);
+		margin: 8px 0 16px;
+		text-transform: lowercase;
 		word-break: break-word;
 	}
 
-	.stats-checkbox {
-		border-radius: 5px;
-		padding: 10px;
-		user-select: none;
-		margin-bottom: 10px;
-		background-color: #FFEAD0;
-		color: #96616B;
-		border: solid 2px #96616B;
-		width: 100%;
-		text-align: left;
-		font-size: 1.1em;
+	.chore-title::first-letter {
+		text-transform: uppercase;
 	}
 
-	.tooltip {
-		color: gray;
+	.helper {
+		font-size: var(--text-xs);
+		color: var(--ink);
 		font-style: italic;
-		text-align: left;
-		font-size: 0.7em;
-		width: 90%;
-		margin-left: 1%;
+		margin: 4px 0 8px;
 	}
 
-	@media (max-width: 1000px) {
-		.modal-content {
-			width: 70%;
+	.divider {
+		border: none;
+		border-top: var(--bw-hair) solid var(--primary-a25);
+		margin: 14px 0;
+	}
+
+	/* Room chips */
+	.chips-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin: 10px 0;
+	}
+
+	.room-chip {
+		padding: 10px 16px;
+		border-radius: var(--radius-pill);
+		border: var(--bw) solid var(--primary);
+		cursor: pointer;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-bold);
+		min-height: 44px;
+		transition: var(--swap);
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		font-family: inherit;
+	}
+
+	.room-chip.selected {
+		background-color: var(--primary);
+		color: var(--paper);
+	}
+
+	.room-chip.selected::before {
+		content: '✓ ';
+	}
+
+	/* Unselected: dashed outline instead of fading, so the label stays readable */
+	.room-chip.unselected {
+		background-color: var(--paper);
+		color: var(--primary);
+		border-style: dashed;
+		font-weight: var(--weight-regular);
+	}
+
+	.room-chip.already-done {
+		background-color: var(--paper);
+		color: var(--primary);
+		opacity: 0.3;
+		cursor: default;
+		text-decoration: line-through;
+	}
+
+	/* Notes box */
+	.notes-box {
+		background-color: var(--primary);
+		border-radius: var(--radius-md);
+		padding: 10px 14px;
+		margin-bottom: 12px;
+	}
+
+	.notes-text {
+		color: var(--paper);
+		white-space: pre-line;
+		font-size: var(--text-sm);
+		margin: 0;
+	}
+
+	/* Stats toggle */
+	.stats-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 12px;
+	}
+
+	.stats-btn {
+		padding: var(--control-pad-y) var(--control-pad-x);
+		min-height: var(--control-min-h);
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		cursor: pointer;
+		font-size: var(--text-xs);
+		font-weight: var(--weight-bold);
+		transition: var(--swap);
+		touch-action: manipulation;
+		font-family: inherit;
+	}
+
+	.stats-btn.on {
+		background-color: var(--primary);
+		color: var(--paper);
+	}
+
+	.stats-btn.off {
+		background-color: var(--paper);
+		color: var(--primary);
+		border-style: dashed;
+	}
+
+	/* Sign button */
+	.sign-btn {
+		width: 100%;
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		background-color: var(--primary);
+		color: var(--paper);
+		font-size: var(--text-base);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: var(--swap);
+		margin-top: 12px;
+		touch-action: manipulation;
+		font-family: inherit;
+	}
+
+	.sign-btn:disabled {
+		background-color: var(--idle);
+		border-color: var(--idle);
+		color: var(--paper);
+		cursor: not-allowed;
+	}
+
+	@media (hover: hover) {
+		.sign-btn:not(:disabled):hover {
+			background-color: var(--paper);
+			color: var(--primary);
 		}
 	}
 
-	@media (max-width: 768px) {
-		.modal-content {
-			width: 90%;
-			padding: 15px 10px;
+	/* Edit mode form */
+	.edit-input {
+		width: 100%;
+		padding: 10px;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		color: var(--ink);
+		font-size: var(--text-base);
+		box-sizing: border-box;
+		margin-bottom: 8px;
+		font-family: inherit;
+	}
+
+	.edit-input:focus {
+		border-color: var(--primary-deep);
+		box-shadow: var(--focus-ring);
+	}
+
+	textarea.edit-input {
+		resize: none;
+		min-height: 80px;
+	}
+
+	/* Repeat input */
+	.repeat-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 8px 0;
+	}
+
+	.repeat-num {
+		width: 72px;
+		padding: 10px;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		color: var(--ink);
+		font-size: var(--text-base);
+		text-align: center;
+		font-family: inherit;
+	}
+
+	.repeat-num:focus {
+		border-color: var(--primary-deep);
+	}
+
+	.unit-btn {
+		padding: 10px 16px;
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		cursor: pointer;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-bold);
+		transition: var(--swap);
+		touch-action: manipulation;
+		font-family: inherit;
+		min-height: 44px;
+	}
+
+	.unit-btn.active {
+		background-color: var(--primary);
+		color: var(--paper);
+	}
+
+	.unit-btn.inactive {
+		background-color: var(--paper);
+		color: var(--primary);
+	}
+
+	/* Action buttons */
+	.action-row {
+		display: flex;
+		gap: 12px;
+		margin-top: 16px;
+	}
+
+	.save-btn {
+		flex: 2;
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		background-color: var(--primary);
+		color: var(--paper);
+		font-size: var(--text-base);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: var(--swap);
+		touch-action: manipulation;
+		font-family: inherit;
+	}
+
+	@media (hover: hover) {
+		.save-btn:hover {
+			background-color: var(--paper);
+			color: var(--primary);
 		}
-		
-		.button-row {
-			flex-direction: column;
-			gap: 10px;
+	}
+
+	.delete-btn {
+		flex: 1;
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--danger);
+		background-color: var(--danger);
+		color: var(--paper);
+		font-size: var(--text-base);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: var(--swap);
+		touch-action: manipulation;
+		font-family: inherit;
+	}
+
+	@media (hover: hover) {
+		.delete-btn:hover {
+			background-color: var(--paper);
+			color: var(--danger);
 		}
-		
-		button {
-			width: 100%;
-			padding: 10px;
-			margin: 0;
+	}
+
+	.skip-btn {
+		width: 100%;
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		background-color: transparent;
+		color: var(--primary);
+		font-size: var(--text-base);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: var(--swap);
+		margin-top: 8px;
+		touch-action: manipulation;
+		font-family: inherit;
+	}
+
+	@media (hover: hover) {
+		.skip-btn:hover {
+			background-color: var(--primary-a08);
+			opacity: 1;
 		}
-		
-		.detail-row {
-			flex-direction: column;
-			margin-bottom: 15px;
-		}
-		
-		.detail-label {
-			width: 100%;
-			margin-bottom: 3px;
-		}
-		
-		.detail-value {
-			padding-left: 5px;
-		}
+	}
+
+	.all-done-msg {
+		text-align: center;
+		color: var(--primary);
+		font-style: italic;
+		padding: 16px 0;
+		font-size: var(--text-base);
 	}
 </style>
 
 {#if chore}
-	<div class="modal"  role='dialog' aria-modal="true" on:keydown={(e) => { if (e.key === 'Escape') reset(); }} tabindex="-1" on:click={(e) => {e.stopPropagation(); reset()}}>
-		<div class="modal-content" on:click={(e) => {e.stopPropagation()}}>
-			<SelectButtons hooks={{"Sign": () => {if (editMode) editMode = false;}, "Edit": () => {if (!editMode) editMode = true;}}} />
-			<h1 style='color: #96616B; margin: 0; width: 100%; font-weight: bold; font-size: 1.2em; padding: 10px 0;'>{chore.name}</h1>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions (Escape closes the panel) -->
+	<section
+		class="panel"
+		aria-label="{chore.name}"
+		tabindex="-1"
+		bind:this={panelEl}
+		on:keydown={(e) => e.key === 'Escape' && reset()}
+	>
+		<div class="panel-head">
+			<SelectButtons
+				hooks={{ "Sign": () => switchMode(false), "Edit": () => switchMode(true) }}
+				selected_value={editMode ? 1 : 0}
+			/>
+			<button type="button" class="close-btn" aria-label="Close" on:click={reset}>×</button>
+		</div>
+
+			<h2 class="chore-title">{chore.name}</h2>
+
 			{#if !editMode}
-				<small class='tooltip'>Check the boxes for the rooms you’ve completed, then click the button below to sign off</small>
-				<div class="userButtons info-card">
-					{#each chore.rooms as button}
-						<label for={button._id} class='label-container'>
-							<input
-								type="checkbox"
-								id={button._id}
-								class='sign-checkbox'
-								checked={button.done}
-								disabled={button.done}
-								on:change={(event) => checkRooms(button, event)} 
-							/>
-							<label for={button._id} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label><small style='color: gray;'>{button.done? 'already signed' : ''}<small></small>
-						</label>
-						{/each}
-				</div>
+				<p class="helper">Signing as:</p>
+				<SelectButtons
+					justify="start"
+					selected_value={users.findIndex(u => u._id == chore.who)}
+					hooks={Object.fromEntries(users.map(u => [u.name, () => { chore.who = u._id; }]))}
+				/>
+
+				<hr class="divider" />
+
 				{#if chore.notes}
-				<h3 style='color: #96616B; width: fit-content; margin: 0;'>Notes</h3>
-				<div class='retro-red' style='border-radius: 5px; text-align: left; margin-bottom: 15px;'>
-					<p style='white-space: pre-line; color: #FFEAD0; padding: 10px; margin: 0;'>{chore.notes}</p>
-				</div>
+					<div class="notes-box on-primary">
+						<p class="notes-text prose">{chore.notes}</p>
+					</div>
 				{/if}
-				<h3 style='color: #96616B; width: fit-content; margin: 0;'>Options:</h3>
-				<small class='tooltip'>Set to record your signature in the statistics</small>
-				<div class='retro-red stats-checkbox'>
-					<label><input style='background-color: {chore.stats? 'green' : '#FFEAD0'};' type="checkbox" bind:checked={chore.stats} /> Stats: {chore.stats? 'on' : 'off'}</label>
-				</div>
-				<small class='tooltip'>Click here to change who is signing for these rooms</small>
-				<div style='min-height: 5px'></div>
-				<SelectButtons justify='start' selected_value={users.findIndex((user) => {return user._id == chore.who})} hooks={
-					Object.fromEntries(users.map((user) => {return [user.name, () => {chore.who = user._id}]}))
-				} />
-				<div style='min-height: 20px'></div>
-				<div style='width: 100%; margin-bottom: 20px; gap: 40px; display: flex; justify-content: space-between'>
-					<button disabled={roomsChecked.length == 0} class='update-button' on:click={submit}>{roomsChecked.length? `Sign for ${roomsChecked.length} room${roomsChecked.length != 1? 's' : ''}` : 'Select a room to sign'}</button>
-				</div>
+
+				{#if allDone}
+					<p class="all-done-msg">All rooms already completed this cycle.</p>
+				{:else}
+					<p class="helper">Tap to deselect rooms you didn't do:</p>
+					<div class="chips-grid">
+						{#each chore.rooms as room}
+							{#if room.done}
+								<button type="button" class="room-chip already-done" disabled>
+									{room.name}
+								</button>
+							{:else}
+								<button
+									type="button"
+									class="room-chip {roomsChecked.includes(room._id) ? 'selected' : 'unselected'}"
+									aria-pressed={roomsChecked.includes(room._id)}
+									on:click={() => toggleSignRoom(room._id)}
+								>
+									{room.name}
+								</button>
+							{/if}
+						{/each}
+					</div>
+
+					<hr class="divider" />
+
+					<div class="stats-row">
+						<button
+							type="button"
+							class="stats-btn {chore.stats ? 'on' : 'off'}"
+							aria-pressed={!!chore.stats}
+							on:click={() => { chore.stats = !chore.stats; }}
+						>
+							Stats {chore.stats ? 'on' : 'off'}
+						</button>
+						<span class="helper" style="margin: 0;">Record in statistics</span>
+					</div>
+
+					<button
+						class="sign-btn"
+						disabled={roomsChecked.length === 0}
+						on:click={submit}
+					>
+						{roomsChecked.length === 0
+							? 'Select rooms to sign'
+							: `Sign ${roomsChecked.length} room${roomsChecked.length !== 1 ? 's' : ''}`}
+					</button>
+					<button class="skip-btn" on:click={skip}>Skip</button>
+				{/if}
+
 			{:else}
-				<Section title='Name' />
-				<textarea class="name" bind:value={chore.name} />
-				<Section title='Notes' />
-				<textarea class='name' bind:value={chore.notes} />
-				<Section title='Repetition:' />
-				<div class='retro-red' style='width: 100%; padding:10px; margin-bottom: 5px; border-radius: 5px; display: flex; flex-direction: column;'>
-					<input class='range' type="range" min="1" max="42" step="1" bind:value={chore.repetition} />
-					<p style='margin: 0; margin-left: 5px;'>Every {formatNextTime(chore.repetition)}</p>
+				<Section title="Name" />
+				<input
+					type="text"
+					class="edit-input"
+					bind:value={chore.name}
+					placeholder="Chore name"
+				/>
+
+				<Section title="Notes" />
+				<textarea
+					class="edit-input"
+					bind:value={chore.notes}
+					placeholder="Optional notes..."
+				></textarea>
+
+				<Section title="Repeat" />
+				<div class="repeat-row">
+					<input
+						type="number"
+						class="repeat-num"
+						min="1"
+						max={repeatUnit === 'days' ? 30 : 12}
+						bind:value={repeatNum}
+					/>
+					<button
+						type="button"
+						class="unit-btn {repeatUnit === 'days' ? 'active' : 'inactive'}"
+						aria-pressed={repeatUnit === 'days'}
+						on:click={() => { repeatUnit = 'days'; repeatNum = Math.min(30, Number(repeatNum) || 1); }}
+					>Days</button>
+					<button
+						type="button"
+						class="unit-btn {repeatUnit === 'months' ? 'active' : 'inactive'}"
+						aria-pressed={repeatUnit === 'months'}
+						on:click={() => { repeatUnit = 'months'; repeatNum = Math.min(12, Number(repeatNum) || 1); }}
+					>Months</button>
 				</div>
-				<Section title='Rooms' />
-				<div class="userButtons info-card">
-					{#each all_rooms as button}
-						<label for={button._id + '_add'} class='label-container'>
-							<input
-								type="checkbox"
-								id={button._id + '_add'}
-								on:change={(event) => updateRooms(button._id, event.target.checked)} 
-								checked={button.used}
-							/>
-							<label for={button._id + '_add'} class="checkbox-label {button.done ? 'done' : ''}">{button.name}</label>
-						</label>
-					{/each}
-				</div>
-				<div style='width: 100%; margin-top: 10px; gap: 40px; display: flex; justify-content: space-between'>
-					<button class='update-button' on:click={update}>Save changes</button>
-					<button class='delete-button' on:click={() => {if (confirm("Are you sure you want to delete " + chore.name + '? This WILL DELETE ALL the statistics tied to it and is NOT revertible')) delFunc(chore._id)}}>Delete</button>
+				<p class="helper">Repeats {formatRepetition()}</p>
+
+				<Section title="Rooms" />
+				{#if all_rooms.length}
+					<div class="chips-grid" style="margin-bottom: 8px;">
+						{#each all_rooms as room}
+							<button
+								type="button"
+								class="room-chip {newRooms.includes(room._id) ? 'selected' : 'unselected'}"
+								aria-pressed={newRooms.includes(room._id)}
+								on:click={() => toggleEditRoom(room._id)}
+							>
+								{room.name}
+							</button>
+						{/each}
+					</div>
+				{:else}
+					<p class="helper">Loading rooms...</p>
+				{/if}
+
+				<div class="action-row">
+					<button class="save-btn" on:click={update}>Save changes</button>
+					<button
+						class="delete-btn"
+						on:click={() => {
+							if (confirm(`Delete "${chore.name}"? This removes all statistics and cannot be undone.`)) {
+								delFunc(chore._id);
+							}
+						}}
+					>Delete</button>
 				</div>
 			{/if}
-		</div>
-	</div>
+	</section>
 {/if}

@@ -2,6 +2,7 @@
 	import { postFrontend } from "$lib/requests";
 	import DateTimePicker from "$lib/inputs/DateTimePicker.svelte";
 	import { onMount } from "svelte";
+	import { expand } from "$lib/motion";
 	
 	let newEvent = {
 		title: '',
@@ -92,11 +93,11 @@
 	}
 	
 	.form-container {
-		margin-top: 15px;
-		background-color: #96616B;
-		border-radius: 10px;
+		margin-top: var(--space-md);
+		background-color: var(--primary);
+		border-radius: var(--radius-lg);
 		padding: 15px 20px;
-		color: #FFEAD0;
+		color: var(--paper);
 	}
 	
 	.form-group {
@@ -106,21 +107,21 @@
 	label {
 		display: block;
 		margin-bottom: 5px;
-		font-weight: bold;
+		font-weight: var(--weight-bold);
 	}
 	
 	input, textarea, select {
+		box-sizing: border-box;
 		width: 100%;
 		border: none;
-		border-radius: 5px;
-		background-color: #FFEAD0;
-		color: #96616B;
-		padding: 10px 2px;
+		border-radius: var(--radius-md);
+		background-color: var(--paper);
+		color: var(--primary);
+		padding: 10px;
 	}
 
 	input:focus, textarea:focus, select:focus {
-		outline: none;
-		box-shadow: 0 0 0 2px rgba(150, 97, 107, 0.3);
+		box-shadow: var(--focus-ring);
 	}
 	
 	textarea {
@@ -134,36 +135,41 @@
 	}
 	
 	button {
-		background-color: #FFEAD0;
-		color: #96616B;
-		border: 3px solid #FFEAD0;
+		background-color: var(--paper);
+		color: var(--primary);
+		border: var(--bw) solid var(--paper);
 		width: 100%;
-		padding: 10px 20px;
-		border-radius: 5px;
-		font-weight: bold;
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		font-weight: var(--weight-bold);
 		cursor: pointer;
-		transition: background-color 0.3s;
+		transition: var(--swap);
 	}
 	
-	button:hover {
-		background-color: #96616B;
-		color: #FFEAD0;
+	@media (hover: hover) {
+		button:hover {
+			background-color: var(--primary);
+			color: var(--paper);
+		}
 	}
 	
 	.error-message {
-		color: #f8d7da;
-		background-color: #d9534f;
-		padding: 10px;
-		border-radius: 5px;
-		margin-bottom: 15px;
+		color: var(--paper);
+		background-color: var(--urgent);
+		padding: var(--space-sm);
+		border-radius: var(--radius-md);
+		margin-bottom: var(--space-md);
 	}
 	
+	/* Status colours stay on edges and dots, never surfaces */
 	.success-message {
-		color: #d4edda;
-		background-color: #28a745;
-		padding: 10px;
-		border-radius: 5px;
-		margin-bottom: 15px;
+		color: var(--primary);
+		font-weight: var(--weight-bold);
+		background-color: var(--paper);
+		border: var(--bw) solid var(--ok);
+		padding: var(--space-sm);
+		border-radius: var(--radius-md);
+		margin-bottom: var(--space-md);
 	}
 	
 	/* Mobile responsive styles */
@@ -178,7 +184,7 @@
 		}
 		
 		input, textarea, select {
-			padding: 8px 2px;
+			padding: 8px 10px;
 		}
 		
 		textarea {
@@ -205,23 +211,19 @@
 		}
 		
 		label {
-			font-size: 14px;
-		}
-		
-		input, textarea, select {
-			font-size: 14px;
+			font-size: var(--text-sm);
 		}
 	}
 </style>
 
 <div class="modal">
-	<div class="form-container">
+	<div class="form-container on-primary">
 		{#if error}
-			<div class="error-message">{error}</div>
+			<div class="error-message" role="alert" transition:expand>{error}</div>
 		{/if}
 		
 		{#if success}
-			<div class="success-message">Event added successfully!</div>
+			<div class="success-message" role="status" transition:expand>✓ Event added</div>
 		{/if}
 		
 		<div class="form-group">

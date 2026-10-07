@@ -1,0 +1,12 @@
+# SearXNG for the home assistant's web_search tool. Internal only (no
+# published port), so the public-instance rate limiter is off.
+use_default_settings: true
+server:
+  secret_key: "overridden by SEARXNG_SECRET"
+  limiter: false
+  image_proxy: false
+search:
+  safe_search: 1
+  formats:
+    - html
+    - json

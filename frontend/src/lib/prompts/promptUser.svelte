@@ -6,22 +6,25 @@
 
 <style>
 	.navButton {
-		border: 3px solid #96616B;
-		border-radius: 20px;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
 		cursor: pointer;
-		padding: 1vw 4vw;
+		padding: var(--block-pad);
 		min-height: 60px;
-		font-weight: bold;
-		font-size: clamp(12px, 3vw, 32px);
-		background-color: #96616B;
-		color: #FFEAD0;
+		font-weight: var(--weight-bold);
+		font-size: var(--text-base);
+		background-color: var(--primary);
+		color: var(--paper);
 		justify-content: center;
+		transition: var(--swap);
 	}
 
-	.navButton:hover {
-		background-color: #FFEAD0;
-		color: #96616B;
-		box-shadow: 0 7px 15px rgba(0, 0, 0, 0.3);
+	@media (hover: hover) {
+		.navButton:hover {
+			background-color: var(--paper);
+			color: var(--primary);
+			box-shadow: var(--shadow-lift);
+		}
 	}
 
 	.modal {
@@ -33,16 +36,17 @@
 		left: 0;
 		width: 100%;
 		height: 100%;
-		background: rgba(0, 0, 0, 0.5);
+		background: var(--overlay);
 		justify-content: center;
 		align-items: center;
 	}
 
 	.modal-content {
-		background: #FFEAD0;
-		padding: 20px;
-		border-radius: 8px;
+		background: var(--paper);
+		padding: var(--space-lg);
+		border-radius: var(--radius-lg);
 		width: 300px;
+		max-width: 100%;
 		text-align: center;
 	}
 

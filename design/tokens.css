@@ -1,0 +1,116 @@
+/*
+ * Home Calendar — design tokens ("The Family Almanac")
+ * Single source of truth for color, type, spacing, radius, borders, shadows,
+ * motion. Mirror of /design/tokens.css — keep both in sync.
+ */
+:root {
+	/* ── Theme palette ─────────────────────────────────────── */
+	/* Every household member picks a two-colour theme ($lib/theme.js).
+	 * The theme sets only --primary and --paper (inline on <html>); every
+	 * other colour below derives from those two. These are the defaults
+	 * (Rose & Cream). */
+	--primary: #8F5C66;        /* structure and ink: nav, borders, text, active fills */
+	--paper: #FFEAD0;          /* the page: every surface at rest, text on primary */
+
+	/* Derived from the pair, so they follow whichever theme is active */
+	--primary-deep: color-mix(in oklab, var(--primary) 89%, black);        /* focused borders, pressed fills */
+	--paper-shade: color-mix(in oklab, var(--paper) 86%, var(--primary));  /* hover-darken of paper surfaces */
+	--muted: color-mix(in oklab, var(--primary) 41%, var(--paper));        /* low-urgency dots, distant deadlines */
+
+	/* Constant across themes */
+	--ink: #113537;            /* long-form reading text on paper (11:1 on every theme) */
+	--idle: #9E9E9E;           /* disabled fills, "none" states */
+
+	/* ── Status (status dots, badges, destructive actions) ── */
+	--danger: #C71414;      /* destructive buttons only */
+	--urgent: #DB324D;      /* overdue / high priority */
+	--warn: #E07B39;        /* due soon / medium priority */
+	--ok: #5B8C5A;          /* on track / low priority / success */
+
+	/* ── Alpha tints (washes, tracks, hairlines; never text) ── */
+	--primary-a08: color-mix(in srgb, var(--primary) 8%, transparent);   /* hover wash on paper */
+	--primary-a12: color-mix(in srgb, var(--primary) 12%, transparent);  /* badge/track backgrounds */
+	--primary-a25: color-mix(in srgb, var(--primary) 25%, transparent);  /* quiet borders, dividers */
+	--primary-a45: color-mix(in srgb, var(--primary) 45%, transparent);  /* drag handles */
+	--urgent-a12: rgba(219, 50, 77, 0.12);                               /* overdue badge background */
+	--paper-a12: color-mix(in srgb, var(--paper) 12%, transparent);      /* input bg on primary cards */
+	--paper-a35: color-mix(in srgb, var(--paper) 35%, transparent);      /* quiet borders on primary */
+	--paper-a60: color-mix(in srgb, var(--paper) 60%, transparent);      /* borders on primary */
+
+	/* ── Spacing ───────────────────────────────────────────── */
+	--space-xs: 5px;
+	--space-sm: 10px;
+	--space-md: 15px;
+	--space-lg: 20px;
+
+	/* ── Radius ────────────────────────────────────────────── */
+	--radius-sm: 5px;       /* dense tiles, calendar pills */
+	--radius-md: 7px;       /* buttons, inputs, list rows */
+	--radius-lg: 10px;      /* cards, panels, modals */
+	--radius-pill: 999px;   /* chips, filter pills, badges */
+	--radius-circle: 50%;   /* FAB, dots, round checkboxes */
+
+	/* ── Borders ───────────────────────────────────────────── */
+	--bw: 2px;              /* every bordered control and container */
+	--bw-hair: 1px;         /* hairline dividers and grid lines only */
+
+	/* ── Control sizing (one size per control class) ───────── */
+	--control-pad-y: 8px;   /* standard buttons */
+	--control-pad-x: 14px;
+	--control-min-h: 40px;
+	--chip-pad-y: 5px;      /* compact chips / filter pills */
+	--chip-pad-x: 12px;
+	--block-pad: 13px;      /* full-width action buttons */
+
+	/* ── Shadows (earned by interaction, never decoration) ── */
+	--shadow-ambient: 0 2px 5px rgba(0, 0, 0, 0.1);
+	--shadow-pop: 0 2px 10px rgba(0, 0, 0, 0.1);
+	--shadow-lift: 0 7px 15px rgba(0, 0, 0, 0.3);
+	--shadow-modal: 0 4px 20px rgba(0, 0, 0, 0.3);
+	--focus-ring: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+	--overlay: rgba(0, 0, 0, 0.5);
+
+	/* ── Typography ────────────────────────────────────────── */
+	/* Libre Franklin: Franklin Gothic lineage, the printed-almanac grotesque.
+	 * One family, two weights. A household theme may swap --font-sans. */
+	--font-sans: 'Libre Franklin', 'Franklin Gothic', 'Helvetica Neue', Arial, sans-serif;
+
+	/* Fixed rem scale, 1.2 ratio (product register: no fluid type) */
+	--text-xs: 0.8rem;      /* captions, timestamps, meta; the floor */
+	--text-sm: 0.9rem;      /* labels, chips, secondary UI */
+	--text-base: 1rem;      /* body, list rows, buttons */
+	--text-md: 1.2rem;      /* titles: card headers, chore names in panels */
+	--text-lg: 1.44rem;     /* headlines: section h2, dialog titles */
+	--text-xl: 1.728rem;    /* display: one page title per view */
+
+	--leading-tight: 1.2;   /* headings */
+	--leading-snug: 1.35;   /* labels, compact rows */
+	--leading-body: 1.5;    /* body and paragraphs */
+
+	--weight-regular: 400;
+	--weight-bold: 700;
+
+	--measure: 65ch;        /* max line length for paragraphs */
+
+	/* ── Motion ────────────────────────────────────────────── */
+	/* Quick and calm: things arrive with a soft deceleration and leave
+	 * faster than they came. No bounce, no overshoot. Mirrored in
+	 * $lib/motion.js. */
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);     /* quint out: entrances, state changes */
+	--ease-in: cubic-bezier(0.64, 0, 0.78, 0);      /* quint in: exits */
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);  /* there-and-back toggles */
+	--ease-screen: cubic-bezier(0.25, 0.8, 0.25, 1); /* screen pushes: moves at once, lands softly */
+
+	--dur-instant: 100ms;   /* press feedback */
+	--dur-fast: 130ms;      /* colour swaps, exits */
+	--dur-base: 200ms;      /* reveals, dialogs, panels, page arrivals */
+	--dur-slow: 260ms;      /* list reflow, height changes */
+	--dur-screen: 360ms;    /* whole screens pushing sideways (tab and form changes) */
+
+	--swap:
+		background-color var(--dur-fast) var(--ease-out),
+		color var(--dur-fast) var(--ease-out),
+		border-color var(--dur-fast) var(--ease-out),
+		box-shadow var(--dur-fast) var(--ease-out),
+		transform var(--dur-instant) var(--ease-out);
+}

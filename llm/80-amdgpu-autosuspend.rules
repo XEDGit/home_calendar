@@ -1,0 +1,6 @@
+# Keep the RX 5600 XT awake 5 min after last use (amdgpu default: 5 s).
+# Runtime suspend evicts VRAM to system RAM and nothing moves it back, so the
+# llm service must unload first (--sleep-idle-seconds 240 < 300 s here).
+# amdgpu sets its own delay at probe, so match on driver bind, not PCI add.
+# Install: sudo cp llm/80-amdgpu-autosuspend.rules /etc/udev/rules.d/
+ACTION=="add|bind", SUBSYSTEM=="pci", DRIVER=="amdgpu", ATTR{vendor}=="0x1002", ATTR{device}=="0x731f", ATTR{power/autosuspend_delay_ms}="300000"

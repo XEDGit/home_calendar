@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-23T16:13:36.491Z",
+  "title": "Design System: Home Calendar",
+  "extensions": {
+    "colorMeta": {
+      "dusty-rose": {
+        "role": "primary",
+        "displayName": "Dusty Rose",
+        "canonical": "oklch(53% 0.068 7)",
+        "tonalRamp": [
+          "oklch(15% 0.04 7)",
+          "oklch(25% 0.06 7)",
+          "oklch(35% 0.068 7)",
+          "oklch(45% 0.068 7)",
+          "oklch(53% 0.068 7)",
+          "oklch(65% 0.06 7)",
+          "oklch(78% 0.04 7)",
+          "oklch(90% 0.02 7)"
+        ]
+      },
+      "warm-cream": {
+        "role": "neutral",
+        "displayName": "Warm Cream",
+        "canonical": "oklch(93% 0.04 70)",
+        "tonalRamp": [
+          "oklch(30% 0.03 70)",
+          "oklch(45% 0.04 70)",
+          "oklch(58% 0.04 70)",
+          "oklch(70% 0.04 70)",
+          "oklch(80% 0.04 70)",
+          "oklch(88% 0.04 70)",
+          "oklch(93% 0.04 70)",
+          "oklch(97% 0.02 70)"
+        ]
+      },
+      "deep-rose": {
+        "role": "primary-dark",
+        "displayName": "Deep Rose",
+        "canonical": "oklch(42% 0.06 10)",
+        "tonalRamp": [
+          "oklch(15% 0.04 10)",
+          "oklch(25% 0.06 10)",
+          "oklch(35% 0.06 10)",
+          "oklch(42% 0.06 10)",
+          "oklch(52% 0.07 10)",
+          "oklch(65% 0.05 10)",
+          "oklch(78% 0.03 10)",
+          "oklch(90% 0.02 10)"
+        ]
+      },
+      "teal-ink": {
+        "role": "neutral-text",
+        "displayName": "Teal Ink",
+        "canonical": "oklch(22% 0.05 195)",
+        "tonalRamp": [
+          "oklch(15% 0.04 195)",
+          "oklch(22% 0.05 195)",
+          "oklch(32% 0.05 195)",
+          "oklch(45% 0.05 195)",
+          "oklch(58% 0.04 195)",
+          "oklch(70% 0.04 195)",
+          "oklch(83% 0.02 195)",
+          "oklch(93% 0.01 195)"
+        ],
+        "purpose": "Long-form reading text on cream only (notes, descriptions). Never on rose."
+      },
+      "delete-red": {
+        "role": "destructive",
+        "displayName": "Delete Red",
+        "canonical": "oklch(45% 0.22 25)",
+        "tonalRamp": [
+          "oklch(20% 0.15 25)",
+          "oklch(30% 0.20 25)",
+          "oklch(38% 0.22 25)",
+          "oklch(45% 0.22 25)",
+          "oklch(55% 0.20 25)",
+          "oklch(68% 0.15 25)",
+          "oklch(80% 0.10 25)",
+          "oklch(92% 0.04 25)"
+        ]
+      }
+    },
+    "statusColors": {
+      "urgent": {
+        "hex": "#DB324D",
+        "purpose": "Overdue chores, high priority, error text."
+      },
+      "warn": {
+        "hex": "#E07B39",
+        "purpose": "Due soon, medium priority."
+      },
+      "ok": {
+        "hex": "#5B8C5A",
+        "purpose": "On track, low priority, success feedback."
+      },
+      "muted": {
+        "hex": "#C8B0B4",
+        "purpose": "Distant deadlines; rose-tinted neutral."
+      },
+      "idle": {
+        "hex": "#9E9E9E",
+        "purpose": "Disabled fills and none-states."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page-level titles. One per view."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headings with underline rule."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card headers, chore names, todo titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "List content, metadata, descriptions. Teal ink on cream."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Filter buttons, tag text, form labels. Always bold."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Timestamps, subtitles. Never primary info."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient",
+        "value": "0 2px 5px rgba(0,0,0,0.1)",
+        "purpose": "Calendar day cells and structural separation."
+      },
+      {
+        "name": "context-popup",
+        "value": "0 2px 10px rgba(0,0,0,0.1)",
+        "purpose": "Floating context menus."
+      },
+      {
+        "name": "hover-lift",
+        "value": "0 7px 15px rgba(0,0,0,0.3)",
+        "purpose": "Nav button hover and interactive element activation."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 2px rgba(143, 92, 102,0.3)",
+        "purpose": "Keyboard focus indicator, rose-tinted."
+      },
+      {
+        "name": "modal-overlay",
+        "value": "background: rgba(0,0,0,0.5)",
+        "purpose": "Full-screen dimming behind dialogs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Quint out: arrivals and state changes."
+      },
+      {
+        "name": "ease-in",
+        "value": "cubic-bezier(0.64, 0, 0.78, 0)",
+        "purpose": "Quint in: exits."
+      },
+      {
+        "name": "dur-instant",
+        "value": "100ms",
+        "purpose": "Press feedback."
+      },
+      {
+        "name": "dur-fast",
+        "value": "130ms",
+        "purpose": "Colour swaps and exits."
+      },
+      {
+        "name": "dur-base",
+        "value": "200ms",
+        "purpose": "Reveals, dialogs, panels."
+      },
+      {
+        "name": "dur-slow",
+        "value": "260ms",
+        "purpose": "List reflow, height changes."
+      },
+      {
+        "name": "dur-screen",
+        "value": "360ms",
+        "purpose": "Whole screens pushing sideways."
+      },
+      {
+        "name": "ease-screen",
+        "value": "cubic-bezier(0.25, 0.8, 0.25, 1)",
+        "purpose": "Screen pushes: moves at once, lands softly."
+      },
+      {
+        "name": "swap",
+        "value": "background-color, color, border-color, box-shadow 130ms ease-out; transform 100ms ease-out",
+        "purpose": "Inversion hovers and press feedback."
+      },
+      {
+        "name": "page-transition",
+        "value": "Horizontal push View Transition: leaving screen translates out, next translates in beside it, 360ms cubic-bezier(0.25, 0.8, 0.25, 1), in nav order (forms sit right of their tab); nav pill glides in step",
+        "purpose": "Screens arrive whole: tabs stay mounted and refresh in place, background tabs warm up after first load, a not-yet-loaded tab holds the change up to 600ms."
+      },
+      {
+        "name": "dialog",
+        "value": "enter: opacity 0→1, translate 12px→0, scale .98→1, 200ms ease-out; exit 130ms ease-in",
+        "purpose": "Native dialog open/close via @starting-style and modalDialog."
+      },
+      {
+        "name": "list",
+        "value": "flip 260ms ease-out; reveal 200ms (6px rise); vanish 130ms fade",
+        "purpose": "Keyed list changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "480px"
+      },
+      {
+        "name": "tablet",
+        "value": "670px"
+      },
+      {
+        "name": "desktop",
+        "value": "1100px"
+      }
+    ],
+    "themes": [
+      {
+        "id": "rose",
+        "name": "Rose & Cream",
+        "primary": "#8F5C66",
+        "paper": "#FFEAD0",
+        "default": true
+      },
+      {
+        "id": "sage",
+        "name": "Sage & Linen",
+        "primary": "#4E6B57",
+        "paper": "#F2EEE1"
+      },
+      {
+        "id": "denim",
+        "name": "Denim & Oat",
+        "primary": "#3F5B7C",
+        "paper": "#F4EEE2"
+      },
+      {
+        "id": "plum",
+        "name": "Plum & Blush",
+        "primary": "#6D4A7C",
+        "paper": "#F7ECEE"
+      },
+      {
+        "id": "olive",
+        "name": "Olive & Honey",
+        "primary": "#655D2C",
+        "paper": "#FAF0D2"
+      },
+      {
+        "id": "slate",
+        "name": "Slate & Bone",
+        "primary": "#4A515C",
+        "paper": "#F0ECE5"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call-to-action. Rose fill, cream text. Hover inverts to cream/rose.",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { padding: 8px 14px; border-radius: 7px; border: solid 2px #8F5C66; background-color: #8F5C66; color: #FFEAD0; font-weight: bold; cursor: pointer; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; font-size: 1rem; } .ds-btn-primary:hover { background-color: #FFEAD0; color: #8F5C66; text-decoration: underline; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action. Cream fill, rose text. Same border as primary — only fill swaps.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { padding: 8px 14px; border-radius: 7px; border: solid 2px #8F5C66; background-color: #FFEAD0; color: #8F5C66; cursor: pointer; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; font-size: 1rem; } .ds-btn-ghost:hover { background-color: #8F5C66; color: #FFEAD0; text-decoration: underline; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action only (delete). The one red button. Hover inverts.",
+      "html": "<button class=\"ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn-danger { width: 100%; padding: 13px; border-radius: 7px; border: solid 2px #C71414; background-color: #C71414; color: #FFEAD0; font-weight: bold; cursor: pointer; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; font-size: 1.05rem; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-btn-danger:hover { background-color: #FFEAD0; color: #C71414; } .ds-btn-danger:focus-visible { outline: 2px solid #7A4E56; outline-offset: 2px; }"
+    },
+    {
+      "name": "Nav Button",
+      "kind": "nav",
+      "refersTo": "button-nav",
+      "description": "Top navigation tab. Active state is the inverted (cream) variant.",
+      "html": "<button class=\"ds-btn-nav ds-active\">Calendar</button>",
+      "css": ".ds-btn-nav { border: 2px solid #8F5C66; border-radius: 7px; cursor: pointer; height: 3rem; font-weight: bold; font-size: clamp(12px, 2vw, 32px); background-color: #8F5C66; color: #FFEAD0; padding: 0 12px; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; } .ds-btn-nav:hover, .ds-btn-nav.ds-active { background-color: #FFEAD0; color: #8F5C66; box-shadow: 0 7px 15px rgba(0,0,0,0.3); }"
+    },
+    {
+      "name": "Tag / Chip",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Room and category filter. Cream at rest, rose on hover/active.",
+      "html": "<span class=\"ds-tag\">Kitchen</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 999px; border: solid 2px #8F5C66; background-color: #FFEAD0; color: #8F5C66; font-weight: bold; font-size: 0.9em; cursor: pointer; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s; } .ds-tag:hover, .ds-tag.ds-active { background-color: #8F5C66; color: #FFEAD0; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Todo and chore item card. Rose header band bleeds to edges; cream body.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Take out trash</div><p class=\"ds-card-body\">Due today · Kitchen</p></div>",
+      "css": ".ds-card { border-radius: 10px; border: solid 2px #8F5C66; background-color: #FFEAD0; color: #8F5C66; display: flex; flex-direction: column; padding: 10px; cursor: pointer; transition: transform 0.3s; overflow: hidden; } .ds-card:hover { transform: scale(1.02); } .ds-card-header { font-size: 1.2em; font-weight: bold; background-color: #8F5C66; color: #FFEAD0; border-radius: 5px 5px 0 0; padding: 0.75em 1em; margin: -10px -10px 10px -10px; } .ds-card-body { margin: 0; font-size: 0.9em; color: #8F5C66; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "button-ghost",
+      "description": "Inline text field. Underline-only style; no background, no outer border.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Event name\" />",
+      "css": ".ds-input { outline: none; background: none; border: none; border-bottom: 2px solid #8F5C66; border-radius: 0; caret-color: rgba(143, 92, 102,0.5); color: #8F5C66; padding: 4px 2px; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; font-size: 1em; transition: border-color 0.2s; } .ds-input:focus { border-color: #7a4e56; }"
+    },
+    {
+      "name": "Collapsible Trigger",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width section expander. Rose bg with underline text; inverts on hover.",
+      "html": "<button class=\"ds-collapsible\">Show details</button>",
+      "css": ".ds-collapsible { width: 100%; border: solid #8F5C66 2px; border-radius: 7px; padding: 10px; text-align: left; font-size: 16px; cursor: pointer; text-decoration: underline; background-color: #8F5C66; color: #FFEAD0; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s; } .ds-collapsible:hover { background-color: #FFEAD0; color: #8F5C66; }"
+    },
+    {
+      "name": "FAB",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Fixed floating action button. Circle shape, cream/rose at rest, inverts on hover.",
+      "html": "<button class=\"ds-fab\">+</button>",
+      "css": ".ds-fab { height: clamp(50px, 10vh, 80px); width: clamp(50px, 10vh, 80px); cursor: pointer; font-size: clamp(20px, 5vh, 48px); background-color: #FFEAD0; color: #8F5C66; border: 2px solid #8F5C66; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s; } .ds-fab:hover { background-color: #8F5C66; color: #FFEAD0; }"
+    },
+    {
+      "name": "Nav Bar",
+      "kind": "nav",
+      "refersTo": "button-nav",
+      "description": "Full-width top navigation bar containing evenly spaced nav buttons.",
+      "html": "<nav class=\"ds-navbar\"><button class=\"ds-btn-nav\">Home</button><button class=\"ds-btn-nav ds-active\">Calendar</button><button class=\"ds-btn-nav\">Chores</button><button class=\"ds-btn-nav\">Todo</button></nav>",
+      "css": ".ds-navbar { width: 100%; display: flex; justify-content: space-evenly; background-color: #FFEAD0; padding-bottom: 10px; gap: 4px; } .ds-navbar .ds-btn-nav { border: 2px solid #8F5C66; border-radius: 7px; cursor: pointer; flex-grow: 0.15; height: 3rem; font-weight: bold; font-size: clamp(12px, 2vw, 32px); background-color: #8F5C66; color: #FFEAD0; padding: 0 12px; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; } .ds-navbar .ds-btn-nav:hover, .ds-navbar .ds-btn-nav.ds-active { background-color: #FFEAD0; color: #8F5C66; box-shadow: 0 7px 15px rgba(0,0,0,0.3); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Family Almanac",
+    "overview": "This system reads like a household almanac kept on the kitchen shelf: a dependable printed reference with a seasonal rhythm. Entries are ruled and orderly, the paper is warm, the ink is a single faded rose. It is consulted in seconds (\"what's today, who's on it\") and trusted because its structure never changes from page to page. Not a digital product imitating paper, but one that shares print's values: legibility first, warmth through material, structure that feels earned.\n\nThe color discipline is strict: two voices do all the work. Dusty rose and warm cream form a closed system, and the primary interaction is always a clean inversion between them. Rose is the ink: text, borders, headers, active fills. Shadows appear only when earned by interaction; everything else is flat. Density is low. Household members glance at this app between tasks; they do not sit and study it.\n\nMotion is quick, continuous, and calm. Tabs are peers, so they fade through in place while the nav pill glides to its new tab; forms rise from below and settle back; the masthead never moves. Nothing pops into place and nothing jumps; lists close their gaps, panels unfold, and late data eases in. Motion starts almost at once (under 100ms after a tap), every movement is short (100 to 260ms) and decelerates softly, and all of it disappears for anyone who prefers reduced motion.\n\nEvery household member re-inks their own almanac: each person picks a two-colour theme in Settings, and it follows them to every device. A theme swaps only the two voices (`--primary` and `--paper`); every other colour derives from them, structure never changes, and every palette keeps the AA contrast the default guarantees.\n\nThis system explicitly refuses: Google's over-minimalism (stripped to nothing), generic SaaS white-and-blue (this lives in a home, not an office), dense productivity tools like Jira and Asana (wrong register entirely), and the pastel Cozi-style \"family app\" look (too soft, not enough structure).",
+    "keyCharacteristics": [
+      "Two-voice palette: dusty rose + warm cream, inverted on every interaction",
+      "Rose is the ink: text on cream is rose at 4.6:1 (AA)",
+      "Flat at rest; shadows as feedback, never decoration",
+      "One typeface (Libre Franklin); hierarchy through weight and a 1.2 size scale",
+      "Gently curved corners on a fixed 5 / 7 / 10 px scale",
+      "Every value is a token, so households can re-theme without breaking anything",
+      "Continuous motion: nothing pops or jumps; things arrive with a soft deceleration and leave quickly"
+    ],
+    "rules": [
+      {
+        "name": "The Two-Colour Theme Rule",
+        "body": "A palette is exactly two colours, and must keep primary/paper at 4.5:1 or more (the UI inverts them on hover) and teal ink at 11:1 or more on the paper. Avoid red, orange, or green-leaning primaries that would blur into the status colours. Components never name a palette colour: they read `--primary` and `--paper`.",
+        "section": "colors"
+      },
+      {
+        "name": "The Inversion Rule",
+        "body": "The primary interaction pattern is a full color swap: rose flips to cream, cream flips to rose. No gradients, no intermediate tints, no opacity tricks. A hover that does anything else needs a strong reason.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Voice Rule",
+        "body": "Page surfaces speak rose and cream only. Teal ink appears only in paragraphs. Delete red appears on destructive actions alone; using it elsewhere devalues it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Solid Ink Rule",
+        "body": "Text is never alpha-tinted. Cream at 60% on rose is 2.7:1 and rose at 45% on cream is 1.8:1; both fail. Secondary text gets hierarchy from size, weight, or italic in a solid color, never from opacity. Alpha tints (`--primary-a08` to `--primary-a45`, `--paper-a12` to `--paper-a60`) are for washes, tracks, and hairlines only.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never-Hue-Alone Rule",
+        "body": "Status color always travels with a label, icon, or position. Warn (2.5:1), ok (3.4:1), and muted (1.7:1) are too light to carry meaning by themselves, and a household theme may shift them anyway.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "One font, all roles. Hierarchy lives in weight (`--weight-regular` 400 / `--weight-bold` 700, nothing between) and the 1.2 size scale. Do not add a second typeface for visual interest; the color system already does that work.",
+        "section": "typography"
+      },
+      {
+        "name": "The Token-Only Rule",
+        "body": "Font sizes are `var(--text-*)`, never px, em, or a one-off rem. Fluid `clamp()` type is prohibited in UI (the FAB glyph is the one exception, sized with its button). A size that doesn't fit the scale is a design question, not a new value.",
+        "section": "typography"
+      },
+      {
+        "name": "The Theme Hook Rule",
+        "body": "Components read `--font-sans`, never a family name, so a household theme can swap the face without touching components.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "A permanent shadow needs a structural reason (separation from content beneath). Decorative shadows are prohibited. If a card at rest casts a shadow, remove it.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Whole-Word Rule",
+        "body": "On every screen down to 320px, words never split and short labels (times, buttons, chips, names, nav labels) never wrap; groups of them wrap as whole items. Nothing may be wider than the screen, because on a phone one overflow makes the whole page pan sideways. Hover styles live inside @media (hover: hover), so taps never leave a control looking pressed.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do use the rose/cream inversion as the hover and active pattern everywhere. Consistency is the system.",
+      "Do read every color, radius, border, and shadow from `tokens.css`. A hardcoded hex breaks household theming.",
+      "Do size text only with `--text-xs` to `--text-xl` and weight only with 400/700.",
+      "Do keep text on cream in solid dusty rose (#8F5C66, 4.6:1) and paragraphs in teal ink (#113537).",
+      "Do rely on the global `:focus-visible` outline; add `.on-primary` to primary-filled containers so it turns paper-coloured there. Never write `outline: none`.",
+      "Do pair every status color with a label, icon, or position.",
+      "Do keep surfaces flat at rest; add the lift shadow only on hover for interactive elements.",
+      "Do use the radius scale: 10px panels, cards, dialogs; 7px buttons, inputs, list rows; 5px dense tiles and calendar pills; pills for chips and badges.",
+      "Do use 2px borders on every bordered control and container; 1px hairlines only for dividers and dense grids.",
+      "Do lead each screen with what the household came to check (today, overdue, whose turn), per PRODUCT.md's \"glance first\".",
+      "Do check every screen at 320px and 360px wide: no word split, no short label wrapped, nothing past the edge."
+    ],
+    "donts": [
+      "Don't use generic SaaS white-and-blue. \"This lives in someone's home, not an office.\"",
+      "Don't drift toward Google's over-minimalism. Clean is good; stripped to nothing is not.",
+      "Don't build dense Jira/Asana-style screens: no toolbars of twelve icons, no 13px data grids.",
+      "Don't use the pastel Cozi-style \"family app\" look: no baby blue, no gradient backgrounds, no rounded-everything with drop shadows.",
+      "Don't tint text with alpha or use idle gray (2.3:1) for readable text.",
+      "Don't add a `border-left` or `border-right` over 1px as a colored accent stripe. Use a full border, a background tint, or a leading icon.",
+      "Don't use gradient text (`background-clip: text`). Emphasis is weight or size.",
+      "Don't introduce a second typeface.",
+      "Don't add colors beyond the named status set. Delete red stays on destructive controls; status colors stay on dots and badges, never surfaces.",
+      "Don't build identical card grids; cards have structure because their content varies.",
+      "Don't reach for a modal first. Inline expansion, collapsibles, and contextual panels usually serve better.",
+      "Don't use `transition: all`. Transition colours via `--swap`; move things with `transform`/`opacity`, and change height only through `expand`, `autoHeight`, or `morphHeight`.",
+      "Don't let content pop in, jump, or blank out. A new state arrives through a transition, a list change moves rows rather than replacing them, and a refresh updates in place.",
+      "Don't use bounce, elastic, or overshoot easing, or durations over 260ms for anything but chart data morphs (350ms).",
+      "Don't slide whole pages sideways between tabs or let the old and new page overlap at full strength; fade through.",
+      "Don't hold the page frozen waiting for data; cap `settle` at about 50ms and let late content ease in.",
+      "Don't use `word-break: break-word` or `overflow-wrap: anywhere` on headings or labels: inside a flex row they split words to make room. Use `overflow-wrap: break-word`."
+    ]
+  }
+}

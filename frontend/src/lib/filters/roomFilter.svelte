@@ -37,11 +37,11 @@
     }
     
     .title {
-        color: #96616B;
-        background-color: #FFEAD0;
+        color: var(--primary);
+        background-color: var(--paper);
         margin: 0;
-        margin-top: 10px;
-        font-weight: bold;
+        margin-top: var(--space-sm);
+        font-weight: var(--weight-bold);
     }
     
     .buttons-container {

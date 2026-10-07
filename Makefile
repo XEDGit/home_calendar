@@ -10,3 +10,5 @@ logs:
 	docker-compose logs -f
 # clean: down
 # 	docker-compose down -v
+dev:
+	docker-compose --env-file .common.env -f compose.yaml -f compose.dev.yaml up --build -d

@@ -4,7 +4,7 @@
   "main": "backend.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test test/",
     "start": "node backend.js",
     "start:dev": "nodemon backend.js"
   },
@@ -13,11 +13,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
+    "linkedom": "^0.18.13",
     "mongodb": "^6.10.0",
     "node-schedule": "^2.1.1"
   },

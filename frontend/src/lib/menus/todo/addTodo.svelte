@@ -21,7 +21,7 @@
         justify-content: center;
         flex-direction: row;
         gap: 20px;
-        color: #96616B;
+        color: var(--primary);
     }
 </style>
 
@@ -33,7 +33,7 @@
             { name: 'Description', id: 'description', type: 'textarea', placeholder: 'Description' },
             { name: 'Tag', id: 'tag', type: 'select', options: tags.map((tag) => {return {name: tag, value: tag}}), hidden: tags.length == 0},
             { name: 'Deadline', id: 'deadline', type: 'date', value: '' },
-            { name: 'Priority', id: 'priority', type: 'select', options: [{name:'', value: '0'}, {name:'Low', value: '1'}, {name:'Medium', value: '2'}, {name:'High', value: 3}] },
+            { name: 'Priority', id: 'priority', type: 'select', value: '0', options: [{name:'None', value: '0'}, {name:'Low', value: '1'}, {name:'Medium', value: '2'}, {name:'High', value: 3}] },
             { name: 'Shared', id: 'shared', type: 'checkbox' },
         ]}
         endpoint="addTodo"

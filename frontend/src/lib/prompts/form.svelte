@@ -62,12 +62,14 @@
 
 <style>
 	.main-container {
-		margin-left: 15px;
-		border: 3px solid #96616B;
-		border-radius: 7px;
-		padding: 5px;
+		box-sizing: border-box;
+		max-width: calc(100% - var(--space-md));
+		margin-left: var(--space-md);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		padding: var(--space-xs);
 		display: inline-block;
-		font-size: 1.4em;
+		font-size: var(--text-lg);
 	}
 	.multi {
 		display: flex;
@@ -83,59 +85,62 @@
 	}
 
 	input {
-		outline: none;
+		min-width: 0;
 		background: none;
 		border: none;
-		border-radius: 4px;
-		border-bottom: 1px solid #96616B;
-		caret-color: #96616B80;
-		color: #96616B;
+		border-bottom: var(--bw) solid var(--primary);
+		caret-color: var(--primary);
+		color: var(--primary);
+	}
+
+	input:focus {
+		border-bottom-color: var(--primary-deep);
 	}
 
 	textarea {
+		box-sizing: border-box;
 		width: 100%;
 		max-width: 100%;
 		height: 6em;
 		max-height: 50%;
 		overflow-x: hidden;
-		border: solid 1px #96616B;
+		border: var(--bw) solid var(--primary);
 		text-wrap: wrap;
 		word-wrap: break-word;
-		background-color: #FFEAD0;
-		color: #96616B;
-		border-radius: 5px;
+		background-color: var(--paper);
+		color: var(--primary);
+		border-radius: var(--radius-md);
 		resize: none;
-		outline: none;
 	}
 
 	select {
-        padding: 5px;
-        border-radius: 4px;
-        border: 1px solid #96616B;
-        background-color: #FFEAD0;
-        color: #96616B;
+        padding: var(--space-xs);
+        border-radius: var(--radius-md);
+        border: var(--bw) solid var(--primary);
+        background-color: var(--paper);
+        color: var(--primary);
     }
 
     option {
-        background-color: #FFEAD0;
-        color: #96616B;
+        background-color: var(--paper);
+        color: var(--primary);
     }
-	
+
 	input[type="checkbox"] {
-		width: 20px;
-		height: 20px;
+		width: 24px;
+		height: 24px;
 		margin-right: 10px;
-		background-color: #FFEAD0;
-		border: 2px solid #96616B;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
 	}
 
 	input[type="checkbox"]:checked {
-		background-color: #96616B;
+		background-color: var(--primary);
 	}
 
 	label {
 		flex: 1;
-		color: #96616B;
+		color: var(--primary);
 		margin-right: 10px;
 		display: flex;
 		gap: 20px;
@@ -143,24 +148,33 @@
 	}
 
 	button {
-		background-color: #96616B;
-		color: #FFEAD0;
-		border: none;
-		border-radius: 7px;
-		padding: 1vw 2vw;
+		background-color: var(--primary);
+		color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		padding: var(--control-pad-y) var(--control-pad-x);
+		min-height: var(--control-min-h);
+		font-weight: var(--weight-bold);
+		font-family: inherit;
+		cursor: pointer;
+		transition: var(--swap);
 	}
 
-	button:hover {
-		background-color: #FFEAD0;
-		color: #96616B;
+	@media (hover: hover) {
+		button:hover {
+			background-color: var(--paper);
+			color: var(--primary);
+		}
 	}
 
 	.fade {
 		opacity: 0;
+		transition: opacity var(--dur-base) var(--ease-out);
 		pointer-events: none;
-		color: #15f60180;
+		color: var(--primary);
+		font-weight: var(--weight-bold);
 		margin: 7px 0;
-		font-size: 14px;
+		font-size: var(--text-sm);
 		width: 0;
 	}
 
@@ -170,9 +184,45 @@
 		margin-right: 40px;
 	}
 
+	/* Phones: each label sits above its field and the field takes the full
+	 * width, instead of a big label squeezing a tiny field beside it */
+	@media (max-width: 480px) {
+		.main-container {
+			display: block;
+			font-size: var(--text-base);
+		}
+
+		/* Forms with fields take the full width; a lone button (Delete) doesn't */
+		.main-container:not(.compact) {
+			width: 100%;
+		}
+
+		.single {
+			align-items: flex-end;
+		}
+
+		label {
+			min-width: 0;
+			margin-right: 0;
+			flex-direction: column;
+			align-items: stretch;
+			gap: 4px;
+			font-weight: var(--weight-bold);
+		}
+
+		label.inline {
+			flex-direction: row;
+			align-items: center;
+		}
+
+		.fade.show {
+			margin-right: var(--space-sm);
+		}
+	}
+
 </style>
 
-<div class='main-container' style="min-width: {width || ''};">
+<div class='main-container' class:compact={!inputs.some((d) => d.type != 'hidden' && !d.hidden)} style="min-width: {width || ''};">
 	<form on:submit|preventDefault={handleSubmit} class={Object.keys(inputs).length > 1? 'multi' : 'single'}>
 		{#each inputs as data}
 			{#if data.type == 'color'}
@@ -180,7 +230,7 @@
 					<ColorPicker --picker-indicator-size="25px" bind:hex={formData[data.id]} label="" position='responsive' />
 				</label>
 			{:else if data.type == 'checkbox'}
-				<label for={data.id}>{data.name}
+				<label class="inline" for={data.id}>{data.name}
 					<input
 						id={data.id}
 						type='checkbox'
@@ -232,7 +282,7 @@
 		{/each}
 		<slot/>
 		<div style='display: inline-flex; flex-direction: row;'>
-			<p class="fade {done ? 'show' : ''}">Done!</p>
+			<p class="fade {done ? 'show' : ''}" role="status">{done ? '✓ Done!' : ''}</p>
 			<button style='white-space: nowrap;' type="submit">{submitText}</button>
 		</div>
 	</form>

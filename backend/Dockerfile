@@ -1,11 +1,10 @@
-FROM node:latest
-
+# Self-contained backend image (k3s). TLS keys are NOT baked in:
+# they're mounted at /app/keys from a Secret.
+FROM node:23.11.0
 WORKDIR /app
-
-RUN apt-get -y update && apt-get -y upgrade
-
 COPY ./package* /app/
-
+RUN npm ci --omit=dev
+COPY . /app/
+ENV NODE_ENV=production
 EXPOSE 3000
-
-RUN npm i
+CMD ["node", "backend.js"]

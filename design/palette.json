@@ -1,0 +1,38 @@
+{
+  "name": "Home Calendar — The Warm Ledger",
+  "description": "Two-voice palette: dusty rose structures, warm cream breathes. Rose carries text; teal ink for long-form reading text. Status colors appear only as dots, badges, and destructive actions.",
+  "brand": {
+    "rose":        { "hex": "#8F5C66", "oklch": "oklch(53% 0.068 7)",  "role": "primary",        "usage": "nav backgrounds, active fills, borders, header bands" },
+    "rose-deep":   { "hex": "#7A4E56", "oklch": "oklch(42% 0.06 10)",  "role": "primary-dark",   "usage": "focused input borders, hover-darken on rose surfaces" },
+    "cream":       { "hex": "#FFEAD0", "oklch": "oklch(93% 0.04 70)",  "role": "surface",        "usage": "page background, cards, inputs, text on rose" },
+    "cream-shade": { "hex": "#F0D6B3", "oklch": "oklch(88% 0.05 75)",  "role": "surface-pressed","usage": "hover-darken of cream buttons on rose headers" },
+    "ink":         { "hex": "#113537", "oklch": "oklch(22% 0.05 195)", "role": "text",           "usage": "long-form reading text on cream; never on rose (use cream)" }
+  },
+  "status": {
+    "danger": { "hex": "#C71414", "role": "destructive",   "usage": "delete buttons and trash icons ONLY; rarity is its meaning" },
+    "urgent": { "hex": "#DB324D", "role": "overdue",       "usage": "overdue chores, high priority, error text" },
+    "warn":   { "hex": "#E07B39", "role": "due-soon",      "usage": "due soon, medium priority" },
+    "ok":     { "hex": "#5B8C5A", "role": "on-track",      "usage": "on track, low priority, success feedback" },
+    "muted":  { "hex": "#C8B0B4", "role": "low-urgency",   "usage": "distant deadlines, quiet indicator dots (rose-tinted neutral)" },
+    "idle":   { "hex": "#9E9E9E", "role": "disabled",      "usage": "disabled button fills, 'none' priority" }
+  },
+  "tints": {
+    "rose-a08":   { "value": "rgba(143, 92, 102, 0.08)",  "usage": "hover wash on cream cells" },
+    "rose-a12":   { "value": "rgba(143, 92, 102, 0.12)",  "usage": "badge and progress-track backgrounds, grid hairlines" },
+    "rose-a25":   { "value": "rgba(143, 92, 102, 0.25)",  "usage": "quiet borders, dividers, drag handles" },
+    "rose-a45":   { "value": "rgba(143, 92, 102, 0.45)",  "usage": "placeholder text, caret" },
+    "urgent-a12": { "value": "rgba(219, 50, 77, 0.12)",   "usage": "overdue badge background" },
+    "cream-a12":  { "value": "rgba(255, 234, 208, 0.12)", "usage": "input backgrounds on rose cards" },
+    "cream-a35":  { "value": "rgba(255, 234, 208, 0.35)", "usage": "quiet borders and placeholders on rose" },
+    "cream-a60":  { "value": "rgba(255, 234, 208, 0.6)",  "usage": "secondary text and resting input borders on rose" }
+  },
+  "rules": [
+    "The Inversion Rule: the only hover/active pattern is a full rose<->cream swap. No gradients, no opacity tricks on interaction.",
+    "The Two-Voice Rule: page surfaces speak rose and cream only; rose carries text on cream, teal ink long-form reading; status colors are accents, never surfaces.",
+    "Delete red (#C71414) appears on destructive controls only. Overdue/error text uses urgent (#DB324D)."
+  ],
+  "chartFallbacks": {
+    "note": "chart.js canvas cannot resolve CSS variables; use concrete hex with 0x99 alpha suffix for fills",
+    "defaultSeries": { "border": "#8F5C66", "fill": "#8F5C6699" }
+  }
+}

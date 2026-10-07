@@ -1,9 +1,5 @@
-import { getBackend } from '$lib/requests';
-
-export async function GET({ request }) {
-    return await getBackend(request, 'chores/dbg')
-}
+import { postBackend } from '$lib/requests';
 
 export async function POST({ request }) {
-    return await getBackend(request, 'chores/dbg')
+    return await postBackend(request, 'chores/dbg')
 }

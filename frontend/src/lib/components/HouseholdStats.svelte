@@ -193,28 +193,30 @@
     }
     
     .stat-card {
-        background-color: #FFEAD0;
-        border: solid #96616B 2px;
-        border-radius: 8px;
-        padding: 15px;
+        background-color: var(--paper);
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-lg);
+        padding: var(--space-md);
         text-align: center;
-        transition: transform 0.3s;
+        transition: transform var(--dur-base) var(--ease-out);
     }
     
-    .stat-card:hover {
-        transform: translateY(-5px);
+    @media (hover: hover) {
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
     }
     
     .stat-value {
-        font-size: 1.6rem;
-        font-weight: bold;
-        color: #96616B;
+        font-size: var(--text-xl);
+        font-weight: var(--weight-bold);
+        color: var(--primary);
         margin: 10px 0;
     }
     
     .stat-label {
-        font-size: 0.9rem;
-        color: #555;
+        font-size: var(--text-sm);
+        color: var(--primary);
     }
     
     .achievements {
@@ -225,26 +227,26 @@
     }
     
     .achievement-card {
-        background-color: #FFEAD0;
-        border: solid #96616B 2px;
-        border-radius: 8px;
-        padding: 15px;
+        background-color: var(--paper);
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-lg);
+        padding: var(--space-md);
         display: flex;
         align-items: center;
         gap: 15px;
     }
     
     .achievement-icon {
-        background-color: #96616B;
-        color: #FFEAD0;
+        background-color: var(--primary);
+        color: var(--paper);
         height: 40px;
         width: 40px;
-        border-radius: 50%;
+        border-radius: var(--radius-circle);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.2rem;
-        font-weight: bold;
+        font-size: var(--text-md);
+        font-weight: var(--weight-bold);
     }
     
     .achievement-content {
@@ -252,14 +254,14 @@
     }
     
     .achievement-title {
-        font-weight: bold;
-        color: #96616B;
+        font-weight: var(--weight-bold);
+        color: var(--primary);
         margin-bottom: 5px;
     }
     
     .achievement-description {
-        font-size: 0.9rem;
-        color: #555;
+        font-size: var(--text-sm);
+        color: var(--primary);
     }
     
     .date-controls {
@@ -278,18 +280,26 @@
     }
     
     .range-button {
-        background-color: #FFEAD0;
-        border: solid #96616B 2px;
-        border-radius: 5px;
-        color: #96616B;
-        padding: 5px 10px;
+        background-color: var(--paper);
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-pill);
+        color: var(--primary);
+        padding: var(--chip-pad-y) var(--chip-pad-x);
         cursor: pointer;
-        font-weight: bold;
+        font-weight: var(--weight-bold);
+        transition: var(--swap);
     }
     
-    .range-button:hover, .range-button.active {
-        background-color: #96616B;
-        color: #FFEAD0;
+    .range-button.active {
+        background-color: var(--primary);
+        color: var(--paper);
+    }
+
+    @media (hover: hover) {
+        .range-button:hover {
+            background-color: var(--primary);
+            color: var(--paper);
+        }
     }
     
     .custom-range {
@@ -309,9 +319,10 @@
     
     .date-input {
         padding: 8px;
-        border: 1px solid #96616B;
-        border-radius: 4px;
-        color: #96616B;
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-md);
+        color: var(--primary);
+        background-color: var(--paper);
     }
     
     @media (max-width: 768px) {

@@ -1,6 +1,10 @@
 <script>
-    import { onMount } from 'svelte';
-    
+    import { reveal } from '$lib/motion';
+
+    // Only the page shell is the <main> landmark; nested layouts stay divs.
+    export let as = 'div';
+    // The page shell's container and title morph during page transitions.
+    export let pageView = false;
     export let title = '';
     export let loading = false;
     export let empty = false;
@@ -17,41 +21,57 @@
     
     .tooltip {
         text-transform: none;
-        color: gray;
+        color: var(--primary);
         font-style: italic;
         white-space: wrap;
         margin-bottom: 10px;
     }
+
+    /* Quick loads never show the loading line; slow ones fade it in */
+    .loading-line {
+        animation: loading-appear var(--dur-base) var(--ease-out) 300ms both;
+    }
+
+    @keyframes loading-appear {
+        from {
+            opacity: 0;
+        }
+    }
     
     .filter-bar {
         width: 100%;
-        padding: 10px 0;
+        padding: var(--space-sm) 0;
         display: flex;
-        gap: 5px;
+        gap: var(--space-xs);
         flex-wrap: wrap;
-        color: #96616B;
+        color: var(--primary);
         align-items: center;
     }
 </style>
 
-<div class="content-container">
+<svelte:element this={as} class="content-container" class:page-view={pageView}>
     {#if title}
-        <h1 class="title">{title}</h1>
+        <h1 class="title" class:page-title={pageView}>{title}</h1>
     {/if}
-    
+
     {#if loading}
-        <p class="tooltip">Loading...</p>
+        <p class="tooltip loading-line" role="status">Loading…</p>
     {:else if empty}
-        <p class="tooltip">{emptyMessage}</p>
-        {#if emptyAction}
-            <p class="tooltip">{@html emptyAction}</p>
-        {/if}
+        <div in:reveal>
+            <p class="tooltip">{emptyMessage}</p>
+            {#if emptyAction}
+                <p class="tooltip">{@html emptyAction}</p>
+            {/if}
+        </div>
     {:else}
-        {#if filterBar}
-            <div class="filter-bar">
-                <slot name="filter-bar" />
-            </div>
-        {/if}
-        <slot />
+        <!-- Content settles in when it replaces the loading line -->
+        <div in:reveal>
+            {#if filterBar}
+                <div class="filter-bar">
+                    <slot name="filter-bar" />
+                </div>
+            {/if}
+            <slot />
+        </div>
     {/if}
-</div>
+</svelte:element>

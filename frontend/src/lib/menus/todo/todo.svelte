@@ -3,11 +3,25 @@
     import { getTodos, getTags, updateTodo, deleteTodo } from '$lib/requests.js'
     import Card from '$lib/buttons/card.svelte';
     import UpdateTodo from './updateTodo.svelte';
+    import { reveal, vanish, move } from '$lib/motion';
 
     export let todos = [];
     let tags = [];
     let activeTags = [];
     let selectedTodo = null;
+
+    // Kept alive in the background between visits: coming back to this tab
+    // refreshes it in place
+    // Called once the first data is in, so the page knows this tab can
+    // slide in whole
+    export let onReady = () => {};
+    export let active = true;
+    let wasActive = active;
+    $: onActiveChange(active);
+    function onActiveChange(isActive) {
+        if (isActive && !wasActive) load();
+        wasActive = isActive;
+    }
 
     const handleTagClick = (idx) => {
         activeTags[idx] = !activeTags[idx];
@@ -76,19 +90,25 @@
         }
     }
 
-    onMount(async () => {
-        todos = await getTodos();
-        tags = await getTags();
-        tags.unshift('shared');
-        tags.unshift('personal');
-        activeTags = tags.map(() => false);
-    });
+    async function load() {
+        // In parallel; assigned together so the filters render complete
+        const [todoList, tagList] = await Promise.all([getTodos(), getTags()]);
+        const nextTags = ['personal', 'shared', ...tagList];
+        // A refresh keeps the tag filters, unless the tags themselves changed
+        if (nextTags.join() !== tags.join()) activeTags = nextTags.map(() => false);
+        todos = todoList;
+        tags = nextTags;
+        onReady();
+    }
+
+    onMount(load);
 
 </script>
 
 
 <style>
     .todo-container {
+        position: relative;
         width: 100%;
         display: flex;
         flex-wrap: wrap;
@@ -98,10 +118,22 @@
         gap: 1em;
     }
 
+    /* Each card sits in a slot so the list can animate: filtered-out cards
+       fade, the rest glide into the gap */
+    .card-slot {
+        flex: 0 1 48%;
+        min-width: min(300px, 100%);
+    }
+
     @media (max-width: 670px) {
         .todo-container {
             flex-direction: column;
             align-items: center;
+        }
+
+        .card-slot {
+            flex-basis: auto;
+            width: 100%;
         }
     }
 
@@ -113,37 +145,53 @@
         justify-content: flex-start;
         flex-direction: row;
         gap: 1em;
-        color: #96616B;
-        margin-bottom: 20px;
+        color: var(--primary);
+        margin-bottom: var(--space-lg);
+    }
+
+    @media (max-width: 670px) {
+        .filter {
+            gap: 6px 8px;
+        }
     }
 
     button {
-        background-color: #FFEAD0;
-        color: #96616B;
-        border: solid 2px #96616B;
-        border-radius: 5px;
-        padding: 5px 10px;
+        background-color: var(--paper);
+        color: var(--primary);
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-pill);
+        padding: var(--chip-pad-y) var(--chip-pad-x);
         cursor: pointer;
-        font-weight: bold;
+        font-weight: var(--weight-bold);
+        transition: var(--swap);
     }
 
-    button:hover {
-        background-color: #FFEAD0;
-        color: #96616B;
+    @media (hover: hover) {
+        button:hover {
+            background-color: var(--primary);
+            color: var(--paper);
+        }
     }
 
     button::before {
         content: '# ';
     }
 
-    .active, .active:hover {
-        background-color: #96616B;
-        color: #FFEAD0;
+    .active {
+        background-color: var(--primary);
+        color: var(--paper);
+    }
+
+    @media (hover: hover) {
+        .active:hover {
+            background-color: var(--primary);
+            color: var(--paper);
+        }
     }
 </style>
 
 <div class='filter'>
-    <span style='font-weight: bold'>Tags:</span>
+    <span style='font-weight: var(--weight-bold)'>Tags:</span>
     {#each tags as tag, idx}
         <button class='tag {activeTags[idx]? 'active' : ''}' on:click={() => handleTagClick(idx)}>
             {tag}
@@ -151,7 +199,8 @@
     {/each}
 </div>
 <div class="todo-container">
-    {#each filterTodos(todos) as todo}
+    {#each filterTodos(todos) as todo (todo._id)}
+        <div class="card-slot" animate:move in:reveal out:vanish>
             <Card
                 title={todo.title}
                 shortTitle={todo.shortTitle}
@@ -166,7 +215,8 @@
                 updateDone={() => {todo.done = !todo.done; updateTodo({ _id: todo._id, done: todo.done });
                 }}
             />
-            {/each}
+        </div>
+    {/each}
     <div></div>
 </div>
 

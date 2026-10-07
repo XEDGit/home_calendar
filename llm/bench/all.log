@@ -1,0 +1,65 @@
+===== Qwen3.5 think (final prompt)
+PASS [it]  10.9s  Cosa devo fare oggi?
+      today_recap({})
+PASS [it]   4.1s  Ho lavato i piatti
+      sign_chore({"chore": "Dishes"})
+PASS [it]   6.0s  Aggiungi latte e uova alla lista della spesa
+      add_todo({"title": "Latte e uova", "tag": "Groceries", "shared": true})
+FAIL [it]  10.4s  Dopodomani alle 15 dentista
+      -
+      reply: "Mi dispiace, ma non posso aggiornare l'evento del dentista senza sapere esattamente cosa vuoi fare. L'evento attuale è per domani (2026-09-25) alle 10:00.\n\nVuoi"
+PASS [it]   3.8s  Ho chiamato l'idraulico, segnalo come fatto
+      update_todo({"todo": "Chiamare idraulico", "done": true})
+PASS [it]   3.5s  Oggi salto la spazzatura
+      skip_chore({"chore": "Take out trash"})
+PASS [it]   7.2s  Cosa c'è in calendario la settimana prossima?
+      list_events({"start_date": "2026-09-28", "end_date": "2026-10-04"})
+PASS [it]   4.5s  Elimina la riunione di condominio
+      delete_event({"event": "Riunione condominio"})
+PASS [it]   4.8s  Nuova faccenda: pulire il bagno ogni 7 giorni
+      add_chore({"name": "Pulire il bagno", "every_days": 7, "rooms": ["Bathroom"]})
+PASS [it]   3.5s  Ho passato l'aspirapolvere
+      -
+PASS [en]   5.0s  What's on today?
+      today_recap({})
+PASS [en]   4.8s  I took out the trash and watered the plants
+      sign_chore({"chore": "Take out trash"}), sign_chore({"chore": "Water plants"})
+FAIL [en]   5.9s  Add a todo to renew my passport by October 15, tag it personal
+      add_todo({"title": "renew my passport", "deadline": "2026-10-15", "tag": "personal"})
+      reply: 'Done. Added "renew my passport" as a personal todo with deadline October 15.'
+PASS [en]   4.0s  Make fix bike high priority
+      update_todo({"todo": "Fix bike", "priority": "high"})
+PASS [en]   4.8s  Football training every Monday at 8pm, starting next week
+      add_event({"title": "Football training", "when": "2026-09-28T20:00", "repeat": "weekly"})
+PASS [en]   5.3s  Push the dentist appointment to 4pm
+      update_event({"event": "Dentist", "when": "2026-09-25T16:00"})
+PASS [en]   5.9s  Add a room called Garage and a chore to sweep it every 14 days
+      add_room({"name": "Garage"}), add_chore({"name": "Sweep garage", "every_days": 14, "rooms": ["Garage"]})
+PASS [en]   3.1s  Delete the Work tag
+      delete_tag({"tag": "Work"})
+PASS [en]   4.0s  Who did the most chores this month?
+      get_stats({"period": "month"})
+PASS [en]   5.9s  I bought everything on the grocery list, tick it off
+      update_todo({"todo": "Buy bread", "done": true}), update_todo({"todo": "Buy detergent", "done": true})
+PASS [nl]   4.1s  Wat moet ik vandaag doen?
+      today_recap({})
+PASS [nl]   3.8s  Ik heb de afwas gedaan
+      sign_chore({"chore": "Dishes"})
+PASS [nl]   5.0s  Zet melk kopen op mijn lijstje
+      add_todo({"title": "Melk kopen"})
+PASS [nl]   5.7s  Morgen om 9 uur afspraak bij de huisarts
+      add_event({"title": "Afspraak bij de huisarts", "when": "2026-09-25T09:00"})
+PASS [nl]   5.5s  Volgende week dinsdag is oma jarig, de hele dag
+      add_event({"title": "Oma's jarig", "when": "2026-09-29"})
+PASS [nl]   3.8s  Sla het water geven van de planten over
+      skip_chore({"chore": "Water plants"})
+PASS [nl]   3.5s  Verwijder de taak fiets repareren
+      delete_todo({"todo": "Fix bike"})
+PASS [nl]   5.3s  Wat staat er deze week in de agenda?
+      list_events({"start_date": "2026-09-21", "end_date": "2026-09-27"})
+PASS [nl]   2.9s  Maak een nieuwe tag Tuin
+      add_tag({"name": "Tuin"})
+PASS [nl]   9.1s  Ik heb gestofzuigd
+      today_recap({}), list_chores({})
+
+TOTAL 28/30  it:9/10  en:9/10  nl:10/10  avg 5.2s/case  gen 65 tok/s

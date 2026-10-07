@@ -1,52 +1,64 @@
+# GPU services that stay in docker. Everything else runs in k3s (~/k3s/home-calendar).
+# k3s pods reach these via the docker bridge (172.17.0.1), see the ports below.
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
-  frontend_modules:
-  backend_modules:
+  # Model files for llm/whisper. A named volume (root ext4), not ./models:
+  # /mnt/storage is mergerfs, which can't mmap them.
+  models:
 
 services:
-  frontend:
-    container_name: frontend
-    restart: always
-    build: ./frontend
+  llm:
+    container_name: llm
+    # Reached by k3s pods (home-calendar ns) via the docker bridge; not on the LAN.
     ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - frontend_modules:/app/node_modules
-    networks:
-      - app-network
-    env_file:
-      - .frontend.env
-    command: ["npm", "run", "dev"]
-
-  backend:
-    container_name: backend
+      - "172.17.0.1:18080:8080"
     restart: always
-    build:
-      context: ./backend
-    depends_on:
-      - database
+    image: ghcr.io/ggml-org/llama.cpp:server-vulkan
+    devices:
+      - /dev/dri:/dev/dri
     volumes:
-      - ./backend:/app
-      - backend_modules:/app/node_modules
-    env_file:
-      - .backend.env
+      - models:/models:ro
     networks:
       - app-network
-    command: ["npm", "run", "start:dev"]
+    command: [
+      "-m", "/models/${LLM_MODEL:-Qwen3.5-4B-Q4_K_M.gguf}",
+      "--host", "0.0.0.0", "--port", "8080",
+      "-ngl", "99", "--parallel", "1", "--jinja",
+      # Qwen3.5 is hybrid (only 1 in 4 layers keeps a KV cache), so a long
+      # context is cheap; q8_0 halves it again (needs flash attention).
+      # Web-reading automations need more than the old 12288.
+      "-c", "${LLM_CTX:-32768}", "-fa", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0",
+      # Unload before the GPU runtime-suspends (autosuspend_delay_ms=300000,
+      # installed from llm/80-amdgpu-autosuspend.rules): suspend evicts VRAM
+      # to system RAM and the model then runs ~15x slower. Next prompt reloads.
+      "--sleep-idle-seconds", "240"
+    ]
 
-  database:
-    container_name: database
+  # Speech-to-text for the assistant's voice input (it/en/nl). Internal only;
+  # the frontend's /api/transcribe forwards recordings here.
+  whisper:
+    container_name: whisper
+    # Reached by k3s pods (home-calendar ns) via the docker bridge; not on the LAN.
+    ports:
+      - "172.17.0.1:18081:8080"
     restart: always
-    image: mongo:latest
+    # Local build: the upstream Vulkan image needs AVX-512 (SIGILL here)
+    build: ./whisper
+    devices:
+      - /dev/dri:/dev/dri
     volumes:
-      - ./backup/data/db:/data/db
-      - ./database/mongod.conf:/etc/mongod.conf
+      - models:/models:ro
     networks:
       - app-network
-    env_file:
-      - .database.env
-    command: --quiet --tlsMode disabled --config /etc/mongod.conf
+    command: [
+      # whisper-server args; ondemand.py adds host/port and runs it only
+      # while in use, so the model isn't stranded in RAM by GPU suspend
+      "-m", "/models/${WHISPER_MODEL:-whisper-ggml-large-v3-turbo-q5_0.bin}",
+      "-l", "auto", "--convert", "-t", "4"
+    ]
+
+  # Web search for the assistant (web_search tool). Internal only, like llm.

@@ -1,33 +1,39 @@
 const BACK_ENDPOINT = 'https://backend:3000/'
 const LIMIT_UNAUTH = 10
+const MAX_TRACKED_IPS = 10000
+const MAX_INFRACTIONS = 50
 import { promises as fs } from 'fs';
 import { redirect } from '@sveltejs/kit';
+import { THEMES, themeStyle } from '$lib/theme.js';
 
 class Blacklist {
 	constructor(old_blacklist) {
 		if (typeof old_blacklist !== 'object' || !old_blacklist.iplist) {
 			this.iplist = {};
 		} else {
-			this.iplist = old_blacklist.blacklist;
+			this.iplist = old_blacklist.iplist;
 		}
 	}
 
 	add(ip) {
-		if (!this.iplist[ip]) {
+		if (!(ip in this.iplist)) {
+			// Bound memory/disk growth: an attacker rotating source IPs cannot
+			// grow the table without limit. Evict an arbitrary unblocked entry.
+			if (Object.keys(this.iplist).length >= MAX_TRACKED_IPS) {
+				const evictable = Object.keys(this.iplist).find((k) => !this.iplist[k].blocked);
+				if (evictable) delete this.iplist[evictable];
+				else return false;
+			}
 			this.iplist[ip] = {
 				blocked: false,
 				date: null,
 				infractions: []
 			};
 		}
+		return true;
 	}
 
-	async block(ip) {
-		const date = Date.now().toLocaleString('en-EN');
-		this.add(ip);
-		this.iplist[ip].blocked = true;
-		this.iplist[ip].date = date;
-		console.log('Blocked ' + ip + ' on ' + date);
+	async saveToDisk() {
 		try {
 			await fs.writeFile(BLOCKED_IPS_LOG, JSON.stringify(this, null, 2), {encoding: 'utf8'});
 		} catch (err) {
@@ -35,20 +41,33 @@ class Blacklist {
 		}
 	}
 
+	async block(ip) {
+		const date = new Date().toLocaleString('en-NL');
+		if (!this.add(ip)) return;
+		if (this.get(ip).blocked == null) return;
+		this.iplist[ip].blocked = true;
+		this.iplist[ip].date = date;
+		console.log('Blocked ' + ip + ' on ' + date);
+		this.saveToDisk();
+	}
+
 	isBlocked(ip) {
 		return this.get(ip)?.blocked || false;
 	}
 
 	get(ip) {
-		return this.iplist[ip] || null;
+		return ip in this.iplist? this.iplist[ip] : null;
 	}
 
 	addInfraction(ip, link) {
-		this.add(ip);
-		date = Date.now().toLocaleString('en-EN');
-		this.iplist[ip].infractions.push([date, link]);
+		if (!this.add(ip)) return;
+		if (this.get(ip).blocked == null) return;
+		const date = new Date().toLocaleString('en-NL');
+		const list = this.iplist[ip].infractions;
+		list.push([date, link]);
+		if (list.length > MAX_INFRACTIONS) list.splice(0, list.length - MAX_INFRACTIONS);
 		console.log('Added infraction for ' + ip + ' on ' + link);
-		if (this.iplist[ip].infractions.length >= LIMIT_UNAUTH) {
+		if (list.length >= LIMIT_UNAUTH) {
 			this.block(ip);
 		}
 	}
@@ -64,9 +83,56 @@ let blacklist = null;
 		blacklist = new Blacklist(tmp_blacklist);
 		console.error(`Loaded blocked ips`)
 	} catch (err) {
+		blacklist = new Blacklist({});
 		console.error(`Couldn't load blocked ips because: ${err}`)
 	}
 })()
+
+// Determine the real client IP. nginx sets X-Real-IP from its $remote_addr,
+// which the realip module restores from CF-Connecting-IP when (and only when)
+// the TCP peer is a Cloudflare edge — so it cannot be spoofed by the client.
+// The last entry of X-Forwarded-For is the hop nginx appended and is likewise
+// trustworthy; everything to its left is client-supplied and must be ignored.
+function clientIp(event) {
+	const realIp = event.request.headers.get('x-real-ip');
+	if (realIp) return realIp.trim();
+	const xff = event.request.headers.get('x-forwarded-for');
+	if (xff) {
+		const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
+		if (parts.length) return parts[parts.length - 1];
+	}
+	try {
+		return event.getClientAddress();
+	} catch {
+		return 'unknown';
+	}
+}
+
+function applySecurityHeaders(response) {
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set('Referrer-Policy', 'no-referrer');
+	// Microphone for the assistant's voice input, this origin only
+	response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
+	// HSTS is sent by nginx (the TLS terminator); setting it here too would
+	// produce a duplicate header with a conflicting max-age.
+	return response;
+}
+
+// Paint the viewer's theme on the very first frame: the `theme` cookie
+// (set by the app when a member picks a palette) becomes inline colours on
+// <html>. Only known palette ids are honoured, so nothing user-controlled
+// is ever written into the page.
+function themed(event) {
+	const theme = THEMES.find((t) => t.id === event.cookies.get('theme'));
+	if (!theme) return undefined;
+	return {
+		transformPageChunk: ({ html }) =>
+			html
+				.replace('<html lang="en">', `<html lang="en" data-theme="${theme.id}" style="${themeStyle(theme)}">`)
+				.replace('<meta name="theme-color" content="#FFEAD0" />', `<meta name="theme-color" content="${theme.paper}" />`)
+	};
+}
 
 export async function handle({ event, resolve }) {
 	if (blacklist === null) {
@@ -75,8 +141,8 @@ export async function handle({ event, resolve }) {
 	}
 
 	const token = event.cookies.get('session');
-  
-	const ip = event.request.headers.get('x-forwarded-for')
+
+	const ip = clientIp(event);
 
 	if (blacklist.isBlocked(ip)) {
 		return new Response("Contact the administrator", {status: 418, headers: {'Connection': 'close'},})
@@ -87,9 +153,11 @@ export async function handle({ event, resolve }) {
 		if (event.url.pathname != '/') {
 			blacklist.addInfraction(ip, event.url.pathname);
 		}
-		return Response.redirect(event.url.origin + '/login');
+		// Relative redirect: the dev server sees plain http, so an absolute
+		// URL built from event.url.origin would downgrade the scheme.
+		redirect(302, '/login');
 	} else if (!token) {
-		return resolve(event);
+		return applySecurityHeaders(await resolve(event, themed(event)));
 	}
 
 	const verification = await fetch(BACK_ENDPOINT + 'verify', {
@@ -103,8 +171,8 @@ export async function handle({ event, resolve }) {
 	if (verification.status != 200) {
 		console.log('Bad token verification')
 		event.cookies.delete('session', { path: '/' });
-		throw redirect(302, event.url.origin + '/login');
+		throw redirect(302, '/login');
 	}
-  
-	return resolve(event);
-  }
+
+	return applySecurityHeaders(await resolve(event, themed(event)));
+}

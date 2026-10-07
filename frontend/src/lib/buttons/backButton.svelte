@@ -3,5 +3,5 @@
 </script>
 
 <div>
-    <button on:click={() => {back()}}>Back</button>
+    <button class="btn btn-ghost" on:click={() => {back()}}>Back</button>
 </div>

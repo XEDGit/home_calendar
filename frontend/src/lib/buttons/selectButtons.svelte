@@ -8,29 +8,40 @@
 </script>
 
 <style>
+	/* Buttons wrap onto a second line as whole buttons (long member names
+	 * on a phone), never pushing past the edge or breaking a name */
 	.select-mode {
 		display: flex;
+		flex-wrap: wrap;
 		width: 100%;
-		margin-bottom: 5px;
-		gap: 10px;
-	}
-	
-	.mode-button {
-		background-color: #FFEAD0;
-		border-radius: 5px;
-		color: #96616B;
-		border: solid 3px #96616B;
-		padding: 5px 10px;
+		margin-bottom: var(--space-xs);
+		gap: var(--space-sm);
 	}
 
-	.mode-button:hover {
-		background-color: #96616B;
-		color: #FFEAD0;
+	.mode-button {
+		background-color: var(--paper);
+		border-radius: var(--radius-md);
+		color: var(--primary);
+		border: var(--bw) solid var(--primary);
+		padding: var(--control-pad-y) var(--control-pad-x);
+		min-height: var(--control-min-h);
+		font-weight: var(--weight-bold);
+		font-family: inherit;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: var(--swap);
+	}
+
+	@media (hover: hover) {
+		.mode-button:hover {
+			background-color: var(--primary);
+			color: var(--paper);
+		}
 	}
 
 	.active {
-		color: #FFEAD0;
-		background-color: #96616B;
+		color: var(--paper);
+		background-color: var(--primary);
 	}
 </style>
 

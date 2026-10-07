@@ -1,58 +1,467 @@
+@import './design/tokens.css';
+
+/* Nothing may widen the page. On phones one overflowing element grows the
+ * layout viewport: the page starts panning sideways and fixed controls
+ * (the + button) drift off screen. `clip` rather than `hidden`, so neither
+ * element becomes a scroll container; browsers without `clip` (iOS < 16)
+ * keep the old `hidden` on body. */
 body {
 	overflow-x: hidden;
 }
 
+html,
+body {
+	overflow-x: clip;
+}
+
+body {
+	margin: 0;
+	background-color: var(--paper);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	font-size: var(--text-base);
+	line-height: var(--leading-body);
+	font-kerning: normal;
+	-webkit-text-size-adjust: 100%;
+}
+
+/* ── Type roles ───────────────────────────────────────────────
+ * Headings take their size from the role, not the tag default.
+ * Components override only when the role differs.
+ */
+h1, h2, h3, h4, h5, h6 {
+	font-weight: var(--weight-bold);
+	line-height: var(--leading-tight);
+	text-wrap: balance;
+}
+
+h1 { font-size: var(--text-xl); }
+h2 { font-size: var(--text-lg); }
+h3 { font-size: var(--text-md); }
+h4 { font-size: var(--text-base); }
+h5, h6 { font-size: var(--text-sm); }
+
+button, input, select, textarea {
+	font-family: inherit;
+}
+
+/* Fields read at body size, never smaller: iOS zooms the page into any
+ * field under 16px when it takes focus, and stays zoomed. */
+input, select, textarea {
+	font-size: var(--text-base);
+}
+
+/* Paragraph text (notes, descriptions): capped measure. Colour comes
+ * from the surface: teal ink on cream, cream on rose. */
+.prose {
+	max-width: var(--measure);
+	line-height: var(--leading-body);
+	text-wrap: pretty;
+}
+
 .retro-red {
-	background-color: #96616B;
+	background-color: var(--primary);
 }
 
 .retro-white {
-	background-color: #FFEAD0;
+	background-color: var(--paper);
 }
 
+/* The logo is a single-colour silhouette, painted in the theme colour */
+.site-logo {
+	display: inline-block;
+	flex-shrink: 0;
+	width: 50px;
+	height: 50px;
+	background-color: var(--primary);
+	-webkit-mask: url('/icon_big_nobg.png') center / contain no-repeat;
+	mask: url('/icon_big_nobg.png') center / contain no-repeat;
+}
+
+/* ── Focus ────────────────────────────────────────────────────
+ * One focus treatment for every interactive element. Deep rose
+ * outside the element reads on cream (5.9:1); elements that sit
+ * on a rose surface switch to a cream ring (4.6:1).
+ */
+:focus-visible {
+	outline: var(--bw) solid var(--primary-deep);
+	outline-offset: 2px;
+}
+
+.on-primary :focus-visible,
+.on-primary:focus-visible {
+	outline-color: var(--paper);
+}
+
+/* Visually hidden, still announced by screen readers */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* ── Motion ─────────────────────────────────────────────────────
+ * One vocabulary everywhere: arrive with a soft deceleration
+ * (--ease-out), leave quickly (--ease-in). JS-driven motion lives
+ * in $lib/motion.js and uses the same timings.
+ */
+
+/* Page changes (View Transitions).
+ * Screens push sideways. Each screen (a tab or a form, see
+ * $lib/containers/screen.svelte) is its own group, so the one you leave
+ * slides out while the one you open slides in right beside it: side by
+ * side, never blended. They travel in nav order (`dir`): a screen further
+ * right, or a form, comes in from the right; going back, from the left.
+ * The nav pill glides along in step. Header and nav are captured
+ * separately so a scroll change glides instead of ghosting. Names are only
+ * assigned while a transition of that scope runs (see $lib/motion.js). */
+html[data-vt='page'] .screen { view-transition-name: var(--vt-name); }
+html:is([data-vt='page'], [data-vt='reveal']) .site-header { view-transition-name: site-header; }
+html:is([data-vt='page'], [data-vt='reveal']) .navBar { view-transition-name: site-nav; }
+html:is([data-vt='page'], [data-vt='reveal']) .navButton.active { view-transition-name: nav-active; }
+html[data-vt='page'] .fab { view-transition-name: fab; }
+html[data-vt='calendar'] .calendar-body { view-transition-name: calendar-body; }
+
+html { --vt-push: 100vw; }
+html[data-vt-dir='back'] { --vt-push: -100vw; }
+
+@keyframes vt-push-out {
+	to { translate: calc(var(--vt-push) * -1) 0; }
+}
+
+@keyframes vt-push-in {
+	from { translate: var(--vt-push) 0; }
+}
+
+::view-transition-old(screen-home),
+::view-transition-old(screen-calendar),
+::view-transition-old(screen-chores),
+::view-transition-old(screen-todo),
+::view-transition-old(screen-stats),
+::view-transition-old(screen-settings),
+::view-transition-old(screen-addEvent),
+::view-transition-old(screen-addChore),
+::view-transition-old(screen-addTodo) {
+	animation: vt-push-out var(--dur-screen) var(--ease-screen) both;
+}
+
+::view-transition-new(screen-home),
+::view-transition-new(screen-calendar),
+::view-transition-new(screen-chores),
+::view-transition-new(screen-todo),
+::view-transition-new(screen-stats),
+::view-transition-new(screen-settings),
+::view-transition-new(screen-addEvent),
+::view-transition-new(screen-addChore),
+::view-transition-new(screen-addTodo) {
+	animation: vt-push-in var(--dur-screen) var(--ease-screen) both;
+}
+
+/* The + button stays put between two screens that both have one, and
+ * travels with its screen otherwise */
+::view-transition-old(fab):only-child {
+	animation: vt-push-out var(--dur-screen) var(--ease-screen) both;
+}
+
+::view-transition-new(fab):only-child {
+	animation: vt-push-in var(--dur-screen) var(--ease-screen) both;
+}
+
+html[data-vt='page']::view-transition-group(nav-active),
+html[data-vt='page']::view-transition-group(site-header),
+html[data-vt='page']::view-transition-group(site-nav) {
+	animation-duration: var(--dur-screen);
+	animation-timing-function: var(--ease-screen);
+}
+
+/* Header, nav and the + button stay above the screens pushing past (the
+ * incoming screen's group would otherwise be painted over them) */
+::view-transition-group(site-header),
+::view-transition-group(site-nav),
+::view-transition-group(nav-active),
+::view-transition-group(fab) {
+	z-index: 1;
+}
+
+/* Calendar paging: how far the incoming period travels (viewTransition dir) */
+html { --vt-dx: 0px; --vt-dy: 6px; }
+html[data-vt-dir='right'] { --vt-dx: 20px; --vt-dy: 0px; }
+html[data-vt-dir='left'] { --vt-dx: -20px; --vt-dy: 0px; }
+html[data-vt-dir='fade'] { --vt-dy: 0px; }
+
+@keyframes vt-in {
+	from {
+		opacity: 0;
+		translate: var(--vt-dx) var(--vt-dy);
+	}
+}
+
+/* Calendar paging: the old period nudges the other way as it goes */
+@keyframes vt-out-shift {
+	to {
+		opacity: 0;
+		translate: calc(var(--vt-dx) * -0.4) 0;
+	}
+}
+
+::view-transition-group(*) {
+	animation-duration: var(--dur-slow);
+	animation-timing-function: var(--ease-out);
+}
+
+/* Unchanged chrome crossfades quickly; only real changes are visible */
+::view-transition-old(root),
+::view-transition-new(root),
+::view-transition-old(site-header),
+::view-transition-new(site-header),
+::view-transition-old(site-nav),
+::view-transition-new(site-nav),
+::view-transition-old(nav-active),
+::view-transition-new(nav-active),
+::view-transition-old(fab),
+::view-transition-new(fab) {
+	animation-duration: var(--dur-fast);
+}
+
+/* Switching themes: the whole page crossfades to the new palette */
+html[data-vt='theme']::view-transition-old(root),
+html[data-vt='theme']::view-transition-new(root) {
+	animation-duration: var(--dur-slow);
+}
+
+::view-transition-old(calendar-body) {
+	animation: vt-out-shift 110ms linear both;
+}
+
+::view-transition-new(calendar-body) {
+	animation: vt-in var(--dur-base) var(--ease-out) 30ms both;
+}
+
+/* Full page loads (login → app) crossfade in browsers that support it */
+@media (prefers-reduced-motion: no-preference) {
+	@view-transition {
+		navigation: auto;
+	}
+}
+
+/* Dialogs: rise in over a fading backdrop, sink out faster.
+ * Pair with the modalDialog action from $lib/motion.js. */
+dialog.dialog {
+	box-sizing: border-box;
+	opacity: 1;
+	translate: 0 0;
+	scale: 1;
+	transition:
+		opacity var(--dur-base) var(--ease-out),
+		translate var(--dur-base) var(--ease-out),
+		scale var(--dur-base) var(--ease-out);
+}
+
+dialog.dialog::backdrop {
+	background: var(--overlay);
+	opacity: 1;
+	transition: opacity var(--dur-base) var(--ease-out);
+}
+
+@starting-style {
+	dialog.dialog[open] {
+		opacity: 0;
+		translate: 0 12px;
+		scale: 0.98;
+	}
+
+	dialog.dialog[open]::backdrop {
+		opacity: 0;
+	}
+}
+
+dialog.dialog.closing {
+	opacity: 0;
+	translate: 0 8px;
+	scale: 0.98;
+	transition-duration: var(--dur-fast);
+	transition-timing-function: var(--ease-in);
+}
+
+dialog.dialog.closing::backdrop {
+	opacity: 0;
+	transition-duration: var(--dur-fast);
+	transition-timing-function: var(--ease-in);
+}
+
+/* Press feedback on compact controls: a small give under the finger.
+ * (--swap carries the transform transition.) Rows and large surfaces
+ * highlight instead of shrinking. */
+:is(.btn, .chip, .navButton, .mode-button, .pill, .toggle-btn, .nav-button,
+	.room-chip, .unit-btn, .stats-btn, .close-btn, .agenda-add, .fab,
+	.sign-btn, .skip-btn, .save-btn, .delete-btn, .submit-btn):not(:disabled):active {
+	transform: scale(0.97);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation: none !important;
+	}
+
+	:is(.btn, .chip, .navButton, .mode-button, .pill, .toggle-btn, .nav-button,
+		.room-chip, .unit-btn, .stats-btn, .close-btn, .agenda-add, .fab,
+		.sign-btn, .skip-btn, .save-btn, .delete-btn, .submit-btn):active {
+		transform: none;
+	}
+}
+
+/* ── Shared controls ─────────────────────────────────────────
+ * One size per control class. Use these instead of restyling
+ * buttons per component.
+ */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--control-pad-y) var(--control-pad-x);
+	min-height: var(--control-min-h);
+	border: var(--bw) solid var(--primary);
+	border-radius: var(--radius-md);
+	font-weight: var(--weight-bold);
+	font-family: inherit;
+	font-size: var(--text-base);
+	cursor: pointer;
+	touch-action: manipulation;
+	transition: var(--swap);
+}
+
+.btn-solid {
+	background-color: var(--primary);
+	color: var(--paper);
+}
+
+@media (hover: hover) {
+	.btn-solid:hover {
+		background-color: var(--paper);
+		color: var(--primary);
+	}
+}
+
+.btn-ghost {
+	background-color: var(--paper);
+	color: var(--primary);
+}
+
+@media (hover: hover) {
+	.btn-ghost:hover {
+		background-color: var(--primary);
+		color: var(--paper);
+	}
+}
+
+.btn-danger {
+	border-color: var(--danger);
+	background-color: var(--danger);
+	color: var(--paper);
+}
+
+@media (hover: hover) {
+	.btn-danger:hover {
+		background-color: var(--paper);
+		color: var(--danger);
+	}
+}
+
+.btn-block {
+	width: 100%;
+	padding: var(--block-pad);
+	border-radius: var(--radius-md);
+	font-size: var(--text-base);
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	padding: var(--chip-pad-y) var(--chip-pad-x);
+	border: var(--bw) solid var(--primary);
+	border-radius: var(--radius-pill);
+	background-color: var(--paper);
+	color: var(--primary);
+	font-weight: var(--weight-bold);
+	font-family: inherit;
+	cursor: pointer;
+	transition: var(--swap);
+}
+
+.chip.active {
+	background-color: var(--primary);
+	color: var(--paper);
+}
+
+@media (hover: hover) {
+	.chip:hover {
+		background-color: var(--primary);
+		color: var(--paper);
+	}
+}
+
+/* ── Existing shared pieces ─────────────────────────────────── */
 .info-card {
 	width: 100%;
 	height: 70px;
 	min-height: 60px;
-	border-radius: 5px;
-	margin-bottom: 10px;
+	border-radius: var(--radius-sm);
+	margin-bottom: var(--space-sm);
 	align-content: center;
 	justify-content: space-between;
 	display: flex;
-	font-size: 20px;
+	font-size: var(--text-lg);
 }
 @media (max-width: 1100px) {
 	.info-card {
-		font-size: 18px;
+		font-size: var(--text-md);
 	}
 }
 
 .range {
-	background: #FFEAD0;
-	border-radius: 10px;
+	background: var(--paper);
+	border-radius: var(--radius-lg);
 	width: 100%;
 	height: 15px;
-	margin: 10px 0;
+	margin: var(--space-sm) 0;
 	appearance: none;
 	-webkit-appearance: none;
 	-moz-appearance: none;
 }
 .range::-webkit-slider-thumb {
-	background-color: #96616B;
-	border: 1px solid #FFEAD0;
+	background-color: var(--primary);
+	border: var(--bw) solid var(--paper);
 	width: 25px;
 	height: 25px;
-	border-radius: 50%;
+	border-radius: var(--radius-circle);
 	appearance: none;
 	-webkit-appearance: none;
 	-moz-appearance: none;
 }
 .range::-moz-range-thumb {
-	background-color: #96616B;
-	border: 2px solid #FFEAD0;
+	background-color: var(--primary);
+	border: var(--bw) solid var(--paper);
 	width: 25px;
 	height: 25px;
-	border-radius: 50%;
+	border-radius: var(--radius-circle);
 }
 input[type="checkbox"] {
 	appearance: none;
@@ -60,20 +469,33 @@ input[type="checkbox"] {
 	align-content: center;
 	justify-content: center;
 	padding: 0.25rem;
-	border: 2px solid #FFEAD0;
-	background-color: #FFEAD0;
-	border-radius: 50%;
+	border: var(--bw) solid var(--paper);
+	background-color: var(--paper);
+	border-radius: var(--radius-circle);
 	margin: 0;
 }
 input[type="checkbox"]:checked {
-	background-color: #96616B;
+	background-color: var(--primary);
+}
+input[type="checkbox"] {
+	transition: var(--swap);
+}
+/* The tick settles in rather than blinking on */
+input[type="checkbox"]:checked::before {
+	animation: tick-in var(--dur-base) var(--ease-out);
+}
+@keyframes tick-in {
+	from {
+		opacity: 0;
+		scale: 0.5;
+	}
 }
 .title {
-	color: #FFEAD0;
+	color: var(--paper);
 	text-align: center;
-	background-color: #96616B;
-	border-radius: 5px;
-	margin-top: 10px;
+	background-color: var(--primary);
+	border-radius: var(--radius-sm);
+	margin-top: var(--space-sm);
 }
 .title::first-letter {
 	text-transform: capitalize;

@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from "svelte";
+	import { onMount, tick } from "svelte";
 	import { getStats, getUsers, getChores, getEvents, getRooms, delStats } from '../../requests'
 	import Section from "$lib/header/Section.svelte";
 	import Collapsible from "$lib/containers/collapsible.svelte";
@@ -8,6 +8,8 @@
     import BarChart from "$lib/charts/barChart.svelte";
     import RoomFilter from "$lib/filters/roomFilter.svelte";
     import ContentLayout from "$lib/containers/contentLayout.svelte";
+	import { reveal } from "$lib/motion";
+	import { currentPrimary } from "$lib/theme";
     import HouseholdStats from "$lib/components/HouseholdStats.svelte";
 
 	let users = null;
@@ -30,6 +32,19 @@
 	let barDatasets = [];
 	let barLabels = [];
 	
+	// Kept alive in the background between visits: coming back to this tab
+	// refreshes it in place
+	// Called once the first data is in, so the page knows this tab can
+	// slide in whole
+	export let onReady = () => {};
+	export let active = true;
+	let wasActive = active;
+	$: onActiveChange(active);
+	function onActiveChange(isActive) {
+		if (isActive && !wasActive && stats) load();
+		wasActive = isActive;
+	}
+
 	// Variables for time navigation
 	let currentOffset = 0; // Number of days to offset from current date (negative for past, positive for future)
 
@@ -113,8 +128,8 @@
 					label: users_by_id[d.who].name,
 					data: Array(history_len).fill(0),
 					fill: true,
-					backgroundColor: color ? color.padEnd(6, '0') + '99' : '#96616B99',
-					borderColor: color || '#96616B',
+					backgroundColor: color ? color.padEnd(6, '0') + '99' : currentPrimary() + '99',
+					borderColor: color || currentPrimary(),
 				};
 				
 				if (chores_filter.length) {
@@ -163,8 +178,8 @@
 				label: user.name,
 				data: labels.map(task => dataset[task][user.name] || 0),
 				borderWidth: 1,
-				backgroundColor: user.color ? user.color.padEnd(6, '0') + '99' : '#96616B99',
-				borderColor: user.color || '#96616B',
+				backgroundColor: user.color ? user.color.padEnd(6, '0') + '99' : currentPrimary() + '99',
+				borderColor: user.color || currentPrimary(),
 			});
 		}
 		
@@ -182,39 +197,49 @@
 		}, {});
 	}
 
-	onMount(async () => {
-		rooms = await getRooms();
+	async function load() {
+		// In parallel, so the page can arrive populated
+		const [ro, fetchedStats, ev, ch, us] = await Promise.all([
+			getRooms(), getStats(), getEvents(), getChores(), getUsers()
+		]);
+		rooms = ro;
+		events = ev;
+		chores = ch;
+		users = us;
 		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
-		stats = await getStats();
-		events = await getEvents();
-		chores = await getChores();
 		chores_by_id = chores.reduce((acc, obj) => {
 			const { _id } = obj;
 			acc[_id] = obj;
 			return acc;
 		}, {});
 		
-		reduceStats();
-		users = await getUsers();
 		users_by_id = Object.fromEntries(users.map(u => [u._id, u]));
-		
+		// Assigned last: the page renders once everything it needs is here
+		stats = fetchedStats;
+		reduceStats();
 		prepareLineChartData();
-		lineChartComponent.updateChart(lineDatasets, lineLabels);
-	});
+
+		// The chart mounts once stats render
+		await tick();
+		updateCharts();
+		onReady();
+	}
+
+	onMount(load);
 </script>
 
 <style>
 	.tooltip {
 		text-transform: none;
-		color: gray;
+		color: var(--primary);
 		font-style: italic;
 		white-space: wrap;
 	}
 
 	.bordered {
-		border: solid #96616B 3px;
-		border-radius: 5px;
-		padding: 10px;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-lg);
+		padding: var(--space-sm);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -222,19 +247,19 @@
 	}
 
 	input {
-		background-color: #96616B;
+		background-color: var(--primary);
 	}
 
 	.user-stats {
-		color: #FFEAD0;
+		color: var(--paper);
 		width: 90%;
-		border-radius: 5px;
-		padding: 10px;
-		margin-bottom: 10px;
+		border-radius: var(--radius-md);
+		padding: var(--space-sm);
+		margin-bottom: var(--space-sm);
 	}
 
 	.single-stat {
-		font-size: 10px;
+		font-size: var(--text-xs);
 		display: flex;
 		margin: 0;
 		justify-content: space-between;
@@ -247,15 +272,21 @@
 	}
 
 	.right-menu>button {
-		background-color: #FFEAD0;
-		border: solid #96616B 3px;
-		border-radius: 5px;
-		color: #96616B;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		color: var(--primary);
+		padding: var(--chip-pad-y) var(--chip-pad-x);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: var(--swap);
 	}
 
-	.right-menu>button:hover {
-		background-color: #96616B;
-		color: #FFEAD0;
+	@media (hover: hover) {
+		.right-menu>button:hover {
+			background-color: var(--primary);
+			color: var(--paper);
+		}
 	}
 
 	.range-container {
@@ -271,18 +302,22 @@
 	}
 	
 	.nav-button {
-		background-color: #FFEAD0;
-		border: solid #96616B 2px;
-		border-radius: 5px;
-		color: #96616B;
-		padding: 5px 15px;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		color: var(--primary);
+		padding: var(--control-pad-y) var(--control-pad-x);
+		min-height: var(--control-min-h);
 		cursor: pointer;
-		font-weight: bold;
+		font-weight: var(--weight-bold);
+		transition: var(--swap);
 	}
 	
-	.nav-button:hover {
-		background-color: #96616B;
-		color: #FFEAD0;
+	@media (hover: hover) {
+		.nav-button:hover {
+			background-color: var(--primary);
+			color: var(--paper);
+		}
 	}
 	
 	.nav-button:disabled {
@@ -291,7 +326,7 @@
 	}
 	
 	.time-info {
-		color: #96616B;
+		color: var(--primary);
 		text-align: center;
 		margin: 5px 0;
 		font-style: italic;
@@ -347,19 +382,23 @@
 			{/if}
 			
 			{#if chartType === 'line'}
-				<LineChart 
-					datasets={lineDatasets} 
-					labels={lineLabels} 
-					height="50vh"
-					bind:this={lineChartComponent} 
-				/>
+				<div in:reveal>
+					<LineChart 
+						datasets={lineDatasets} 
+						labels={lineLabels} 
+						height="50vh"
+						bind:this={lineChartComponent} 
+					/>
+				</div>
 			{:else}
-				<BarChart 
-					datasets={barDatasets} 
-					labels={barLabels} 
-					height="50vh"
-					bind:this={barChartComponent} 
-				/>
+				<div in:reveal>
+					<BarChart 
+						datasets={barDatasets} 
+						labels={barLabels} 
+						height="50vh"
+						bind:this={barChartComponent} 
+					/>
+				</div>
 			{/if}
 			
 			<RoomFilter 
@@ -369,7 +408,7 @@
 			/>
 			
 			<div class="range-container">
-				<p style='color: #96616B; margin: 0; margin-top:10px;'>
+				<p style='color: var(--primary); margin: 0; margin-top:10px;'>
 					Showing {history_len} days {currentOffset === 0 ? '' : `(offset by ${-currentOffset} days)`}
 				</p>
 				<input 
@@ -390,7 +429,7 @@
 		<div class='bordered'>
 			{#each users as user}
 				<div class="retro-red user-stats">
-					<Section title={user.name} color='#FFEAD0' />
+					<Section title={user.name} color='var(--paper)' />
 					<Collapsible>
 						{#if stats_per_user[user._id]}
 						{#each stats_per_user[user._id].reverse() as stat}

@@ -1,5 +1,5 @@
-import { getBackend } from '$lib/requests';
+import { postBackend } from '$lib/requests';
 
 export async function POST({ request }) {
-    return await getBackend(request, 'chores/stats/clear')
+    return await postBackend(request, 'chores/stats/clear')
 }

@@ -1,12 +1,10 @@
 <script>
 	import Section from "$lib/header/Section.svelte";
 	import UpdateTask from "./updateChore.svelte";
-	import KanbanBoard from "$lib/containers/kanbanBoard.svelte";
 	import { onMount } from "svelte";
-	import { getStats, getUsers, getChores, signChore, delChore, getRooms } from '$lib/requests'
-	import Drag from "$lib/containers/drag.svelte";
-    import RoomFilter from "$lib/filters/roomFilter.svelte";
-    import ContentLayout from "$lib/containers/contentLayout.svelte";
+	import { getStats, getUsers, getChores, signChore, skipChore, delChore, getRooms } from '$lib/requests';
+	import RoomFilter from "$lib/filters/roomFilter.svelte";
+	import { reveal, vanish, expand, move, afterExit } from "$lib/motion";
 
 	let chores = undefined;
 	let sortedDays = [];
@@ -14,285 +12,360 @@
 	let users = null;
 	let users_by_id = null;
 	let rooms = null;
-	let rooms_by_id = null;
 
-	// Filter shown chores
 	let chores_filter = [];
+	let search = '';
+	let activeChore = null;
 
-	function handleFilterChange(newFilter) {
-		console.log('filters ', chores_filter);
-		chores_filter = newFilter;
+	// Kept alive in the background between visits: coming back to this tab
+	// refreshes it in place
+	// Called once the first data is in, so the page knows this tab can
+	// slide in whole
+	export let onReady = () => {};
+	export let active = true;
+	let wasActive = active;
+	$: onActiveChange(active);
+	function onActiveChange(isActive) {
+		if (isActive && !wasActive && chores !== undefined) load();
+		wasActive = isActive;
 	}
 
-	function filterChores(chores_list, chores_filter) {
-		if (typeof(chores_filter) == "string") {
-			chores_list = chores_list.filter((chore) => {return chore.name.toLowerCase().includes(chores_filter.toLowerCase())})
-		} else if (chores_filter.length) {
-			chores_list = chores_list.filter((chore) => {return chore.rooms.some((room) => {return chores_filter.includes(room.name);})})
+	function filterChores(chores_list) {
+		let result = chores_list;
+		if (search.trim()) {
+			result = result.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
 		}
-		return chores_list;
+		if (chores_filter.length) {
+			result = result.filter(c => c.rooms.some(r => chores_filter.includes(r.name)));
+		}
+		return result;
 	}
 
 	async function sortChores() {
-		const sorted_stats = stats.sort((a, b) => {return a.date < b.date})
-		let res = await getChores()
-		let perDay = res.reduce((acc, chore, index) => {
-			chore.last_sign = users_by_id[sorted_stats.find((stat) => {return stat.chore_ref == chore._id})?.who]?.name || 'Nobody'
-			if (!acc[chore.nextTime]) {
-				acc[chore.nextTime] = [];
-			}
-			acc[chore.nextTime].push(chore);
+		const sorted_stats = stats.sort((a, b) => a.date < b.date ? 1 : -1);
+		let res = await getChores();
+		let perDay = res.reduce((acc, chore) => {
+			chore.last_sign = users_by_id[sorted_stats.find(s => s.chore_ref == chore._id)?.who]?.name || 'Nobody';
+			const key = chore.nextTime;
+			if (!acc[key]) acc[key] = [];
+			acc[key].push(chore);
 			return acc;
 		}, {});
-		let final = {}
+
+		let final = {};
 		for (let day of Object.keys(perDay)) {
-			if (7 <= day && day < 14) {
-				let week = 7;
-				if (!final[week])
-					final[week] = [];
-				final[week].push(...perDay[day]);
-			} else if (14 < day && day <= 30) {
-				let after = 14;
-				if (!final[after])
-					final[after] = [];
-				final[after].push(...perDay[day]);
-			} else if (day < -7) {
-				let very_late = -8;
-				if (!final[very_late])
-					final[very_late] = [];
-				final[very_late].push(...perDay[day]);
-			} else if (day > 42) {
-				let after = 43;
-				if (!final[after])
-					final[after] = [];
-				final[after].push(...perDay[day]);
-			} else {
-				if (!final[day])
-					final[day] = [];
-				final[day].push(...perDay[day]);
-			}
+			const d = Number(day);
+			let bucket;
+			if (d < -7) bucket = -8;
+			else if (d < 0) bucket = d;
+			else if (d === 0) bucket = 0;
+			else if (d === 1) bucket = 1;
+			else if (d < 7) bucket = d;
+			else if (d < 14) bucket = 7;
+			else if (d <= 30) bucket = 14;
+			else if (d > 42) bucket = 43;
+			else bucket = d;
+
+			if (!final[bucket]) final[bucket] = [];
+			final[bucket].push(...perDay[day]);
 		}
-		chores = final
-		sortedDays = Object.keys(chores).sort((a, b) => {return a - b})
+
+		chores = final;
+		sortedDays = Object.keys(chores).sort((a, b) => Number(a) - Number(b));
 	}
 
-	onMount(async () => {
-		stats = await getStats()
-		users = await getUsers()
+	async function load() {
+		// In parallel, so the page can arrive populated
+		const [st, us, ro] = await Promise.all([getStats(), getUsers(), getRooms()]);
+		stats = st;
+		users = us;
+		rooms = ro;
 		users_by_id = Object.fromEntries(users.map(u => [u._id, u]));
-		rooms = await getRooms()
-		rooms_by_id = Object.fromEntries(rooms.map(r => [r._id, r.name]));
-		await sortChores()
-	})
-
-	function getDateLabel(dayNumber) {
-		if (dayNumber > 42) {
-			return 'Invalid day number';
-		}
-		if (dayNumber < -7) {
-			return `Very late`;
-		}
-		if (dayNumber < 0 && dayNumber >= -7) {
-			return `Late by ${Math.abs(dayNumber)} days`;
-		}
-		else if (dayNumber == 0) {
-			return 'Today';
-		} else if (dayNumber == 1) {
-			return 'Tomorrow';
-		} else if (7 <= dayNumber && dayNumber < 14) {
-			return 'Next week';
-		} else if (dayNumber < 7) {
-			return `In ${dayNumber} days`;
-		}  else if (dayNumber < 30) {
-			return `Later this month`;
-		} else {
-			return `In ${dayNumber - 30} month${(dayNumber - 30 > 1) ? 's' : ''}`;
-		}
+		await sortChores();
+		onReady();
 	}
 
+	onMount(load);
+
+	function getDateLabel(day) {
+		const d = Number(day);
+		if (d < -7) return 'Very overdue';
+		if (d < 0) return `${Math.abs(d)} day${Math.abs(d) !== 1 ? 's' : ''} overdue`;
+		if (d === 0) return 'Due today';
+		if (d === 1) return 'Due tomorrow';
+		if (d < 7) return `In ${d} days`;
+		if (d < 14) return 'Next week';
+		if (d <= 30) return 'Later this month';
+		return `In ${d - 30} month${d - 30 !== 1 ? 's' : ''}`;
+	}
+
+	function getSectionColor(day) {
+		return Number(day) < 0 ? 'var(--urgent)' : 'var(--primary)';
+	}
+
+	// Each action folds the panel away first, then reshuffles the list
 	async function afterDelChore(id) {
-		await delChore({"id": id})
-		chores = await getChores()
+		activeChore = null;
+		await Promise.all([delChore({ id }), afterExit()]);
 		await sortChores();
 		stats = await getStats();
 	}
 
 	async function afterSignChore(data) {
-		await signChore(data);
+		activeChore = null;
+		await Promise.all([signChore(data), afterExit()]);
 		await sortChores();
-		stats = await getStats();;
+		stats = await getStats();
 	}
 
-	let isOpen = 0;
-	let roomChoice = 0;
-	function reset() {
-		roomChoice = 0;
+	async function afterSkipChore() {
+		const id = activeChore._id;
+		activeChore = null;
+		await Promise.all([skipChore({ id }), afterExit()]);
+		await sortChores();
 	}
 </script>
 
 <style>
-	p {
-		white-space: nowrap;
-		text-transform: lowercase;
-	}
-	p::first-letter {
-		text-transform: uppercase;
-	}
-
-	.choreContainer {
-		position: relative;
-		width: 90%;
+	.page {
+		width: 95%;
 		margin: 0 auto;
-		display: flex;
-		flex-direction: column;
-		color: #FFEAD0;
-		align-items: flex-end;
-		z-index: 0;
-		cursor: pointer;
-		transition: z-index 0s;
+		padding-top: 12px;
+		padding-bottom: 120px;
 	}
 
-	.info-right {
-		float: right;
-		right: 0px;
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 10px;
-		justify-content: center;
-		padding-right: 10px;
+	.search-input {
+		width: 100%;
+		padding: 10px 14px;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		color: var(--primary);
+		font-size: var(--text-base);
+		box-sizing: border-box;
+		margin-bottom: 4px;
+		font-family: inherit;
+	}
+
+	.search-input::placeholder {
+		color: var(--primary);
+		font-style: italic;
+	}
+
+	.search-input:focus {
+		border-color: var(--primary-deep);
+		box-shadow: var(--focus-ring);
+	}
+
+	/* Positioned so rows leaving a group stay anchored while the rest glide */
+	.day-group {
 		position: relative;
 	}
 
-	.urgency-indicator {
-		height: 10px;
+	.chore-row {
+		width: 100%;
+		min-height: 60px;
 		border: none;
-		width: 7vw;
-		min-width: 30px;
-		margin: 0 0;
-		border-radius: 10px;
-		max-width: 70px;
-	}
-
-	.choreName {
-		float:left;
-		padding-left: 10px;
-		max-width: 40%;
-		min-width: 40%;
-		overflow: hidden;
-		white-space: nowrap;
+		font: inherit;
+		text-align: left;
+		border-radius: var(--radius-md);
+		margin-bottom: 8px;
+		background-color: var(--primary);
 		display: flex;
-		flex-direction: row;
-		position: relative;
 		align-items: center;
+		justify-content: space-between;
+		padding: 12px 14px;
+		box-sizing: border-box;
+		cursor: pointer;
+		transition: background-color var(--dur-fast) var(--ease-out);
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
 	}
 
-	.fade {
-		content: '';
-		position: absolute;
-		top: 0;
-		right: 0;
-		height: 80%;
-		width: 10%;
-		pointer-events: none;
-		background: linear-gradient(to left, #96616B, transparent);
-	}
-
-	.searchbar {
-		width: 100%;
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 1em;
-		color: #96616B;
-		margin-bottom: 20px;
-	}
-
-	.searchbar input {
-		height: 100%;
-		padding: 10px;
-		margin: 0;
-		background-color: #FFEAD0;
-		border: 1px solid #96616B;
-		border-radius: 5px;
-		color: #96616B;
-		width: 100%;
-	}
-
-	@media (max-width: 1000px) {
-		.room-text {
-			font-size: 12px;
-			text-align: right;
-			align-content: center;
+	@media (hover: hover) {
+		.chore-row:hover {
+			background-color: var(--primary-deep);
 		}
 	}
 
-	@media (min-width: 700px) {
-		.choreName {
-			max-width: 60%;
-			min-width: 60%;
+	.chore-row:active {
+		background-color: var(--primary-deep);
+	}
+
+	.chore-name {
+		color: var(--paper);
+		font-weight: var(--weight-bold);
+		font-size: var(--text-base);
+		text-transform: lowercase;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		flex: 1;
+		min-width: 0;
+		padding-right: 10px;
+	}
+
+	.chore-name::first-letter {
+		text-transform: uppercase;
+	}
+
+	.chore-meta {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-shrink: 0;
+	}
+
+	.last-signer {
+		color: var(--paper);
+		font-size: var(--text-xs);
+		white-space: nowrap;
+		text-align: right;
+		max-width: 90px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.room-badge {
+		background-color: var(--paper);
+		color: var(--primary);
+		border-radius: var(--radius-pill);
+		padding: 4px 10px;
+		font-size: var(--text-xs);
+		font-weight: var(--weight-bold);
+		white-space: nowrap;
+	}
+
+	.skeleton {
+		width: 100%;
+		min-height: 60px;
+		border-radius: var(--radius-md);
+		margin-bottom: 8px;
+		background: linear-gradient(90deg, var(--primary-a12) 25%, var(--primary-a25) 50%, var(--primary-a12) 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.4s ease-in-out infinite;
+	}
+
+	@keyframes shimmer {
+		0% { background-position: 200% 0; }
+		100% { background-position: -200% 0; }
+	}
+
+	.empty-msg {
+		color: var(--primary);
+		font-style: italic;
+		padding: 24px 0 12px;
+		margin: 0;
+	}
+
+	.empty-msg a {
+		color: var(--primary);
+	}
+
+	/* Phones: the name gets the full width and wraps whole; the last
+	 * signer moves underneath it, the room count stays on the right */
+	@media (max-width: 480px) {
+		.chore-row {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			column-gap: 10px;
+			row-gap: 2px;
+		}
+
+		.chore-name {
+			padding-right: 0;
+			white-space: normal;
+			overflow-wrap: break-word;
+			line-height: var(--leading-snug);
+		}
+
+		.chore-meta {
+			display: contents;
+		}
+
+		.last-signer {
+			grid-row: 2;
+			max-width: none;
+			text-align: left;
+		}
+
+		.room-badge {
+			grid-column: 2;
+			grid-row: 1 / span 2;
+			align-self: center;
 		}
 	}
 </style>
 
-<ContentLayout 
-	loading={chores === undefined}
-	empty={chores !== undefined && !Object.keys(chores).length}
-	emptyMessage={!users?.length 
-		? "Welcome to Home-Calendar!" 
-		: !rooms?.length 
-		? "Nice you're almost there!" 
-		: "Ok all the settings are set up, now you can press the + button on the bottom right and start adding tasks"
-	}
-	emptyAction={!users?.length 
-		? "Please enter the <a href='/settings'>Settings tab</a> to set up your home users" 
-		: !rooms?.length 
-		? "Please enter the settings to set up the rooms in your house" 
-		: "I will take care of reminding you when you need to do them!"
-	}
->
-	<!-- <KanbanBoard
-		chores={chores}
-	/> -->
-	<RoomFilter 
-		rooms={rooms} 
-		onFilterChange={handleFilterChange} 
-		selected={chores_filter}
-	/>
-	<div class="searchbar">
-		<input
-			type="text" 
-			placeholder="Search chores..." 
-			on:input={(e) => {handleFilterChange(e.target.value)}} 
-		/>
+{#if chores === undefined}
+	<div class="page">
+		{#each [1, 2, 3, 4] as _}
+			<div class="skeleton"></div>
+		{/each}
 	</div>
-	{#each sortedDays as day}
-		{#if (filterChores(chores[day], chores_filter)).length}
-			<Section title={getDateLabel(day)} />
-			{#each filterChores(chores[day], chores_filter) as chore}
-				<div class='choreContainer' style='z-index: {roomChoice == chore._id || isOpen == chore._id ? '1' : '0'};' on:click={() => {if (roomChoice != chore._id) roomChoice = chore._id; isOpen = 0}}>
-					<Drag>
-						<div class="choreName">
-							<p>{chore.name}</p>
-							<div class='fade'></div>
+{:else if !Object.keys(chores).length}
+	<div class="page" in:reveal>
+		<p class="empty-msg">
+			{#if !users?.length}
+				Set up household members in <a href="/settings">Settings</a> first.
+			{:else if !rooms?.length}
+				Add rooms in Settings, then create your first chore.
+			{:else}
+				No chores yet. Tap + to add one.
+			{/if}
+		</p>
+	</div>
+{:else}
+	<div class="page" in:reveal>
+		<RoomFilter
+			rooms={rooms ?? []}
+			selectedRooms={chores_filter}
+			onFilterChange={(f) => chores_filter = f}
+		/>
+		<input
+			class="search-input"
+			type="search"
+			placeholder="Search chores..."
+			bind:value={search}
+		/>
+		{#each sortedDays as day (day)}
+			{@const filtered = filterChores(chores[day])}
+			{#if filtered.length}
+				<!-- Day groups fold away when a search or filter empties them -->
+				<div class="day-group" transition:expand>
+					<Section title={getDateLabel(day)} color={getSectionColor(day)} />
+					{#each filtered as chore (chore._id)}
+						<div class="chore-item" animate:move in:reveal out:vanish>
+							<button
+								class="chore-row on-primary"
+								aria-expanded={activeChore?._id === chore._id}
+								on:click={() => activeChore = activeChore?._id === chore._id ? null : chore}
+							>
+								<span class="chore-name">{chore.name}</span>
+								<span class="chore-meta">
+									<span class="last-signer">Last: {chore.last_sign}</span>
+									<span class="room-badge">{chore.rooms.length}<span class="sr-only"> rooms</span></span>
+								</span>
+							</button>
+							{#if activeChore?._id === chore._id}
+								<div transition:expand>
+									<UpdateTask
+										chore={activeChore}
+										users={users}
+										onSubmit={afterSignChore}
+										reset={() => activeChore = null}
+										skip={afterSkipChore}
+										delFunc={afterDelChore}
+									/>
+								</div>
+							{/if}
 						</div>
-						<div class='info-right'>
-							<small style="font-size: 0.5em; margin: 0; margin-left: 10px; margin-top: 0.25em">Last signed by <small style="font-size: 1.3em;">{chore.last_sign}</small></small>
-							<p class='room-text'>{chore.rooms.length} rooms</p>
-							<hr class='urgency-indicator' style="background-color: {chore.nextTime < -2? '#DB324D' : chore.nextTime <= -1? 'orange' : chore.nextTime == 0? 'green' : 'gray'}" />
-						</div>
-					</Drag>
-					{#if roomChoice == chore._id}
-						<UpdateTask 
-							chore={chore} 
-							users={users}
-							onSubmit={(updateChore) => {afterSignChore(updateChore); reset();}} 
-							reset={reset} 
-							delFunc={afterDelChore} 
-						/>
-					{/if}
+					{/each}
 				</div>
-			{/each}
-		{/if}
-	{/each}
-</ContentLayout>
+			{/if}
+		{/each}
+	</div>
+{/if}
+
+

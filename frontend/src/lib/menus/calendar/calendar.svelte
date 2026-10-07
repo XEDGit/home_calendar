@@ -1,483 +1,1120 @@
 <script>
 	import { getChores, getEvents, getUsers } from '$lib/requests';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import UpdateEvent from './updateEvent.svelte';
-	import Section from "$lib/header/Section.svelte";
-	import { goto } from '$app/navigation';
+	import { viewTransition, reveal } from '$lib/motion';
 
-	let events = undefined;
-	let users = undefined;
-	let chores = undefined;
-	let selectedEvent = null;
-	let modalOpen = false; // Add this to track modal state
-
-	const currentDate = new Date();
-	let calendarDate = new Date();
-	let monthDays = [];
-	let isMobileView = false;
-
-	const day_names = [
-		'M',
-		'T',
-		'W',
-		'T',
-		'F',
-		'S',
-		'S',
+	// ── Constants ─────────────────────────────────────────────────────────────
+	const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 07–22
+	const DAY_SHORT  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+	const DAY_ABBR   = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+	const MONTH_NAMES = [
+		'January','February','March','April','May','June',
+		'July','August','September','October','November','December'
 	];
+	const MONTHS = MONTH_NAMES.map((name, value) => ({ value, name }));
 
-	onMount(async () => {
-		await generateCalendar(calendarDate);
-		checkViewportWidth();
-		window.addEventListener('resize', checkViewportWidth);
-		
-		return () => {
-			window.removeEventListener('resize', checkViewportWidth);
-		};
-	});
-	
-	function checkViewportWidth() {
-		isMobileView = window.innerWidth < 768;
+	// ── State ─────────────────────────────────────────────────────────────────
+	let events  = undefined;
+	let chores  = undefined;
+	let users   = undefined;
+	// `loading` dims the body during a slow navigation; the first load never
+	// dims. `ready` gates empty-state text until data has actually arrived.
+	let loading = false;
+	let ready   = false;
+	let selectedEvent = null;
+	let modalOpen     = false;
+	// Known before the first render, so phones never flash the desktop grid
+	let isMobileView  = typeof window !== 'undefined' && window.innerWidth < 768;
+	let weekScrollEl;
+	// Whether the hour grid has been scrolled to the current hour yet. It
+	// can't while its tab is hidden in the background, so the tab does it
+	// when it's first shown.
+	let gridPlaced = false;
+
+	// Kept alive in the background between visits: coming back to this tab
+	// refreshes it in place
+	// Called once the first data is in, so the page knows this tab can
+	// slide in whole
+	export let onReady = () => {};
+	export let active = true;
+	let wasActive = active;
+	$: onActiveChange(active);
+	async function onActiveChange(isActive) {
+		const returning = isActive && !wasActive;
+		wasActive = isActive;
+		if (!returning) return;
+		await tick();
+		if (calView === 'week' && !gridPlaced) scrollToHour(Math.max(HOURS[0], today.getHours() - 1));
+		if (ready) refreshPeriod();
 	}
 
-	async function generateCalendar(date) {
-		// Calculate the date range for the current view
-		const year = date.getFullYear();
-		const month = date.getMonth();
-		const firstDay = new Date(year, month, 1);
-		const lastDay = new Date(year, month + 1, 0);
-		
-		// Get the first day of the display (might be in previous month)
-		const firstDisplayDay = new Date(year, month, 1 - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1));
-		
-		// Get the last day of the display (might be in next month)
-		const lastDisplayDay = new Date(year, month + 1, 13 - lastDay.getDay());
-		
-		// Format dates for API call
-		const startDate = firstDisplayDay.toISOString();
-		const endDate = lastDisplayDay.toISOString();
-		
-		// Request events with date range to get expanded occurrences efficiently
-		events = await getEvents(startDate, endDate);
-		chores = await getChores();
-		users = await getUsers();
+	let calView = 'week';  // 'month' | 'week'
+	let filter  = 'both';  // 'events' | 'chores' | 'both'
 
-		calendarDate = new Date(date);
-		const pastMonthlastDay = new Date(year, month, 0);
+	// Month state
+	const today = new Date();
+	let calendarDate = new Date();
+	let monthDays    = [];
+	$: years = Array.from({ length: 21 }, (_, i) => today.getFullYear() - 10 + i);
 
-		monthDays = [];
+	// Week state
+	let weekDate = new Date();
+	$: weekDays   = getWeekDays(weekDate);
+	$: showEvents = filter !== 'chores';
+	$: showChores = filter !== 'events';
 
-		// Fill the monthDays array with slots for previous month
-		for (let i = 1; i < firstDay.getDay(); i++) {
-			monthDays.push(new Date(year, month - 1, pastMonthlastDay.getDate() - 5 + i));
-		}
-
-		// Add the days of the month
-		for (let day = 1; day <= lastDay.getDate(); day++) {
-			monthDays.push(new Date(year, month, day));
-		}
-
-		// Fill the monthDays array with slots for next month
-		for (let i = lastDay.getDay(); i < 14; i++) {
-			monthDays.push(new Date(year, month + 1, i - lastDay.getDay() + 1));
-		}
+	// ── Helpers ───────────────────────────────────────────────────────────────
+	function getMondayOfWeek(d) {
+		const date = new Date(d);
+		const day  = date.getDay();
+		date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+		date.setHours(0, 0, 0, 0);
+		return date;
 	}
 
-	function getEventsForDate(date) {
-		if (!events) return [];
-		
-		// The backend now provides pre-calculated occurrences for repeating events
-		// within the requested date range, so we just need to filter by the date
-		return events.filter(event => {
-			const eventDate = new Date(event.when);
-			return eventDate.toDateString() === date.toDateString();
+	function getWeekDays(d) {
+		const mon = getMondayOfWeek(d);
+		return Array.from({ length: 7 }, (_, i) => {
+			const day = new Date(mon);
+			day.setDate(day.getDate() + i);
+			return day;
 		});
 	}
 
-	function navigateToPreviousMonth() {
-		const newDate = new Date(calendarDate);
-		newDate.setMonth(newDate.getMonth() - 1);
-		generateCalendar(newDate);
+	function isToday(d) {
+		return d.toDateString() === today.toDateString();
 	}
 
-	function navigateToNextMonth() {
-		const newDate = new Date(calendarDate);
-		newDate.setMonth(newDate.getMonth() + 1);
-		generateCalendar(newDate);
+	// Bucket events by day once per load instead of rescanning for every cell.
+	$: eventsByDay = indexEventsByDay(events);
+
+	function indexEventsByDay(list) {
+		const map = new Map();
+		for (const e of list ?? []) {
+			const key = new Date(e.when).toDateString();
+			if (!map.has(key)) map.set(key, []);
+			map.get(key).push(e);
+		}
+		for (const day of map.values()) day.sort((a, b) => new Date(a.when) - new Date(b.when));
+		return map;
 	}
+
+	function getEventsForDate(d) {
+		return eventsByDay.get(d.toDateString()) ?? [];
+	}
+
+	function getEventsForDateHour(d, hour) {
+		return getEventsForDate(d).filter(e => new Date(e.when).getHours() === hour);
+	}
+
+	function dayLabel(d) {
+		return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+	}
+
+	function getChoresForDate(d) {
+		if (!chores) return [];
+		const base   = new Date(today); base.setHours(0, 0, 0, 0);
+		const target = new Date(d);    target.setHours(0, 0, 0, 0);
+		return chores.filter(chore => {
+			if (chore.nextTime <= 0) return target.getTime() === base.getTime();
+			const due = new Date(base);
+			due.setDate(due.getDate() + Math.round(chore.nextTime));
+			return due.getTime() === target.getTime();
+		});
+	}
+
+	function choreColor(nextTime) {
+		if (nextTime < -2) return 'var(--urgent)';
+		if (nextTime <= 0) return 'var(--warn)';
+		if (nextTime <= 2) return 'var(--ok)';
+		return 'var(--muted)';
+	}
+
+	function fmtTime(isoString) {
+		const d = new Date(isoString);
+		return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+	}
+
+	$: headerLabel = (() => {
+		if (calView === 'week' && weekDays?.length) {
+			const first = weekDays[0], last = weekDays[6];
+			if (first.getMonth() === last.getMonth())
+				return MONTH_NAMES[first.getMonth()] + ' ' + first.getFullYear();
+			return MONTH_NAMES[first.getMonth()].slice(0, 3) + '–' +
+			       MONTH_NAMES[last.getMonth()].slice(0, 3) + ' ' + last.getFullYear();
+		}
+		return MONTH_NAMES[calendarDate.getMonth()] + ' ' + calendarDate.getFullYear();
+	})();
+
+	// ── Data ──────────────────────────────────────────────────────────────────
+	// Navigation fetches first, then commits dates and events together, so the
+	// grid never shows new dates with stale events. The newest request wins.
+	let navToken = 0;
+
+	async function fetchRange(start, end) {
+		const [evData, chData, uData] = await Promise.all([
+			getEvents(start.toISOString(), end.toISOString()),
+			chores ?? getChores(),
+			users ?? getUsers()
+		]);
+		return {
+			events: Array.isArray(evData) ? evData : [],
+			chores: Array.isArray(chData) ? chData : [],
+			users: Array.isArray(uData) ? uData : []
+		};
+	}
+
+	function weekRange(date) {
+		const days  = getWeekDays(date);
+		const start = new Date(days[0]); start.setHours(0, 0, 0, 0);
+		const end   = new Date(days[6]); end.setHours(23, 59, 59, 999);
+		return { start, end };
+	}
+
+	function monthLayout(date) {
+		const year  = date.getFullYear(), month = date.getMonth();
+		const firstDay    = new Date(year, month, 1);
+		const lastDay     = new Date(year, month + 1, 0);
+		const prevLastDay = new Date(year, month, 0);
+		const start = new Date(year, month, 1 - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1));
+		const end   = new Date(year, month + 1, 13 - lastDay.getDay());
+
+		const days = [];
+		for (let i = 1; i < firstDay.getDay(); i++) {
+			days.push(new Date(year, month - 1, prevLastDay.getDate() - 5 + i));
+		}
+		for (let d = 1; d <= lastDay.getDate(); d++) {
+			days.push(new Date(year, month, d));
+		}
+		for (let i = lastDay.getDay(); i < 14; i++) {
+			days.push(new Date(year, month + 1, i - lastDay.getDay() + 1));
+		}
+		return { days, start, end };
+	}
+
+	/**
+	 * Show a period. `dir` slides the calendar body the way time moved
+	 * ('left' = earlier, 'right' = later, 'fade' = crossfade in place).
+	 * `animate: false` commits in place (first load, refresh after an edit).
+	 */
+	async function showPeriod(view, date, { dir = 'none', animate = true } = {}) {
+		const token = ++navToken;
+		if (animate) loading = true;
+		// Refreshes keep the user's place in the week grid
+		const rescroll = animate || !ready;
+		try {
+			const month = view === 'month' ? monthLayout(date) : null;
+			const { start, end } = month ?? weekRange(date);
+			const data = await fetchRange(start, end);
+			if (token !== navToken) return;
+
+			const commit = async () => {
+				events = data.events;
+				chores = data.chores;
+				users  = data.users;
+				calView = view;
+				if (month) {
+					calendarDate = new Date(date);
+					monthDays = month.days;
+				} else {
+					weekDate = new Date(date);
+				}
+				loading = false;
+				ready = true;
+				onReady();
+				await tick();
+				if (view === 'week' && rescroll) scrollToHour(Math.max(HOURS[0], today.getHours() - 1));
+			};
+
+			if (animate) await viewTransition(commit, { scope: 'calendar', dir });
+			else await commit();
+		} finally {
+			if (token === navToken) loading = false;
+		}
+	}
+
+	function scrollToHour(hour) {
+		if (!weekScrollEl || !weekScrollEl.getClientRects().length) return;
+		const target = weekScrollEl.querySelector(`[data-hour="${hour}"]`);
+		if (!target) return;
+		const containerTop = weekScrollEl.getBoundingClientRect().top;
+		const targetTop    = target.getBoundingClientRect().top;
+		weekScrollEl.scrollTop += targetTop - containerTop - 52;
+		gridPlaced = true;
+	}
+
+	// ── Navigation ────────────────────────────────────────────────────────────
+	function periodIndex(view, d) {
+		return view === 'week'
+			? Math.round(getMondayOfWeek(d).getTime() / (7 * 864e5))
+			: d.getFullYear() * 12 + d.getMonth();
+	}
+
+	function directionTo(view, from, to) {
+		const a = periodIndex(view, from), b = periodIndex(view, to);
+		return b > a ? 'right' : b < a ? 'left' : 'fade';
+	}
+
+	function currentDate() {
+		return calView === 'week' ? weekDate : calendarDate;
+	}
+
+	function navigateBy(step) {
+		const d = new Date(currentDate());
+		if (calView === 'week') d.setDate(d.getDate() + 7 * step);
+		else d.setMonth(d.getMonth() + step);
+		showPeriod(calView, d, { dir: step < 0 ? 'left' : 'right' });
+	}
+
+	function navigatePrev() { navigateBy(-1); }
+	function navigateNext() { navigateBy(1); }
 
 	function navigateToToday() {
-		generateCalendar(new Date());
+		const now = new Date();
+		showPeriod(calView, now, { dir: directionTo(calView, currentDate(), now) });
 	}
 
-	function handleEventClick(event) {
-		selectedEvent = event;
-		modalOpen = true; // Set modal state to open
+	// The toggle reflects the choice at once; the body swaps when data is in
+	let viewChoice = calView;
+
+	function switchView(view) {
+		if (view === viewChoice) return;
+		viewChoice = view;
+		showPeriod(view, view === 'month' ? weekDate : calendarDate, { dir: 'none' });
 	}
 
-	function handleEventClose() {
-		selectedEvent = null;
-		modalOpen = false; // Set modal state to closed
+	function setFilter(next) {
+		if (next === filter) return;
+		viewTransition(() => (filter = next), { scope: 'calendar', dir: 'fade' });
 	}
 
-	function handleEventUpdated(updatedEvent) {
-		// Update the event in the events array
-		const index = events.findIndex(e => e._id === updatedEvent._id);
-		if (index !== -1) {
-			events[index] = updatedEvent;
-		}
-		generateCalendar(calendarDate);
+	function refreshPeriod() {
+		showPeriod(calView, currentDate(), { animate: false });
 	}
 
-	function handleEventDeleted(eventId) {
-		// Remove the event from the events array
-		events = events.filter(e => e._id !== eventId);
-		generateCalendar(calendarDate);
+	// ── Interactions ──────────────────────────────────────────────────────────
+	function handleEventClick(event) { selectedEvent = event; modalOpen = true; }
+	function handleEventClose()      { selectedEvent = null;  modalOpen = false; }
+
+	function handleEventUpdated(evt) {
+		const idx = events.findIndex(e => e._id === evt._id);
+		if (idx !== -1) events[idx] = evt;
+		refreshPeriod();
 	}
 
-	function handleYearChange(event) {
-		const year = parseInt(event.target.value);
-		const newDate = new Date(calendarDate);
-		newDate.setFullYear(year);
-		generateCalendar(newDate);
+	function handleEventDeleted(id) {
+		events = events.filter(e => e._id !== id);
+		refreshPeriod();
 	}
 
-	function handleMonthChange(event) {
-		const month = parseInt(event.target.value);
-		const newDate = new Date(calendarDate);
-		newDate.setMonth(month);
-		generateCalendar(newDate);
-	}
-	
-	function handleDayClick(day, event) {
-		// Don't handle clicks on events
-		if (event.target.closest('.event')) {
-			return;
-		}
-		
-			// Store the selected date in localStorage instead of using URL parameters
-		const timestamp = day.getTime();
-		localStorage.setItem('selectedCalendarDate', timestamp.toString());
-		
-		// Use the app's view mode navigation system
-		window.history.pushState({viewMode: 3}, '', 'addEvent'); // viewMode 3 is for addEvent
-		// Trigger a page navigation without full reload
+	function goToAddEvent(day, hour = null) {
+		const d = new Date(day);
+		const now = new Date();
+		d.setHours(hour ?? now.getHours(), hour !== null ? 0 : now.getMinutes(), 0, 0);
+		localStorage.setItem('selectedCalendarDate', d.getTime().toString());
+		window.history.pushState({ viewMode: 3 }, '', 'addEvent');
 		window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: 3 }));
 	}
 
-	// Generate array of years for the dropdown (current year ±10 years)
-	$: years = Array.from({ length: 21 }, (_, i) => new Date().getFullYear() - 10 + i);
-	
-	// Array of months for the dropdown
-	const months = [
-		{ value: 0, name: 'January' },
-		{ value: 1, name: 'February' },
-		{ value: 2, name: 'March' },
-		{ value: 3, name: 'April' },
-		{ value: 4, name: 'May' },
-		{ value: 5, name: 'June' },
-		{ value: 6, name: 'July' },
-		{ value: 7, name: 'August' },
-		{ value: 8, name: 'September' },
-		{ value: 9, name: 'October' },
-		{ value: 10, name: 'November' },
-		{ value: 11, name: 'December' }
-	];
+	function handleMonthChange(e) {
+		const d = new Date(calendarDate); d.setMonth(parseInt(e.target.value));
+		showPeriod('month', d, { dir: directionTo('month', calendarDate, d) });
+	}
+
+	function handleYearChange(e) {
+		const d = new Date(calendarDate); d.setFullYear(parseInt(e.target.value));
+		showPeriod('month', d, { dir: directionTo('month', calendarDate, d) });
+	}
+
+	// ── Lifecycle ─────────────────────────────────────────────────────────────
+	onMount(() => {
+		isMobileView = window.innerWidth < 768;
+		const onResize = () => { isMobileView = window.innerWidth < 768; };
+		window.addEventListener('resize', onResize);
+		// The hour grid exists before data does: scroll it now so nothing
+		// jumps when events arrive
+		scrollToHour(Math.max(HOURS[0], today.getHours() - 1));
+		showPeriod('week', weekDate, { animate: false });
+		return () => window.removeEventListener('resize', onResize);
+	});
 </script>
 
 <style>
-	.calendar {
-		display: grid;
-		grid-template-columns: repeat(7, 1fr);
-		gap: 10px;
-		margin: 20px 0;
+	/* ── Control bar ────────────────────────────────────────────────────────── */
+	.control-bar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 8px;
 	}
 
-	.day {
-		border: 1px solid #96616b;
-		padding: 10px;
-		position: relative;
-		height: 150px;
-		color: #96616b;
-		border-radius: 5px;
-		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-		overflow-y: auto;
+	.toggle-group {
+		display: flex;
+		gap: 4px;
+	}
+
+	.toggle-btn {
+		background-color: var(--paper);
+		border-radius: var(--radius-md);
+		color: var(--primary);
+		border: var(--bw) solid var(--primary);
+		padding: var(--chip-pad-y) var(--chip-pad-x);
 		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-	
-	.day:hover {
-		background-color: #96616b;
-		color: #FFEAD0;
-	}
-	
-	.day.other-month {
-		opacity: 0.5;
+		font-weight: var(--weight-bold);
+		font-size: var(--text-sm);
+		transition: var(--swap);
 	}
 
-	.day-header {
-		font-weight: bold;
-		text-align: center;
-		margin-bottom: 5px;
+	.toggle-btn.active {
+		background-color: var(--primary);
+		color: var(--paper);
 	}
-	
+
+	@media (hover: hover) {
+		.toggle-btn:hover {
+			background-color: var(--primary);
+			color: var(--paper);
+		}
+	}
+
+	/* Mobile: replace button groups with selects */
+	.control-bar-mobile {
+		display: none;
+	}
+
+	.ctrl-select {
+		flex: 1;
+		padding: 6px 8px;
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		background-color: var(--paper);
+		color: var(--primary);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+	}
+
+	/* ── Calendar header ────────────────────────────────────────────────────── */
 	.calendar-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 20px;
-		background-color: #96616b;
-		border-radius: 10px;
+		background-color: var(--primary);
+		border-radius: var(--radius-lg);
 		padding: 10px 15px;
-		color: #FFEAD0;
+		color: var(--paper);
 		flex-wrap: wrap;
-		gap: 10px;
+		gap: 8px;
+		margin-bottom: 0;
 	}
-	
+
+	.date-display {
+		font-weight: var(--weight-bold);
+		font-size: var(--text-base);
+	}
+
 	.nav-buttons {
 		display: flex;
-		gap: 10px;
-	}
-	
-	.nav-button {
-		background-color: #FFEAD0;
-		color: #96616b;
-		border: none;
-		padding: 8px 15px;
-		border-radius: 4px;
-		cursor: pointer;
-		font-weight: bold;
-		transition: background-color 0.3s;
-	}
-	
-	.nav-button:hover {
-		background-color: #f0d6b3;
-	}
-	
-	.today-button {
-		background-color: #FFEAD0;
-		color: #96616b;
-		border: 1px solid #7a4e56;
+		gap: 8px;
 	}
 
-	.today-button:hover {
-		background-color: #f8e0c0;
+	.nav-button {
+		background-color: var(--paper);
+		color: var(--primary);
+		border: none;
+		padding: 6px 14px;
+		min-height: var(--control-min-h);
+		min-width: var(--control-min-h);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-weight: var(--weight-bold);
+		font-size: var(--text-sm);
+		transition: var(--swap);
 	}
-	
+
+	@media (hover: hover) { .nav-button:hover       { background-color: var(--paper-shade); } }
+	.today-button           { border: var(--bw) solid var(--primary-deep); }
+	@media (hover: hover) { .today-button:hover     { background-color: var(--paper-shade); } }
+
 	.date-selectors {
 		display: flex;
-		gap: 10px;
+		gap: 8px;
 	}
-	
+
 	select {
-		padding: 8px;
-		border-radius: 4px;
-		border: 1px solid #7a4e56;
-		background-color: #FFEAD0;
-		color: #96616b;
-	}
-	
-	h2.calendar-title {
-		color: #FFEAD0;
-		font-weight: bold;
-		margin: 0;
+		padding: 5px 8px;
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary-deep);
+		background-color: var(--paper);
+		color: var(--primary);
+		font-size: var(--text-sm);
 	}
 
-	.day-name {
-		color: #96616b;
-		text-align: center;
-		font-weight: bold;
-		margin-bottom: 5px;
-	}
-
-	.event {
-		background-color: #96616b;
-		color: #FFEAD0;
-		border-radius: 5px;
-		padding: 8px;
-		margin-top: 5px;
-		font-size: 12px;
-		cursor: pointer;
-		transition: background-color 0.3s;
+	/* ── Loading overlay ────────────────────────────────────────────────────── */
+	.calendar-wrap {
 		position: relative;
+	}
+
+	/* Dim only if a fetch is actually slow; quick ones never flicker */
+	.calendar-wrap {
+		transition: opacity var(--dur-fast) var(--ease-out);
+	}
+
+	.calendar-wrap.is-loading {
+		opacity: 0.6;
+		pointer-events: none;
+		transition-delay: 150ms;
+	}
+
+	/* ── Shared pills ───────────────────────────────────────────────────────── */
+	.event-pill {
+		background-color: var(--primary);
+		color: var(--paper);
+		border-radius: var(--radius-sm);
+		border: none;
+		padding: 2px 5px;
+		width: 100%;
+		font: inherit;
+		font-size: var(--text-xs);
+		text-align: left;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: pointer;
+		display: flex;
+		gap: 4px;
+		align-items: baseline;
+		line-height: 1.5;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+
+	@media (hover: hover) { .event-pill:hover { background-color: var(--primary-deep); } }
+
+	.ep-time {
+		font-weight: var(--weight-bold);
+		flex-shrink: 0;
+	}
+
+	.ep-title {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.chore-pill {
+		background-color: var(--paper);
+		color: var(--primary);
+		border: var(--bw-hair) solid var(--primary);
+		border-radius: var(--radius-sm);
+		padding: 2px 5px;
+		font-size: var(--text-xs);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: default;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		line-height: 1.5;
+	}
+
+	.chore-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	/* ── Overflow pill ──────────────────────────────────────────────────────── */
+	.overflow-pill {
+		font-size: var(--text-xs);
+		color: var(--primary);
+		font-weight: var(--weight-bold);
+		padding: 1px 4px;
+		white-space: nowrap;
+	}
+
+	/* ── Week view ──────────────────────────────────────────────────────────── */
+	.week-scroll {
+		overflow: auto;
+		max-height: 66vh;
+		border: var(--bw-hair) solid var(--primary-a25);
+		border-radius: var(--radius-lg);
+		margin-top: 10px;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.week-grid {
+		display: grid;
+		grid-template-columns: 48px repeat(7, minmax(90px, 1fr));
+		min-width: 680px;
+	}
+
+	/* Sticky corner */
+	.corner-cell {
+		position: sticky;
+		top: 0;
+		left: 0;
+		z-index: 10;
+		background-color: var(--primary);
+		border-bottom: var(--bw-hair) solid var(--paper-a35);
+	}
+
+	/* Day headers — sticky top */
+	.week-day-header {
+		position: sticky;
+		top: 0;
+		z-index: 5;
+		background-color: var(--primary);
+		color: var(--paper);
+		padding: 6px 4px;
+		text-align: center;
+		border-left: var(--bw-hair) solid var(--paper-a12);
+		border-bottom: var(--bw-hair) solid var(--paper-a35);
 		display: flex;
 		flex-direction: column;
-		justify-content: flex-start;
 		align-items: center;
-		gap: 5px;
+		gap: 3px;
+		border-top: none;
+		border-right: none;
+		font: inherit;
+		cursor: pointer;
+		transition: var(--swap);
 	}
 
-	.event p {
-		margin: 0;
+	@media (hover: hover) {
+		.week-day-header:hover .wdh-num:not(.today-circle) {
+			background-color: var(--paper-a12);
+			border-radius: var(--radius-circle);
+		}
 	}
 
-	.event:hover {
-		background-color: #FFEAD0;
-		color: #96616b;
-	}
-	
-	.calendar-container {
-		position: relative;
+	.wdh-name {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-bold);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 	}
 
-	.today-day {
-		box-shadow: inset 0 0 0 2px #96616b;
+	.wdh-num {
+		font-size: var(--text-md);
+		font-weight: var(--weight-bold);
+		line-height: 1;
+		width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	/* Safari-specific fixes */
-	@supports (-webkit-touch-callout: none) {
-		.day {
-			-webkit-overflow-scrolling: touch;
+	.today-circle {
+		background-color: var(--paper);
+		color: var(--primary);
+		border-radius: var(--radius-circle);
+	}
+
+	/* All-day row */
+	.allday-label {
+		position: sticky;
+		left: 0;
+		z-index: 3;
+		background-color: var(--paper);
+		color: var(--primary);
+		font-size: var(--text-xs);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		text-align: right;
+		padding: 4px 6px 4px 2px;
+		border-bottom: var(--bw-hair) solid var(--primary-a25);
+		display: flex;
+		align-items: flex-start;
+		justify-content: flex-end;
+		padding-top: 5px;
+	}
+
+	.allday-cell {
+		min-height: 28px;
+		padding: 3px;
+		border-left: var(--bw-hair) solid var(--primary-a12);
+		border-bottom: var(--bw-hair) solid var(--primary-a25);
+		background-color: var(--paper);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	/* Hour rows — time label sticky left */
+	.hour-label {
+		position: sticky;
+		left: 0;
+		z-index: 3;
+		background-color: var(--paper);
+		color: var(--primary);
+		font-size: var(--text-xs);
+		text-align: right;
+		padding: 4px 6px 0 2px;
+		border-right: var(--bw-hair) solid var(--primary-a25);
+		line-height: 1;
+		user-select: none;
+	}
+
+	.hour-cell {
+		min-height: 48px;
+		padding: 2px 3px;
+		border-left: var(--bw-hair) solid var(--primary-a12);
+		border-bottom: var(--bw-hair) solid var(--primary-a12);
+		cursor: pointer;
+		background-color: var(--paper);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		transition: background-color var(--dur-fast) var(--ease-out);
+	}
+
+	@media (hover: hover) { .hour-cell:hover             { background-color: var(--primary-a08); } }
+	.hour-cell.today-col         { background-color: var(--primary-a08); }
+	@media (hover: hover) { .hour-cell.today-col:hover   { background-color: var(--primary-a12); } }
+
+	/* ── Month view ─────────────────────────────────────────────────────────── */
+	.month-grid {
+		display: grid;
+		grid-template-columns: repeat(7, 1fr);
+		gap: 4px;
+		margin-top: 10px;
+	}
+
+	.day-name-header {
+		color: var(--primary);
+		text-align: center;
+		font-weight: var(--weight-bold);
+		font-size: var(--text-xs);
+		padding: 4px 0;
+	}
+
+	.month-day {
+		border: var(--bw-hair) solid var(--primary);
+		padding: 5px;
+		min-height: 90px;
+		color: var(--primary);
+		border-radius: var(--radius-sm);
+		box-shadow: var(--shadow-ambient);
+		overflow: hidden;
+		cursor: pointer;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		transition: var(--swap);
+	}
+
+	@media (hover: hover) {
+		.month-day:hover {
+			background-color: var(--primary);
+			color: var(--paper);
 		}
-		
-		.modal-content {
-			-webkit-overflow-scrolling: touch;
+
+		.month-day:hover .event-pill {
+			background-color: var(--paper);
+			color: var(--primary);
 		}
-		
-		/* Fix Safari flexbox issues */
-		.calendar-header {
-			display: -webkit-box;
-			display: -webkit-flex;
-			display: flex;
+
+		.month-day:hover .event-pill:hover {
+			background-color: var(--paper-shade);
 		}
-		
-		.nav-buttons, .date-selectors {
-			display: -webkit-box;
-			display: -webkit-flex;
-			display: flex;
+
+		.month-day:hover .chore-pill {
+			border-color: var(--paper);
 		}
 	}
-	
+
+	/* Adjacent-month days: dashed edge + regular-weight number, not faded text */
+	.month-day.other-month  { border-style: dashed; box-shadow: none; }
+	.month-day.other-month .day-num { font-weight: var(--weight-regular); }
+	.month-day.today-day    { box-shadow: inset 0 0 0 2px var(--primary), var(--shadow-ambient); }
+
+	.day-num {
+		align-self: center;
+		min-width: 28px;
+		min-height: 28px;
+		padding: 0 4px;
+		border: none;
+		border-radius: var(--radius-pill);
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-weight: var(--weight-bold);
+		font-size: var(--text-sm);
+		margin-bottom: 1px;
+		flex-shrink: 0;
+		cursor: pointer;
+	}
+
+	/* ── Week agenda (phones) ──────────────────────────────────────────────── */
+	.agenda {
+		list-style: none;
+		margin: 10px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+
+	.agenda-day {
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		padding: var(--space-sm);
+		color: var(--primary);
+	}
+
+	.agenda-day.today-day {
+		background-color: var(--primary-a08);
+	}
+
+	.agenda-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.agenda-date {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+	}
+
+	.agenda-num {
+		font-size: var(--text-lg);
+		font-weight: var(--weight-bold);
+		line-height: 1;
+	}
+
+	.agenda-name {
+		font-weight: var(--weight-bold);
+		font-size: var(--text-sm);
+	}
+
+	.agenda-add {
+		width: 44px;
+		height: 44px;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-circle);
+		background-color: var(--paper);
+		color: var(--primary);
+		font: inherit;
+		font-size: var(--text-lg);
+		font-weight: var(--weight-bold);
+		line-height: 1;
+		cursor: pointer;
+		transition: var(--swap);
+	}
+
+	@media (hover: hover) {
+		.agenda-add:hover {
+			background-color: var(--primary);
+			color: var(--paper);
+		}
+	}
+
+	.agenda-items {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin-top: var(--space-sm);
+	}
+
+	.agenda-items .event-pill,
+	.agenda-items .chore-pill {
+		font-size: var(--text-base);
+		padding: 10px 12px;
+		border-radius: var(--radius-md);
+		min-height: 44px;
+		align-items: center;
+	}
+
+	.agenda-empty {
+		margin: 6px 0 0;
+		font-size: var(--text-sm);
+		font-style: italic;
+	}
+
+	/* ── Responsive ─────────────────────────────────────────────────────────── */
 	@media (max-width: 767px) {
+		/* Phone fields at 16px, or iOS zooms in when one is tapped */
+		select { font-size: var(--text-base); }
+
+		/* Swap control bar: hide buttons, show selects */
+		.control-bar        { display: none; }
+		.control-bar-mobile {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 8px;
+		}
+
+		/* Compact calendar header into one row */
 		.calendar-header {
-			flex-direction: column;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			justify-content: space-between;
+			padding: 6px 10px;
+			gap: 4px;
+		}
+
+		.date-display   { font-size: var(--text-sm); font-weight: var(--weight-bold); }
+		.nav-button     { padding: 4px 9px; font-size: var(--text-sm); }
+		.nav-buttons    { gap: 4px; }
+		.date-selectors { display: none; } /* hidden on week; month shows dropdowns */
+
+		/* Week scroll fills remaining viewport after all bars above */
+		.week-scroll {
+			max-height: calc(100vh - 230px); /* fallback */
+			max-height: calc(100dvh - 230px);
+		}
+
+		.month-day {
+			min-height: 60px;
+			padding: 3px;
+			gap: 1px;
+		}
+
+		.day-num { font-size: var(--text-xs); }
+
+		.month-grid .event-pill, .month-grid .chore-pill {
+			font-size: var(--text-xs);
+			padding: 1px 3px;
+		}
+
+		/* Month cells are too narrow for times; the agenda keeps them */
+		.month-grid .ep-time { display: none; }
+
+		/* Event pills stay finger-sized (24px) in touch-sized month cells */
+		.month-grid .event-pill {
+			min-height: 24px;
 			align-items: center;
-			padding: 10px;
-		}
-		
-		.date-display {
-			order: -1;
-			margin-bottom: 10px;
-		}
-		
-		.nav-buttons {
-			width: 100%;
-			justify-content: center;
-		}
-		
-		.nav-button {
-			padding: 5px 10px;
-			font-size: 14px;
-		}
-		
-		.date-selectors {
-			width: 100%;
-			justify-content: center;
-		}
-		
-		.calendar {
-			gap: 2px;
-		}
-		
-		.day {
-			padding: 5px;
-			height: 80px;
-			font-size: 12px;
-		}
-		
-		.day-header {
-			margin-bottom: 2px;
-		}
-		
-		.event {
-			padding: 4px;
-			font-size: 10px;
-			margin-top: 2px;
-		}
-		
-		.add-event-hint {
-			font-size: 9px;
 		}
 	}
-	
+
 	@media (max-width: 480px) {
-		.day {
-			height: 60px;
+		.month-day { min-height: 46px; }
+
+		/* "+2 more" can't fit a phone's month cell: show "+2", still read in full */
+		.month-grid .more-word {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
 		}
-		
-		.event {
+
+		.chore-pill, .event-pill {
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
-		
-		.add-event-hint {
-			display: none;
-		}
 	}
 </style>
 
-<div class="calendar-container" class:modal-open={modalOpen}>
-	
-	<div class="calendar-header">
-		<div class="date-display">
-			{calendarDate.toLocaleString('default', { month: 'long' })} {calendarDate.getFullYear()}
-		</div>
-		
-		<div class="nav-buttons">
-			<button class="nav-button" on:click={navigateToPreviousMonth}>Previous</button>
-			<button class="nav-button today-button" on:click={navigateToToday}>Today</button>
-			<button class="nav-button" on:click={navigateToNextMonth}>Next</button>
-		</div>
-		
-		<div class="date-selectors">
-			<select value={calendarDate.getMonth()} on:change={handleMonthChange}>
-				{#each months as month}
-					<option value={month.value}>{month.name}</option>
-				{/each}
-			</select>
-			
-			<select value={calendarDate.getFullYear()} on:change={handleYearChange}>
-				{#each years as year}
-					<option value={year}>{year}</option>
-				{/each}
-			</select>
-		</div>
+<!-- Control bar: button groups (desktop) -->
+<div class="control-bar">
+	<div class="toggle-group">
+		<button class="toggle-btn" class:active={viewChoice === 'month'} aria-pressed={viewChoice === 'month'} on:click={() => switchView('month')}>Month</button>
+		<button class="toggle-btn" class:active={viewChoice === 'week'}  aria-pressed={viewChoice === 'week'}  on:click={() => switchView('week')}>Week</button>
 	</div>
-
-	<div class="calendar">
-		{#each day_names as day_name}
-			<div class="day-name">{day_name}</div>
-		{/each}
-		
-		{#each monthDays as day}
-		<div 
-			class="day {day.getMonth() !== calendarDate.getMonth() ? 'other-month' : ''} {day.toLocaleDateString() == currentDate.toLocaleDateString() ? 'today-day' : ''}"
-			on:click={(event) => handleDayClick(day, event)}
-		>
-			{#if day}
-			<div class="day-header">{day.getDate()}</div>
-			{#each getEventsForDate(day) as event}
-				<div class="event" on:click={() => handleEventClick(event)}>
-					{#if !isMobileView}
-					<small>
-						{new Date(event.when).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false})}
-					</small>
-					{/if}
-					<p>
-						{event.title}
-					</p>
-				</div>
-			{/each}
-			{/if}
-		</div>
-		{/each}
+	<div class="toggle-group">
+		<button class="toggle-btn" class:active={filter === 'events'} aria-pressed={filter === 'events'} on:click={() => setFilter('events')}>Events</button>
+		<button class="toggle-btn" class:active={filter === 'chores'} aria-pressed={filter === 'chores'} on:click={() => setFilter('chores')}>Chores</button>
+		<button class="toggle-btn" class:active={filter === 'both'}   aria-pressed={filter === 'both'}   on:click={() => setFilter('both')}>Both</button>
 	</div>
 </div>
 
+<!-- Control bar: selects (mobile) -->
+<div class="control-bar-mobile">
+	<select class="ctrl-select" aria-label="Calendar view" value={viewChoice} on:change={e => switchView(e.target.value)}>
+		<option value="month">Month</option>
+		<option value="week">Week</option>
+	</select>
+	<select class="ctrl-select" aria-label="Show" value={filter} on:change={e => setFilter(e.target.value)}>
+		<option value="events">Events</option>
+		<option value="chores">Chores</option>
+		<option value="both">Both</option>
+	</select>
+</div>
+
+<!-- Calendar header -->
+<div class="calendar-header on-primary">
+	<div class="nav-buttons">
+		<button class="nav-button" on:click={navigatePrev} aria-label={calView === 'week' ? 'Previous week' : 'Previous month'}>&#8592;</button>
+		<button class="nav-button today-button" on:click={navigateToToday}>Today</button>
+		<button class="nav-button" on:click={navigateNext} aria-label={calView === 'week' ? 'Next week' : 'Next month'}>&#8594;</button>
+	</div>
+
+	<div class="date-display">{headerLabel}</div>
+
+	{#if calView === 'month'}
+		<div class="date-selectors">
+			<select aria-label="Month" value={calendarDate.getMonth()} on:change={handleMonthChange}>
+				{#each MONTHS as m}
+					<option value={m.value}>{m.name}</option>
+				{/each}
+			</select>
+			<select aria-label="Year" value={calendarDate.getFullYear()} on:change={handleYearChange}>
+				{#each years as y}
+					<option value={y}>{y}</option>
+				{/each}
+			</select>
+		</div>
+	{/if}
+</div>
+
+<!-- Calendar body -->
+<div class="calendar-wrap calendar-body" class:is-loading={loading} aria-busy={loading}>
+
+	{#if calView === 'week' && isMobileView}
+		<!-- ── Week agenda (phones): one day per row, no sideways scroll ───── -->
+		<ol class="agenda">
+			{#each weekDays as day, i}
+				{@const dEvents = showEvents ? getEventsForDate(day) : []}
+				{@const dChores = showChores ? getChoresForDate(day) : []}
+				<li class="agenda-day" class:today-day={isToday(day)}>
+					<div class="agenda-head">
+						<span class="agenda-date">
+							<span class="agenda-num">{day.getDate()}</span>
+							<span class="agenda-name">{DAY_SHORT[i]}{isToday(day) ? ' · Today' : ''}</span>
+						</span>
+						<button class="agenda-add" on:click={() => goToAddEvent(day)} aria-label="Add event on {dayLabel(day)}">+</button>
+					</div>
+					{#if dEvents.length || dChores.length}
+						<div class="agenda-items" in:reveal>
+							{#each dEvents as event}
+								<button class="event-pill agenda-event" on:click={() => handleEventClick(event)}>
+									<span class="ep-time">{fmtTime(event.when)}</span>
+									<span class="ep-title">{event.title}</span>
+								</button>
+							{/each}
+							{#each dChores as chore}
+								<div class="chore-pill">
+									<span class="chore-dot" style="background-color: {choreColor(chore.nextTime)}"></span>
+									<span class="ep-title">{chore.name}</span>
+								</div>
+							{/each}
+						</div>
+					{:else if ready}
+						<p class="agenda-empty" in:reveal>Nothing planned</p>
+					{/if}
+				</li>
+			{/each}
+		</ol>
+
+	{:else if calView === 'week'}
+		<!-- ── Week view ─────────────────────────────────────────────────────── -->
+		<div class="week-scroll" bind:this={weekScrollEl}>
+			<div class="week-grid">
+
+				<!-- Header row: each day header is the keyboard path to "add event" -->
+				<div class="corner-cell"></div>
+				{#each weekDays as day, i}
+					<button class="week-day-header on-primary" on:click={() => goToAddEvent(day)} aria-label="Add event on {dayLabel(day)}">
+						<span class="wdh-name">{DAY_SHORT[i]}</span>
+						<span class="wdh-num" class:today-circle={isToday(day)}>{day.getDate()}</span>
+					</button>
+				{/each}
+
+				<!-- All-day row (chores). Cells are a mouse shortcut; keyboard uses the day header. -->
+				{#if showChores}
+					<div class="allday-label">all-day</div>
+					{#each weekDays as day}
+						{@const dayChores = getChoresForDate(day)}
+						<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+						<div class="allday-cell" on:click={e => { if (!e.target.closest('.chore-pill')) goToAddEvent(day); }}>
+							{#each dayChores.slice(0, 3) as chore}
+								<div class="chore-pill" in:reveal>
+									<span class="chore-dot" style="background-color: {choreColor(chore.nextTime)}"></span>
+									<span class="ep-title">{chore.name}</span>
+								</div>
+							{/each}
+							{#if dayChores.length > 3}
+								<div class="overflow-pill">+{dayChores.length - 3} more</div>
+							{/if}
+						</div>
+					{/each}
+				{/if}
+
+				<!-- Hour rows -->
+				{#each HOURS as hour}
+					<div class="hour-label" data-hour={hour}>
+						{String(hour).padStart(2, '0')}:00
+					</div>
+					{#each weekDays as day}
+						<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+						<div
+							class="hour-cell"
+							class:today-col={isToday(day)}
+							on:click={e => { if (!e.target.closest('.event-pill')) goToAddEvent(day, hour); }}
+						>
+							{#if showEvents}
+								{#each getEventsForDateHour(day, hour) as event}
+									<button class="event-pill" in:reveal on:click={() => handleEventClick(event)}>
+										<span class="ep-time">{fmtTime(event.when)}</span>
+										<span class="ep-title">{event.title}</span>
+									</button>
+								{/each}
+							{/if}
+						</div>
+					{/each}
+				{/each}
+
+			</div>
+		</div>
+
+	{:else}
+		<!-- ── Month view ────────────────────────────────────────────────────── -->
+		<div class="month-grid">
+			{#each DAY_ABBR as dn}
+				<div class="day-name-header" aria-hidden="true">{dn}</div>
+			{/each}
+
+			{#each monthDays as day}
+				{@const mEvents = showEvents ? getEventsForDate(day) : []}
+				{@const mChores = showChores ? getChoresForDate(day) : []}
+				{@const mOverflow = Math.max(0, mEvents.length - 3) + Math.max(0, mChores.length - 2)}
+				<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+				<div
+					class="month-day"
+					class:other-month={day.getMonth() !== calendarDate.getMonth()}
+					class:today-day={day.toDateString() === today.toDateString()}
+					on:click={e => { if (!e.target.closest('.event-pill') && !e.target.closest('.chore-pill') && !e.target.closest('.day-num')) goToAddEvent(day); }}
+				>
+					<button class="day-num" on:click={() => goToAddEvent(day)} aria-label="Add event on {dayLabel(day)}">{day.getDate()}</button>
+
+					{#each mEvents.slice(0, 3) as event}
+						<button class="event-pill" in:reveal on:click={() => handleEventClick(event)}>
+							{#if !isMobileView}
+								<span class="ep-time">{fmtTime(event.when)}</span>
+							{/if}
+							<span class="ep-title">{event.title}</span>
+						</button>
+					{/each}
+
+					{#each mChores.slice(0, 2) as chore}
+						<div class="chore-pill" in:reveal>
+							<span class="chore-dot" style="background-color: {choreColor(chore.nextTime)}"></span>
+							<span class="ep-title">{chore.name}</span>
+						</div>
+					{/each}
+
+					{#if mOverflow > 0}
+						<div class="overflow-pill">+{mOverflow}<span class="more-word"> more</span></div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{/if}
+
+</div>
+
 {#if selectedEvent}
-	<UpdateEvent 
-		event={selectedEvent} 
+	<UpdateEvent
+		event={selectedEvent}
 		onClose={handleEventClose}
 		onUpdated={handleEventUpdated}
 		onDeleted={handleEventDeleted}

@@ -1,7 +1,9 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { modalDialog, closeDialog, morphHeight } from '$lib/motion';
 	import SelectButtons from '$lib/buttons/selectButtons.svelte';
 	import Section from '$lib/header/Section.svelte';
+	import GroupIcon from '$lib/icons/GroupIcon.svelte';
 	import { getCookie } from '$lib/helpers/getCookie';
 	import { getTags } from '$lib/requests';
 
@@ -34,43 +36,83 @@
 	function update() {
 		todo.id = todo._id;
 		onSubmit(todo);
+		closeDialog(dialogEl);
 	}
 
 	function deleteTodo() {
 		delFunc(todo._id);
+		closeDialog(dialogEl);
 	}
 
 	function toggleDone() {
 		todo.done = !todo.done;
 		update();
 	}
+
+	// Native modal dialog; modalDialog animates it in and out
+	let dialogEl;
+
+	// View ↔ edit changes the dialog's height: morph it instead of jumping
+	async function switchMode(next) {
+		if (editMode === next) return;
+		const settle = morphHeight(dialogEl);
+		editMode = next;
+		await tick();
+		settle();
+	}
 </script>
 
 <style>
-	.modal {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: rgba(0, 0, 0, 0.5);
-		z-index: 1;
-		-webkit-backdrop-filter: blur(2px);
-		backdrop-filter: blur(2px);
+	/* Native <dialog>: top layer, focus trap, Escape and inert background come free */
+	.modal-content {
+		border: none;
+		margin: auto;
 	}
+
+	dialog.modal-content {
+		padding-top: calc(44px + var(--space-md));
+	}
+
+	.modal-content:not([open]) {
+		display: none;
+	}
+
+	.close-btn {
+		position: absolute;
+		top: var(--space-sm);
+		right: var(--space-sm);
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-circle);
+		background: var(--paper);
+		color: var(--primary);
+		font: inherit;
+		font-size: var(--text-lg);
+		font-weight: var(--weight-bold);
+		line-height: 1;
+		cursor: pointer;
+		transition: var(--swap);
+	}
+
+	@media (hover: hover) {
+		.close-btn:hover {
+			background: var(--primary);
+			color: var(--paper);
+		}
+	}
+
 
 	div {
 		box-sizing: border-box;
 	}
 
 	.modal-content {
-		background: #FFEAD0;
+		background: var(--paper);
 		cursor: default;
 		padding: 2%;
-		border-radius: 8px;
+		border-radius: var(--radius-lg);
 		width: 70%;
 		max-height: 90%;
 		overflow-x: hidden;
@@ -80,105 +122,114 @@
 		align-items: flex-start;
 		justify-items: flex-start;
 		position: relative;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-modal);
 		gap: 1em;
-		font-size: 1.2em;
+		font-size: var(--text-md);
 	}
 
 	textarea {
-		background-color: #FFEAD0;
+		background-color: var(--paper);
 		border: none;
-		border-radius: 5px;
-		padding: 10px;
-		color: #96616B;
+		border-radius: var(--radius-md);
+		padding: var(--space-sm);
+		color: var(--primary);
 		resize: none;
 		margin: 5px;
-		outline: none;
 		width: 100%;
 	}
 
 	button {
 		cursor: pointer;
-		color: #FFEAD0;
-		padding: 10px;
-		border-radius: 5px;
+		color: var(--paper);
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		font-weight: var(--weight-bold);
+		font-family: inherit;
+		transition: var(--swap);
 	}
 
 	.update-button {
 		float: left;
-		font-size: 1.2em;
+		font-size: var(--text-base);
 		flex: 2;
-		background-color: green;
-		border: solid green 3px;
+		background-color: var(--primary);
+		border: var(--bw) solid var(--primary);
 	}
 
 	.update-button:disabled {
-		background-color: gray;
-		border: solid 3px gray;
+		background-color: var(--idle);
+		border: var(--bw) solid var(--idle);
 	}
 
-	.update-button:disabled:hover {
-		color: #FFEAD0;
+	@media (hover: hover) {
+		.update-button:disabled:hover {
+			color: var(--paper);
+		}
 	}
 
 	.delete-button {
 		float: right;
 		flex: 1;
-		font-size: 1.2em;
-		border: 3px solid #f50a21;
-		background-color: #f50a21;
+		font-size: var(--text-base);
+		border: var(--bw) solid var(--danger);
+		background-color: var(--danger);
 	}
 
 	.done-button {
 		float: left;
-		font-size: 1.2em;
+		font-size: var(--text-base);
 		flex: 1;
-		border: 3px solid #96616B;
-		background-color: #96616B;
+		border: var(--bw) solid var(--primary);
+		background-color: var(--primary);
 		margin-right: 10px;
 	}
 
-	button:hover {
-		background-color: #FFEAD0;
-	}
+	@media (hover: hover) {
+		button:hover {
+			background-color: var(--paper);
+		}
 
-	.delete-button:hover {
-		color: #f50a21;
-	}
+		.delete-button:hover {
+			color: var(--danger);
+		}
 
-	.update-button:hover {
-		color: green;
-	}
+		.update-button:hover {
+			color: var(--primary);
+		}
 
-	.done-button:hover {
-		color: #96616B;
+		.done-button:hover {
+			color: var(--primary);
+		}
 	}
 
 	.name {
-		color: #96616B;
+		color: var(--primary);
 		text-align: left;
-		background-color: #FFEAD0;
-		border: solid 2px #96616B;
+		background-color: var(--paper);
+		border: var(--bw) solid var(--primary);
 		margin: 0;
-		outline: none;
-		font-size: large;
+		font-size: var(--text-md);
 		box-sizing: border-box;
-		padding: 10px;
+		padding: var(--space-sm);
 		width: 100%;
-		min-height: 3em;
-		overflow: hidden;
-		border-radius: 5px;
+		/* Two full lines at least (a title never shows half a line), growing
+		   with the text where the browser can, scrolling past twelve lines */
+		line-height: var(--leading-snug);
+		min-height: calc(2 * var(--leading-snug) * 1em + 2 * var(--space-sm) + 2 * var(--bw));
+		max-height: calc(12 * var(--leading-snug) * 1em);
+		field-sizing: content;
+		overflow-y: auto;
+		border-radius: var(--radius-md);
 		white-space: normal;
-		word-wrap: break-word;
-		word-break: break-word;
+		overflow-wrap: break-word;
 		margin-top: -30px;
 	}
 
 	.tooltip {
-		color: gray;
+		color: var(--primary);
 		font-style: italic;
 		text-align: left;
-		font-size: 0.7em;
+		font-size: var(--text-xs);
 		width: 90%;
 		margin-left: 1%;
 	}
@@ -192,17 +243,17 @@
 	}
 
 	.deadline {
-		color: #96616B;
-		font-weight: bold;
-		margin-top: 10px;
+		color: var(--primary);
+		font-weight: var(--weight-bold);
+		margin-top: var(--space-sm);
 	}
 
 	.tag {
-		background-color: #FFEAD0;
-		color: #96616B;
-		border: solid 2px #96616B;
-		border-radius: 5px;
-		padding: 5px 10px;
+		background-color: var(--paper);
+		color: var(--primary);
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-pill);
+		padding: var(--chip-pad-y) var(--chip-pad-x);
 		margin: 5px;
 		display: inline-block;
 	}
@@ -213,10 +264,10 @@
 
 	select {
 		padding: 8px;
-		border-radius: 4px;
-		border: 1px solid #96616B;
-		background-color: #FFEAD0;
-		color: #96616B;
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		background-color: var(--paper);
+		color: var(--primary);
 		width: 100%;
 		margin-bottom: 10px;
 		margin-top: -30px;
@@ -224,19 +275,20 @@
 	}
 
 	input[type="date"] {
+		box-sizing: border-box;
 		padding: 8px;
-		border-radius: 4px;
-		border: 1px solid #96616B;
-		background-color: #FFEAD0;
-		color: #96616B;
+		border-radius: var(--radius-md);
+		border: var(--bw) solid var(--primary);
+		background-color: var(--paper);
+		color: var(--primary);
 		width: 100%;
 		margin-bottom: 10px;
 		margin-top: -30px;
 	}
 
 	input[type="checkbox"] {
-		width: 20px;
-		height: 20px;
+		width: 24px;
+		height: 24px;
 		margin-right: 10px;
 	}
 
@@ -248,12 +300,12 @@
 </style>
 
 {#if todo}
-	<div class="modal" role="dialog" aria-modal="true" on:keydown={(e) => { if (e.key === 'Escape') reset(); }} tabindex="-1" on:click={(e) => {e.stopPropagation(); reset()}}>
-		<div class="modal-content" on:click={(e) => {e.stopPropagation()}}>
+	<dialog class="dialog modal-content" aria-label={todo.title} bind:this={dialogEl} use:modalDialog on:close={() => reset()}>
+		<button type="button" class="close-btn" aria-label="Close" on:click={() => closeDialog(dialogEl)}>×</button>
 			{#if user == todo.user}
-			<SelectButtons hooks={{"View": () => {if (editMode) editMode = false;}, "Edit": () => {if (!editMode) editMode = true;}}} />
+			<SelectButtons hooks={{"View": () => switchMode(false), "Edit": () => switchMode(true)}} />
 			{/if}
-			<h1 style='color: #96616B; margin: 0; width: 100%; font-weight: bold; font-size: 1.4em; padding: 10px 0;'>{todo.title}</h1>
+			<h1 style='color: var(--primary); margin: 0; width: 100%; font-weight: var(--weight-bold); font-size: var(--text-lg); padding: 10px 0;'>{todo.title}</h1>
 
 			{#if editMode && user == todo.user}
 				<!-- Edit Mode -->
@@ -283,7 +335,7 @@
 				</select>
 
 				<Section title='Options' />
-				<label style="display: flex; align-items: center; color: #96616B; margin: 10px 0; margin-top: -30px;">
+				<label style="display: flex; align-items: center; color: var(--primary); margin: 10px 0; margin-top: -30px;">
 					<input type="checkbox" bind:checked={todo.shared} />
 					<span>Share this todo</span>
 				</label>
@@ -296,9 +348,9 @@
 				<!-- View Mode -->
 
 				{#if todo.description}
-					<h3 style='color: #96616B; width: fit-content; margin-top: 15px; margin-bottom: 5px;'>Description</h3>
-					<div class='retro-red' style='width: 100%; border-radius: 5px; text-align: left; margin-bottom: 15px;'>
-						<p style='white-space: pre-line; color: #FFEAD0; padding: 10px; margin: 0;'>{todo.description}</p>
+					<h3 style='color: var(--primary); width: fit-content; margin-top: 15px; margin-bottom: 5px;'>Description</h3>
+					<div class='retro-red' style='width: 100%; border-radius: var(--radius-md); text-align: left; margin-bottom: 15px;'>
+						<p class="prose" style='white-space: pre-line; color: var(--paper); padding: 10px; margin: 0;'>{todo.description}</p>
 					</div>
 				{/if}
 
@@ -310,24 +362,23 @@
 
 				{#if todo.priority && todo.priority !== '0'}
 					<div style="margin-top: 10px;">
-                        <span style="color: #96616B; font-weight: bold;">Priority:</span>
-						<span class="priority-indicator" style="background-color: {todo.priority === '3' ? 'red' : todo.priority === '2' ? 'orange' : todo.priority === '1'? 'green' : 'gray'}"></span>
+                        <span style="color: var(--primary); font-weight: var(--weight-bold);">Priority:</span>
+						<span class="priority-indicator" style="background-color: {todo.priority === '3' ? 'var(--urgent)' : todo.priority === '2' ? 'var(--warn)' : todo.priority === '1'? 'var(--ok)' : 'var(--idle)'}"></span>
 					</div>
 				{/if}
 
                 {#if todo.tag}
                     <div>
-                        <span style="color: #96616B; font-weight: bold;">Tag:</span>
+                        <span style="color: var(--primary); font-weight: var(--weight-bold);">Tag:</span>
                         <span class="tag">{todo.tag}</span>
                     </div>
 				{/if}
 
 				{#if todo.shared}
-					<div style="display: flex; align-items: center; gap: 1em; color: #96616B;">
-							<i class="material-icons">group</i><span style='font-size:.9em;'>This todo is shared</span>
+					<div style="display: flex; align-items: center; gap: 1em; color: var(--primary);">
+							<GroupIcon /><span style='font-size:var(--text-sm);'>This todo is shared</span>
 					</div>
 				{/if}
 			{/if}
-		</div>
-	</div>
+	</dialog>
 {/if}

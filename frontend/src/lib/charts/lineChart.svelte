@@ -43,6 +43,10 @@
                 datasets: datasets,
             },
             options: {
+                // Data changes morph briefly, in step with the rest of the UI
+                animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? false
+                    : { duration: 350, easing: 'easeOutQuart' },
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
@@ -82,8 +86,8 @@
     .chart-container {
         max-height: var(--height);
         min-height: var(--height);
-        border: solid #96616B 3px;
-        border-radius: 5px;
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-lg);
         width: 100%;
         position: relative;
     }

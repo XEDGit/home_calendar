@@ -1,272 +1,418 @@
 <script>
-	import Stats from '$lib/menus/stats/stats.svelte';
-	import Calendar from '$lib/menus/calendar/calendar.svelte';
-	import AddEventForm from '$lib/menus/calendar/addEvent.svelte';
-	import AddTodoForm from '$lib/menus/todo/addTodo.svelte';
-	import AddChoreForm from '$lib/menus/chores/addChore.svelte';
-	import Chores from '$lib/menus/chores/chores.svelte';
-	import PlusButton from '$lib/buttons/plusButton.svelte';
-	import NavButton from '$lib/header/navButton.svelte';
+	import Stats from "$lib/menus/stats/stats.svelte";
+	import Calendar from "$lib/menus/calendar/calendar.svelte";
+	import AddEventForm from "$lib/menus/calendar/addEvent.svelte";
+	import AddTodoForm from "$lib/menus/todo/addTodo.svelte";
+	import AddChoreForm from "$lib/menus/chores/addChore.svelte";
+	import Chores from "$lib/menus/chores/chores.svelte";
+	import PlusButton from "$lib/buttons/plusButton.svelte";
+	import NavButton from "$lib/header/navButton.svelte";
 	import PromptUser from "$lib/prompts/promptUser.svelte";
-	import Settings from '$lib/menus/settings/Settings.svelte';
-	import Home from '$lib/menus/home/home.svelte';
-	import Todo from '$lib/menus/todo/todo.svelte';
-	import { onMount, setContext } from 'svelte';
-	import { getRooms, getUsers } from '$lib/requests';
-	import { getCookie, setCookie } from '$lib/helpers/getCookie';
-	import ContentLayout from '$lib/containers/contentLayout.svelte';
+	import Settings from "$lib/menus/settings/Settings.svelte";
+	import Home from "$lib/menus/home/home.svelte";
+	import Todo from "$lib/menus/todo/todo.svelte";
+	import Automations from "$lib/menus/automations/automations.svelte";
+	import AddAutomationForm from "$lib/menus/automations/addAutomation.svelte";
+	import { onMount, setContext, tick } from "svelte";
+	import { getRooms, getUsers } from "$lib/requests";
+	import { getCookie, setCookie } from "$lib/helpers/getCookie";
+	import ContentLayout from "$lib/containers/contentLayout.svelte";
+	import Screen from "$lib/containers/screen.svelte";
+	import { viewTransition } from "$lib/motion";
+	import { applyTheme } from "$lib/theme";
 
-	let events = null;
-	let chores = null;
 	let rooms = null;
 	let user = undefined;
 	let users = undefined;
 	let loading = true;
-	
+
 	let pages = {
-		home:       0,
-		calendar:	1,
-		chores:		2,
-		addEvent:	3,
-		addChore:	4,
-		settings:	5,
-		todo:		6,
-		stats:		7,
-		addTodo:	8,
+		home: 0,
+		calendar: 1,
+		chores: 2,
+		addEvent: 3,
+		addChore: 4,
+		settings: 5,
+		todo: 6,
+		stats: 7,
+		addTodo: 8,
+		automations: 9,
+		addAutomation: 10,
 	};
 
 	let pageNames = [
-		'home',
-		'calendar',
-		'chores',
-		'addEvent',
-		'addChore',
-		'settings',
-		'todo',
-		'stats',
-		'addTodo',
+		"home",
+		"calendar",
+		"chores",
+		"addEvent",
+		"addChore",
+		"settings",
+		"todo",
+		"stats",
+		"addTodo",
+		"automations",
+		"addAutomation",
 	];
 
 	let viewMode = 0;
+	$: view = pageNames[viewMode];
 
-	import { browser } from '$app/environment';
-	const updateViewMode = (value) => {
-		if (browser) {
-			if (window.history.state.viewMode != value)
-				window.history.pushState({viewMode: value}, '', pageNames[value])
-		}
-		viewMode = value
+	// Spatial model for page changes: the screens sit in a row in nav order,
+	// each form just right of the tab it belongs to. Changing screen pushes
+	// sideways along that row: a screen further right slides in from the
+	// right, going back slides in from the left.
+	const FORM_PARENT = { [pages.addEvent]: pages.calendar, [pages.addChore]: pages.chores, [pages.addTodo]: pages.todo, [pages.addAutomation]: pages.automations };
+	const TABS = ["home", "calendar", "chores", "todo", "stats", "automations", "settings"];
+
+	const isForm = (value) => value in FORM_PARENT;
+
+	function orderOf(value) {
+		return isForm(value)
+			? TABS.indexOf(pageNames[FORM_PARENT[value]]) + 0.5
+			: TABS.indexOf(pageNames[value]);
 	}
 
-	import { page } from '$app/stores';
-	import Section from '$lib/header/Section.svelte';
+	// Tabs stay mounted once opened (hidden when out of view), so coming back
+	// to one shows it at once, as you left it, and it refreshes in place.
+	// Forms start fresh every time.
+	let alive = {};
+	const scrollMemory = {};
+
+	function keepAlive(value) {
+		if (!isForm(value)) alive[pageNames[value]] = true;
+	}
+
+	// Tabs whose first data is in (each view reports it through onReady)
+	let loadedTabs = {};
+	let readyWaiters = {};
+
+	function markReady(tab) {
+		loadedTabs[tab] = true;
+		for (const resolve of readyWaiters[tab] ?? []) resolve();
+		delete readyWaiters[tab];
+	}
+
+	function whenReady(tab, maxWait) {
+		if (loadedTabs[tab]) return Promise.resolve();
+		return Promise.race([
+			new Promise((resolve) => (readyWaiters[tab] ??= []).push(resolve)),
+			new Promise((resolve) => setTimeout(resolve, maxWait)),
+		]);
+	}
+
+	function showView(value) {
+		if (value === viewMode) return;
+		const dir = orderOf(value) > orderOf(viewMode) ? "forward" : "back";
+		scrollMemory[viewMode] = window.scrollY;
+		keepAlive(viewMode);
+		viewTransition(
+			async () => {
+				keepAlive(value);
+				viewMode = value;
+				await tick();
+				// A tab whose first data isn't in yet (opened moments ago) holds
+				// the change briefly, so it slides in whole instead of filling
+				// in afterwards. A loaded tab goes at once.
+				if (!isForm(value)) await whenReady(pageNames[value], 600);
+				// Tabs come back scrolled where you left them; forms open at the top
+				window.scrollTo(0, isForm(value) ? 0 : (scrollMemory[value] ?? 0));
+			},
+			// A form waits a moment for its own data too
+			{ scope: "page", dir, settle: isForm(value) ? 600 : 0 },
+		);
+	}
+
+	// Once the first screen is up, open the other tabs in the background,
+	// one at a time while the device is idle, so each has its data before
+	// it's first visited
+	let warmTimer;
+	function warmUp() {
+		clearTimeout(warmTimer);
+		keepAlive(viewMode);
+		const idle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1500 }) : fn());
+		const next = () => {
+			const tab = TABS.find((t) => !alive[t]);
+			if (!tab || loading) return;
+			alive[tab] = true;
+			warmTimer = setTimeout(() => idle(next), 100);
+		};
+		warmTimer = setTimeout(() => idle(next), 200);
+	}
+
+	import { browser } from "$app/environment";
+	const updateViewMode = (value, { animate = true } = {}) => {
+		if (browser) {
+			if (window.history.state?.viewMode != value)
+				window.history.pushState(
+					{ viewMode: value },
+					"",
+					pageNames[value],
+				);
+		}
+		if (animate && browser) showView(value);
+		else viewMode = value;
+	};
+
+	import { page } from "$app/stores";
+	import Section from "$lib/header/Section.svelte";
 	let queryParams = $page.url.searchParams;
 	for (let [key, value] of Array.from(queryParams.entries())) {
-		if (key == 'viewMode') {
-			let idx = pageNames.indexOf(value)
-			if (value != -1)
-				updateViewMode(idx)
+		if (key == "viewMode") {
+			let idx = pageNames.indexOf(value);
+			if (value != -1) updateViewMode(idx, { animate: false });
 		}
 	}
 
+	// The tab named in the address bar (/calendar, /todo, ...), if any
+	function viewFromPath(pathname) {
+		const idx = pageNames.indexOf(pathname.replace(/^\/+|\/+$/g, ""));
+		return idx >= 0 ? idx : undefined;
+	}
+
+	// A tab URL opens straight on that tab (a refresh, a reopened tab)
+	const pathView = viewFromPath($page.url.pathname);
+	if (pathView !== undefined) viewMode = pathView;
+
 	const handlePopState = (event) => {
-		if (event.state && event.state.viewMode !== undefined) {
-			viewMode = event.state.viewMode;
-		} else {
-			viewMode = pages.home;
-		}
+		showView(event.state?.viewMode ?? viewFromPath(location.pathname) ?? pages.home);
 	};
 
 	function updateCookies() {
 		const date = new Date();
-		date.setTime(date.getTime() + (1000 * 24 * 60 * 60 * 1000));
+		date.setTime(date.getTime() + 1000 * 24 * 60 * 60 * 1000);
 		const expires = "expires=" + date.toUTCString();
 		if (user && !users.find((u) => u._id == user)) {
 			// Reset cookie if user is not found
-			setCookie('user', '', -1000)
+			setCookie("user", "", -1000);
 			user = undefined;
 		}
 		if (!user && users.length == 1) {
 			// Set single cookie
 			user = users[0]._id;
-			setCookie('user', users[0]._id, expires)
+			setCookie("user", users[0]._id, expires);
 		}
 		// Renew cookies
-		const cookies = document.cookie.split('; ');
+		const cookies = document.cookie.split("; ");
 		for (let i = 0; i < cookies.length; i++) {
-			const [cookieName, cookieValue] = cookies[i].split('=');
+			const [cookieName, cookieValue] = cookies[i].split("=");
 			setCookie(cookieName, cookieValue, expires);
 		}
 	}
 
 	async function updateUI() {
 		loading = true;
-		user = getCookie('user')
-		users = await getUsers()
-		rooms = await getRooms()
+		// A new session starts from the screen in view; the others warm up after
+		alive = {};
+		loadedTabs = {};
+		readyWaiters = {};
+		user = getCookie("user");
+		const [fetchedUsers, fetchedRooms] = await Promise.all([getUsers(), getRooms()]);
+		users = fetchedUsers;
+		rooms = fetchedRooms;
 		if (!users.length) {
-			viewMode = pages.settings
+			viewMode = pages.settings;
 		}
-		updateCookies()
-		loading = false;
+		updateCookies();
+		// First reveal: crossfade from the loading line to the populated page,
+		// already in this member's theme (their pick follows them across
+		// devices). The first screen's data is waited for, so it arrives whole.
+		const me = users.find((u) => u._id == user);
+		const showsScreen = !!user || users.length <= 1;
+		await viewTransition(
+			async () => {
+				applyTheme(me?.theme);
+				loading = false;
+				await tick();
+				if (showsScreen && !isForm(viewMode)) await whenReady(pageNames[viewMode], 1500);
+			},
+			{ scope: "reveal", settle: showsScreen && isForm(viewMode) ? 600 : 0 },
+		);
+		warmUp();
 	}
 
-	setContext('updateUI', updateUI)
+	setContext("updateUI", updateUI);
 
 	onMount(async () => {
 		if (browser) {
-			window.addEventListener('popstate', handlePopState);
+			window.addEventListener("popstate", handlePopState);
 			// Add listener for our custom viewModeChanged event
-			window.addEventListener('viewModeChanged', (event) => {
+			window.addEventListener("viewModeChanged", (event) => {
 				if (event.detail !== undefined) {
 					updateViewMode(event.detail);
 				}
 			});
 		}
-		await updateUI()
+		await updateUI();
 	});
 
 	const greetings = {
-		"Hello": "(hɛˈloʊ) in English",
-		"Hi": "(haɪ) in English",
-		"Hey": "(heɪ) in English",
-		"Howdy": "(ˈhaʊdi) in English",
-		"Greetings": "(ˈɡriːtɪŋz) in English",
-		"Salutations": "(ˌsæljʊˈteɪʃənz) in English",
-		"Hola": "(ˈoːla) in Spanish",
-		"Bonjour": "(bɔ̃ʒuʁ) in French",
-		"Ciao": "(ˈtʃa.o) in Italian",
-		"Buongiorno": "(ˌbwonˈdʒɔrno) in Italian",
-		"Hoi": "(hɔi) in Dutch",
-		"Goededag": "(ˈɣutəˌdɑx) in Dutch",
-		"Hallo": "(ˈhalːo) in German",
-		"Привет": "(prʲɪˈvʲet) in Russian",
-		"Zdravstvuyte": "(zdrɑvˈstvʊjɪtʲɛ) in Russian",
-		"こんにちは": "(konnichiwa) in Japanese",
-		"안녕하세요": "(an-nyeong-ha-se-yo) in Korean",
-		"你好": "(nǐ hǎo) in Chinese",
-		"Olá": "(oˈla) in Portuguese",
-		"Hej": "(jei) in Swedish",
-		"Shalom": "(ʃaˈlɔm) in Hebrew",
-		"Ahoj": "(ˈahoj) in Czech",
-		"Merhaba": "(ˈmɛɾhaba) in Turkish",
-		"Kamusta": "(kaˈmusˈta) in Filipino (Tagalog)",
-		"Szia": "(ˈsiːɒ) in Hungarian",
-		"Witam": "(ˈvʲitam) in Polish",
-		"Sawubona": "(sawuˈbona) in Zulu",
-		"Yassas": "(ˈjasas) in Greek",
+		Hello: "(hɛˈloʊ) in English",
+		Hi: "(haɪ) in English",
+		Hey: "(heɪ) in English",
+		Howdy: "(ˈhaʊdi) in English",
+		Greetings: "(ˈɡriːtɪŋz) in English",
+		Salutations: "(ˌsæljʊˈteɪʃənz) in English",
+		Hola: "(ˈoːla) in Spanish",
+		Bonjour: "(bɔ̃ʒuʁ) in French",
+		Ciao: "(ˈtʃa.o) in Italian",
+		Buongiorno: "(ˌbwonˈdʒɔrno) in Italian",
+		Zdravei: "(zdrɐˈvɛj) in Bulgarian",
+		Hoi: "(hɔi) in Dutch",
+		Goededag: "(ˈɣutəˌdɑx) in Dutch",
+		Hallo: "(ˈhalːo) in German",
+		Привет: "(prʲɪˈvʲet) in Russian",
+		Zdravstvuyte: "(zdrɑvˈstvʊjɪtʲɛ) in Russian",
+		こんにちは: "(konnichiwa) in Japanese",
+		안녕하세요: "(an-nyeong-ha-se-yo) in Korean",
+		你好: "(nǐ hǎo) in Chinese",
+		Olá: "(oˈla) in Portuguese",
+		Hej: "(jei) in Swedish",
+		Shalom: "(ʃaˈlɔm) in Hebrew",
+		Ahoj: "(ˈahoj) in Czech",
+		Merhaba: "(ˈmɛɾhaba) in Turkish",
+		Kamusta: "(kaˈmusˈta) in Filipino (Tagalog)",
+		Szia: "(ˈsiːɒ) in Hungarian",
+		Witam: "(ˈvʲitam) in Polish",
+		Sawubona: "(sawuˈbona) in Zulu",
+		Yassas: "(ˈjasas) in Greek",
 		"As-salamu alaykum": "(æs sæˈlɑːmu æˈlæj.kʊm) in Arabic",
-		"Tere": "(ˈtere) in Estonian",
-		"Salut": "(saˈlut) in Romanian",
+		Tere: "(ˈtere) in Estonian",
+		Salut: "(saˈlut) in Romanian",
 		"Hai Noroc": "(haj noˈrok) in Romanian",
 		"Buna Ziua": "(ˈbuna ˈzi.wa) in Romanian",
 		"Dia duit": "(dʲiːə dʷɪtʲ) in Irish",
 		"Kia ora": "(kiˈa ɔɾa) in Maori",
-		"Jambo": "(ˈdʒɑːm.boʊ) in Swahili",
-		"Hei": "(hei) in Finnish",
-		"Chào": "(ʈʃaːo) in Vietnamese",
-		"Selam": "(ˈsɛlɑm) in Somali",
-		"Moin": "(mɔɪn) in North German",
-		"Bok": "(bɔk) in Croatian",
-		"Terve": "(ˈtɛɾʋɛ) in Finnish",
-		"Habari": "(haˈbɑːɾi) in Swahili",
-		"Cześć": "(t͡ʂɛɕt͡ɕ) in Polish",
-		"Salutare": "(saˈluːtɑːɾɛ) in Albanian",
-		"Konnichiwa": "(konnichiwa) in Japanese"
+		Jambo: "(ˈdʒɑːm.boʊ) in Swahili",
+		Hei: "(hei) in Finnish",
+		Chào: "(ʈʃaːo) in Vietnamese",
+		Selam: "(ˈsɛlɑm) in Somali",
+		Moin: "(mɔɪn) in North German",
+		Bok: "(bɔk) in Croatian",
+		Terve: "(ˈtɛɾʋɛ) in Finnish",
+		Habari: "(haˈbɑːɾi) in Swahili",
+		Cześć: "(t͡ʂɛɕt͡ɕ) in Polish",
+		Salutare: "(saˈluːtɑːɾɛ) in Albanian",
+		Konnichiwa: "(konnichiwa) in Japanese",
 	};
 
-	const greetings_len = Object.keys(greetings).length
+	const greetings_len = Object.keys(greetings).length;
 
 	function pickGreeting() {
-		const i = Math.floor(Math.random() * greetings_len)
-		return Object.entries(greetings)[i]
+		const i = Math.floor(Math.random() * greetings_len);
+		return Object.entries(greetings)[i];
 	}
 
-	const greet = pickGreeting()
+	const greet = pickGreeting();
 
 	function formatPageName(name) {
-		return name.replace(/([a-z])([A-Z])/g, '$1 $2')
+		return name.replace(/([a-z])([A-Z])/g, "$1 $2");
 	}
 </script>
 
 <svelte:head>
-	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-<style>
-	* {
-		transition: all 0.3s;
-	}
-
-	body {
-		background-color: #FFEAD0;
-		margin: 0, 0;
-		overflow-x: hidden;
-		height: 100%;
-		font-family: 'Roboto', sans-serif;
-		color: #113537;
-	}
-</style>
+	<title>Home Calendar</title>
 </svelte:head>
 
-<div style='display: flex; gap: 10px; align-content: center;'>
-	<img style='height: 50px;' src='icon_big_nobg.png' />
-	{#if user && users && users.length}
+<header class="site-header" style="display: flex; gap: 10px; align-content: center;">
+	<span class="site-logo" role="img" aria-label="Home Calendar"></span>
+	{#if user && users && users.length && !loading}
 		<div>
-			<small style="display: block; font-size: 0.7em; color: gray; margin: 0; margin-bottom: -6px">{greet[1]}</small>
-			<Section title='{greet[0]} {users.filter((u) => {return user == u._id})[0]?.name || ''} :)' />
+			<small
+				style="display: block; font-size: var(--text-xs); color: var(--primary); margin: 0; margin-bottom: -6px"
+				>{greet[1]}</small
+			>
+			<!-- The smiley is glued to the name so it never wraps onto a line alone -->
+			<Section
+				title={`${greet[0]} ${users.find((u) => u._id == user)?.name || ''}\u00a0:)`}
+			/>
 		</div>
 	{/if}
-</div>
+</header>
 
 <NavButton
 	active={viewMode}
-	f = {updateViewMode}
-	buttons = {{
-		"home": pages.home,
-		"calendar": pages.calendar,
-		"chores": pages.chores,
-		"todo": pages.todo,
-		"stats": pages.stats,
-		"settings": pages.settings,
+	f={updateViewMode}
+	buttons={{
+		home: pages.home,
+		calendar: pages.calendar,
+		chores: pages.chores,
+		todo: pages.todo,
+		stats: pages.stats,
+		automations: pages.automations,
+		settings: pages.settings,
 	}}
-	disableMask = {[false, false, false, false, false, false]}
+	disableMask={[false, false, false, false, false, false, false]}
 />
 
-<title>Home Calendar</title>
+{#if viewMode < 0 || viewMode >= pageNames.length}
+	{updateViewMode(pages.home, { animate: false })}
+{/if}
+
 {#if !user && users && users.length > 1}
-	<ContentLayout title={formatPageName(pageNames[viewMode])}>
-		<PromptUser buttons={users} onSubmit={(value) => {setCookie('user', value, 100); updateUI()}} />
+	<ContentLayout as="main" pageView title={formatPageName(pageNames[viewMode])}>
+		<PromptUser
+			buttons={users}
+			onSubmit={(value) => {
+				setCookie("user", value, 100);
+				updateUI();
+			}}
+		/>
 	</ContentLayout>
 {:else if loading}
-	<ContentLayout title={formatPageName(pageNames[viewMode])} loading={true} />
+	<ContentLayout as="main" pageView title={formatPageName(pageNames[viewMode])} loading={true} />
 {:else}
-	<ContentLayout title={formatPageName(pageNames[viewMode])}>
-		{#if viewMode == pages.home}
-			<Home />
-		{:else if viewMode == pages.calendar}
-			<Calendar events={events}/>
-			<PlusButton func={() => updateViewMode(pages.addEvent)} />
-		{:else if viewMode == pages.addEvent}
-			<AddEventForm />
-		{:else if viewMode == pages.chores}
-			<Chores chores={chores}/>
-			{#if Object.keys(rooms || {})?.length}
-				<PlusButton func={() => updateViewMode(pages.addChore)} />
-			{/if}
-		{:else if viewMode == pages.addChore}
-			<AddChoreForm />
-		{:else if viewMode == pages.settings}
-			<Settings user_id={user} />
-		{:else if viewMode == pages.todo}
-			<Todo />
-			<PlusButton func={() => updateViewMode(pages.addTodo)} />
-		{:else if viewMode == pages.addTodo}
-			<AddTodoForm />
-		{:else if viewMode == pages.stats}
-			<Stats />
-		{:else}
-			<p>Error: Unknown view mode: {viewMode}</p>
+	<main class="screens">
+		{#if alive.home || view === "home"}
+			<Screen name="home" active={view === "home"}>
+				<Home active={view === "home"} onReady={() => markReady("home")} />
+			</Screen>
 		{/if}
-	</ContentLayout>
+		{#if alive.calendar || view === "calendar"}
+			<Screen name="calendar" active={view === "calendar"}>
+				<Calendar active={view === "calendar"} onReady={() => markReady("calendar")} />
+				<PlusButton func={() => updateViewMode(pages.addEvent)} />
+			</Screen>
+		{/if}
+		{#if alive.chores || view === "chores"}
+			<Screen name="chores" active={view === "chores"}>
+				<Chores active={view === "chores"} onReady={() => markReady("chores")} />
+				{#if Object.keys(rooms || {})?.length}
+					<PlusButton func={() => updateViewMode(pages.addChore)} />
+				{/if}
+			</Screen>
+		{/if}
+		{#if alive.todo || view === "todo"}
+			<Screen name="todo" active={view === "todo"}>
+				<Todo active={view === "todo"} onReady={() => markReady("todo")} />
+				<PlusButton func={() => updateViewMode(pages.addTodo)} />
+			</Screen>
+		{/if}
+		{#if alive.stats || view === "stats"}
+			<Screen name="stats" active={view === "stats"}>
+				<Stats active={view === "stats"} onReady={() => markReady("stats")} />
+			</Screen>
+		{/if}
+		{#if alive.automations || view === "automations"}
+			<Screen name="automations" active={view === "automations"}>
+				<Automations active={view === "automations"} onReady={() => markReady("automations")} />
+				<PlusButton func={() => updateViewMode(pages.addAutomation)} />
+			</Screen>
+		{/if}
+		{#if alive.settings || view === "settings"}
+			<Screen name="settings" active={view === "settings"}>
+				<Settings user_id={user} active={view === "settings"} onReady={() => markReady("settings")} />
+			</Screen>
+		{/if}
+		{#if view === "addEvent"}
+			<Screen name="addEvent" active><AddEventForm /></Screen>
+		{:else if view === "addChore"}
+			<Screen name="addChore" active><AddChoreForm /></Screen>
+		{:else if view === "addTodo"}
+			<Screen name="addTodo" active><AddTodoForm /></Screen>
+		{:else if view === "addAutomation"}
+			<Screen name="addAutomation" active><AddAutomationForm /></Screen>
+		{/if}
+	</main>
 {/if}
 
 <div style="margin-bottom: 28vh;"></div>

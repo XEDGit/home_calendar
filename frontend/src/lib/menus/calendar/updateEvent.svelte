@@ -1,4 +1,6 @@
 <script>
+	import { tick } from 'svelte';
+	import { modalDialog, closeDialog, morphHeight } from '$lib/motion';
 	import SelectButtons from '$lib/buttons/selectButtons.svelte';
 	import { postFrontend } from '$lib/requests';
 	import DateTimePicker from '$lib/inputs/DateTimePicker.svelte';
@@ -60,7 +62,7 @@
 			const result = await postFrontend('updateEvent', updatedEvent);
 			if (result.success) {
 				onUpdated(result.event);
-				reset();
+				closeDialog(dialogEl);
 			} else {
 				alert('Failed to update event: ' + result.message);
 			}
@@ -76,7 +78,7 @@
 				const result = await postFrontend('deleteEvent', { id: event._id });
 				if (result.success) {
 					onDeleted(event._id);
-					reset();
+					closeDialog(dialogEl);
 				} else {
 					alert('Failed to delete event: ' + result.message);
 				}
@@ -87,37 +89,69 @@
 		}
 	}
 	
-	// Handle escape key for Safari and other browsers
-	function handleKeydown(event) {
-		if (event.key === 'Escape') {
-			reset();
-		}
+
+	// Native modal dialog; modalDialog animates it in and out
+	let dialogEl;
+
+	// View ↔ edit changes the dialog's height: morph it instead of jumping
+	async function switchMode(next) {
+		if (editMode === next) return;
+		const settle = morphHeight(dialogEl);
+		editMode = next;
+		await tick();
+		settle();
 	}
 </script>
 <style>
-	.modal {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: rgba(0, 0, 0, 0.5);
-		z-index: 100; /* Higher z-index to ensure it's above all other elements */
-		-webkit-backdrop-filter: blur(2px); /* Safari blur effect */
-		backdrop-filter: blur(2px);
+	/* Native <dialog>: top layer, focus trap, Escape and inert background come free */
+	.modal-content {
+		border: none;
+		margin: auto;
 	}
+
+	dialog.modal-content {
+		padding-top: calc(44px + var(--space-md));
+	}
+
+	.modal-content:not([open]) {
+		display: none;
+	}
+
+	.close-btn {
+		position: absolute;
+		top: var(--space-sm);
+		right: var(--space-sm);
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-circle);
+		background: var(--paper);
+		color: var(--primary);
+		font: inherit;
+		font-size: var(--text-lg);
+		font-weight: var(--weight-bold);
+		line-height: 1;
+		cursor: pointer;
+		transition: var(--swap);
+	}
+
+	@media (hover: hover) {
+		.close-btn:hover {
+			background: var(--primary);
+			color: var(--paper);
+		}
+	}
+
 	div {
 		box-sizing: border-box;
 	}
 	.modal-content {
-		background: #FFEAD0;
-		color: #96616B;
+		background: var(--paper);
+		color: var(--primary);
 		cursor: default;
 		padding: 2%;
-		border-radius: 10px;
+		border-radius: var(--radius-lg);
 		width: 70%;
 		max-height: 90%;
 		overflow-x: hidden;
@@ -125,7 +159,7 @@
 		display: flex;
         align-items: flex-start;
 		flex-direction: column;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-modal);
 		-webkit-overflow-scrolling: touch; /* Smooth scrolling for Safari */
 	}
     .modal-layout {
@@ -140,17 +174,18 @@
 	label {
 		display: block;
 		margin-bottom: 5px;
-		color: #96616B;
-		font-weight: bold;
+		color: var(--primary);
+		font-weight: var(--weight-bold);
 	}
 	
 	input, textarea {
+		box-sizing: border-box;
 		width: 100%;
 		padding: 8px;
-		border: 1px solid #96616B;
-		border-radius: 4px;
-		background: #FFEAD0;
-		color: #96616B;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		background: var(--paper);
+		color: var(--primary);
 		-webkit-appearance: none; /* Fix Safari input styling */
 	}
 	
@@ -162,39 +197,48 @@
 	}
 	
 	button {
-		padding: 8px 16px;
-		border-radius: 4px;
-		font-weight: bold;
+		padding: var(--block-pad);
+		border-radius: var(--radius-md);
+		font-weight: var(--weight-bold);
 		cursor: pointer;
-		border: none;
+		transition: var(--swap);
 		-webkit-appearance: none; /* Fix Safari button styling */
 	}
 
 	#repetition {
+		box-sizing: border-box;
 		width: 100%;
 		padding: 8px;
-		border: 1px solid #96616B;
-		border-radius: 4px;
-		background: #FFEAD0;
-		color: #96616B;
+		border: var(--bw) solid var(--primary);
+		border-radius: var(--radius-md);
+		background: var(--paper);
+		color: var(--primary);
 	}
 	
 	.save-btn {
-		background: green;
-		color: #FFEAD0;
+		background: var(--primary);
+		color: var(--paper);
+		border: var(--bw) solid var(--primary);
 	}
 	
-	.save-btn:hover {
-		background-color: #0c6508;
+	@media (hover: hover) {
+		.save-btn:hover {
+			background: var(--paper);
+			color: var(--primary);
+		}
 	}
 	
 	.delete-btn {
-		background: #d9534f;
-		color: #FFEAD0;
+		background: var(--danger);
+		color: var(--paper);
+		border: var(--bw) solid var(--danger);
 	}
 	
-	.delete-btn:hover {
-		background: #c9302c;
+	@media (hover: hover) {
+		.delete-btn:hover {
+			background: var(--paper);
+			color: var(--danger);
+		}
 	}
 	
 	.event-details {
@@ -208,13 +252,13 @@
 	
 	.detail-label {
 		width: 100px;
-		font-weight: bold;
-		color: #96616B;
+		font-weight: var(--weight-bold);
+		color: var(--primary);
 	}
 	
 	.detail-value {
 		flex: 1;
-		color: #96616B;
+		color: var(--primary);
 	}
 	
 	h1 {
@@ -281,17 +325,17 @@
 		}
 		
 		h1 {
-			font-size: 1.1em !important;
+			font-size: var(--text-md) !important;
 		}
 	}
 </style>
 {#if event}
-	<div class="modal" role="dialog" on:keydown={handleKeydown} tabindex="-1" on:click={(e) => {e.stopPropagation(); reset()}}>
-		<div class="modal-content" on:click={(e) => {e.stopPropagation()}}>
+	<dialog class="dialog modal-content" aria-label={event.title} bind:this={dialogEl} use:modalDialog on:close={() => reset()}>
+		<button type="button" class="close-btn" aria-label="Close" on:click={() => closeDialog(dialogEl)}>×</button>
             <div class="modal-layout">
-			<SelectButtons hooks={{"View": () => {if (editMode) editMode = false;}, "Edit": () => {if (!editMode) editMode = true;}}} />
+			<SelectButtons hooks={{"View": () => switchMode(false), "Edit": () => switchMode(true)}} />
 			
-			<h1 style="color: #96616B; margin: 0; width: 100%; font-weight: bold; font-size: 1.2em; padding: 10px 0;">
+			<h1 style="color: var(--primary); margin: 0; width: 100%; font-weight: var(--weight-bold); font-size: var(--text-lg); padding: 10px 0;">
 				{event.title}
 			</h1>
 			
@@ -314,7 +358,7 @@
 					{#if event.description}
 						<div class="detail-row">
 							<div class="detail-label">Description:</div>
-							<div class="detail-value">{event.description}</div>
+							<div class="detail-value prose">{event.description}</div>
 						</div>
 					{/if}
 					{#if event.repeatDays !== undefined}
@@ -377,6 +421,5 @@
 				</div>
                 {/if}
             </div>
-		</div>
-	</div>
+	</dialog>
 {/if}

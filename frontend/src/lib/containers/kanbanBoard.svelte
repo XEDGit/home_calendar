@@ -10,38 +10,44 @@
 <style>
     .boardContainer {
         width: 100%;
-        border: solid 2px #96616B;
-        border-radius: 10px;
+        box-sizing: border-box;
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-lg);
         padding: 1em;
     }
 
+    /* Columns scroll sideways as snap lanes; the page itself never scrolls horizontally */
     .boardContent {
         display: flex;
         flex-direction: row;
         gap: 1em;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: contain;
     }
 
     .boardHeader {
-        color: #96616B;;
+        color: var(--primary);
         text-align: center;
     }
     
     .column {
-        min-width: 320px;
-        max-width: 320px;
+        flex: 0 0 min(320px, 85%);
+        scroll-snap-align: start;
         display: flex;
         flex-direction: column;
         gap: 1em;
     }
 
     .separator {
-        width: 2px;
-        background-color: #96616B;
+        width: var(--bw);
+        background-color: var(--primary);
         margin: 0;
     }
 
     h2 {
         margin: 0;
+        font-size: var(--text-md);
         text-align: center;
     }
 </style>

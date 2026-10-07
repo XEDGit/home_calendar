@@ -32,6 +32,24 @@
         }
     }
     
+    // Long labels break onto lines at spaces, never inside a word, so on a
+    // phone the axis doesn't take half the chart
+    function wrapLabel(text, max) {
+        if (typeof text !== 'string' || text.length <= max) return text;
+        const lines = [];
+        let line = '';
+        for (const word of text.split(' ')) {
+            if (line && (line + ' ' + word).length > max) {
+                lines.push(line);
+                line = word;
+            } else {
+                line = line ? line + ' ' + word : word;
+            }
+        }
+        if (line) lines.push(line);
+        return lines;
+    }
+
     function createChart() {
         if (chart) {
             chart.destroy();
@@ -44,6 +62,10 @@
                 labels: labels
             },
             options: {
+                // Data changes morph briefly, in step with the rest of the UI
+                animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? false
+                    : { duration: 350, easing: 'easeOutQuart' },
                 responsive: true,
                 maintainAspectRatio: false,
                 indexAxis: horizontal ? 'y' : 'x',
@@ -56,7 +78,7 @@
                             },
                             callback: function(value, index) {
                                 if (horizontal) {
-                                    return labels[index];
+                                    return wrapLabel(labels[index], this.chart.width < 480 ? 14 : 28);
                                 } else {
                                     return (showIntegers && Number.isInteger(value)) ? value : null;
                                 }
@@ -92,8 +114,8 @@
     .chart-container {
         max-height: var(--height);
         min-height: var(--height);
-        border: solid #96616B 3px;
-        border-radius: 5px;
+        border: var(--bw) solid var(--primary);
+        border-radius: var(--radius-lg);
         width: 100%;
         position: relative;
     }

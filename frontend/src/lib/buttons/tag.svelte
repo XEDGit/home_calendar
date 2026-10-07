@@ -15,20 +15,23 @@
     }
 
     .tag {
-        border-radius: 10px;
-        border: solid 2px #96616B;
-        background-color: #FFEAD0;
-        color: #96616B;
+        border-radius: var(--radius-pill);
+        border: var(--bw) solid var(--primary);
+        background-color: var(--paper);
+        color: var(--primary);
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 5px 10px;
-        font-weight: bold;
+        padding: var(--chip-pad-y) var(--chip-pad-x);
+        font-weight: var(--weight-bold);
+        transition: var(--swap);
     }
 
-    .tag:hover {
-        color: #FFEAD0;
-        background-color: #96616B;
+    @media (hover: hover) {
+        .tag:hover {
+            color: var(--paper);
+            background-color: var(--primary);
+        }
     }
 </style>
 

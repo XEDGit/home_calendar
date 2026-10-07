@@ -15,16 +15,21 @@ export function createChatJobHandler({
 	return async function chatJob(job, { signal }) {
 		const { session, user, conversationId, messageId } = job;
 		const ids = { conversationId: String(conversationId), messageId: String(messageId) };
-		const emit = (event) => publish(session, user, { ...ids, ...event });
-
-		const thread = await conversations.thread(conversationId);
-		const at = thread.findIndex(m => String(m._id) === String(messageId));
-		if (at < 0) return; // conversation deleted while queued
-		let q = at - 1;
-		while (q >= 0 && thread[q].role !== 'user') q--;
+		// Publishing is best effort: a broken listener must not undo or fail the run
+		const send = (...args) => {
+			try { publish(...args); }
+			catch (err) { log.error('Assistant event publish failed:', err); }
+		};
+		const emit = (event) => send(session, user, { ...ids, ...event });
+		const publishUnread = async () => {
+			try { send(session, user, { type: 'unread', count: await conversations.unreadCount({ session, user }) }); }
+			catch (err) { log.error('Assistant unread count failed:', err); }
+		};
 
 		const reply = { content: '', tools: [] };
 		let exec = null;
+		let thread = [];
+		let q = -1;
 		// Progress saves are chained so a slow one can never land after the final write
 		let saving = Promise.resolve();
 		let lastSave = 0;
@@ -37,8 +42,21 @@ export function createChatJobHandler({
 		};
 		const doneActions = () => (exec?.done?.length ? exec.done.map(a => ({ ref: a.ref, tool: a.tool, summary: a.summary })) : null);
 
+		let failed = false;
 		let failure = null;
 		try {
+			thread = await conversations.thread(conversationId);
+			const at = thread.findIndex(m => String(m._id) === String(messageId));
+			if (at < 0) return; // conversation deleted while queued
+			q = at - 1;
+			while (q >= 0 && thread[q].role !== 'user') q--;
+			if (signal.aborted) {
+				// Cancelled while still queued: nothing to run, no member lookup, no model call
+				await conversations.finishReply(conversationId, messageId, { status: 'cancelled' }, new Date(), { unread: false });
+				emit({ type: 'end', status: 'cancelled' });
+				await publishUnread();
+				return;
+			}
 			await conversations.updateReply(messageId, { status: 'running' });
 			emit({ type: 'start' });
 			const member = await loadMember(session, user);
@@ -75,8 +93,8 @@ export function createChatJobHandler({
 		} catch (err) {
 			const reason = signal.aborted ? signal.reason : null;
 			const status = reason === 'cancelled' ? 'cancelled' : 'error';
-			const error = status === 'cancelled' ? null : reason === 'timeout' ? TIMEOUT_TEXT : err.userFacing ? err.message : UNAVAILABLE_TEXT;
-			if (status === 'error') failure = err;
+			const error = status === 'cancelled' ? null : reason === 'timeout' ? TIMEOUT_TEXT : err?.userFacing ? err.message : UNAVAILABLE_TEXT;
+			if (status === 'error') { failed = true; failure = err ?? new Error('Assistant chat job failed'); }
 			await saving;
 			// Staged changes from a broken run are dropped; writes that already ran are kept on record
 			await conversations.finishReply(conversationId, messageId,
@@ -88,8 +106,7 @@ export function createChatJobHandler({
 			if (error) emit({ type: 'error', error });
 			emit({ type: 'end', status });
 		}
-		try { publish(session, user, { type: 'unread', count: await conversations.unreadCount({ session, user }) }); }
-		catch (err) { log.error('Assistant unread count failed:', err); }
-		if (failure) throw failure;
+		await publishUnread();
+		if (failed) throw failure;
 	};
 }

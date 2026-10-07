@@ -87,22 +87,19 @@ export function createQueue({ store, timeoutMs = RUN_TIMEOUT_MS, graceMs = ABORT
 		try {
 			const handler = handlers[job.kind];
 			if (!handler) throw new Error(`no handler for ${job.kind}`);
-			if (ctl.signal.aborted) {
-				status = abortStatus(); // cancelled before start: the handler never runs
-			} else {
-				// Once aborted, the handler gets graceMs to wind down; then the worker moves on
-				const grace = new Promise((resolve) => {
-					ctl.signal.addEventListener('abort', () => {
-						graceTimer = setTimeout(() => resolve(GRACE_EXPIRED), graceMs);
-					}, { once: true });
-				});
-				const outcome = await Promise.race([handler(job, { signal: ctl.signal }), grace]);
-				if (outcome === GRACE_EXPIRED) {
-					log.error(`Assistant job ${id} (${job.kind}) did not stop within ${graceMs} ms after ${ctl.signal.reason}; moving on`);
-					status = abortStatus();
-				} else if (ctl.signal.aborted) {
-					status = abortStatus();
-				}
+			// Once aborted, the handler gets graceMs to wind down; then the worker moves on.
+			// A job cancelled before start still reaches its handler, already aborted.
+			const grace = new Promise((resolve) => {
+				const start = () => { graceTimer = setTimeout(() => resolve(GRACE_EXPIRED), graceMs); };
+				if (ctl.signal.aborted) start();
+				else ctl.signal.addEventListener('abort', start, { once: true });
+			});
+			const outcome = await Promise.race([handler(job, { signal: ctl.signal }), grace]);
+			if (outcome === GRACE_EXPIRED) {
+				log.error(`Assistant job ${id} (${job.kind}) did not stop within ${graceMs} ms after ${ctl.signal.reason}; moving on`);
+				status = abortStatus();
+			} else if (ctl.signal.aborted) {
+				status = abortStatus();
 			}
 		} catch (err) {
 			status = abortStatus();

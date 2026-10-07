@@ -146,3 +146,60 @@ test('the final write wins over a slow in-flight progress save', async () => {
 	assert.deepEqual(order.at(-1), ['final', 'Hello there']);
 	assert.ok(order.filter(([k]) => k === 'progress').length >= 1);
 });
+
+test('a thread that cannot be read finishes the reply as an error and rethrows', async () => {
+	const conversations = fakeConversations(baseThread());
+	conversations.thread = async () => { throw new Error('thread read: mongo down'); };
+	const { d, events } = deps({ conversations });
+	await assert.rejects(() => run(d), /mongo down/);
+	assert.equal(conversations.finished.fields.status, 'error');
+	assert.equal(conversations.finished.fields.error, UNAVAILABLE_TEXT);
+	assert.equal(conversations.finished.fields.content, '');
+	assert.deepEqual(conversations.finished.fields.tools, []);
+	assert.equal(conversations.finished.unread, true);
+	assert.deepEqual(events.map(e => e.type), ['error', 'end', 'unread']);
+});
+
+test('a publish that throws never rewrites a stored answer', async () => {
+	const exec = { staged: [{ ref: '#1', tool: 'add_todo', summary: 'Add milk', path: '/todos', body: {} }], done: [] };
+	const logged = [];
+	const { d, conversations } = deps({ exec, d: {
+		publish: (session, user, e) => { if (e.type === 'plan') throw new Error('subscriber broke'); },
+		log: { error: (msg) => logged.push(msg) },
+	} });
+	const calls = [];
+	const finish = conversations.finishReply.bind(conversations);
+	conversations.finishReply = (...args) => { calls.push(args[2]); return finish(...args); };
+	await run(d); // resolves: a broken listener does not fail the run
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0].status, 'done');
+	assert.equal(calls[0].plan.state, 'review');
+	assert.deepEqual(logged, ['Assistant event publish failed:']);
+});
+
+test('a job cancelled before it starts finishes cancelled, without loading the member or calling the model', async () => {
+	const ctl = new AbortController();
+	ctl.abort('cancelled');
+	const touched = [];
+	let asked = false;
+	const { d, conversations, events } = deps({ d: {
+		loadMember: async () => { touched.push('member'); return { _id: 'u1' }; },
+		createExecutor: () => { touched.push('executor'); return { staged: [], done: [] }; },
+		runAgent: async () => { asked = true; return { reply: '', finished: true }; },
+	} });
+	await run(d, ctl.signal);
+	assert.deepEqual(touched, []);
+	assert.equal(asked, false);
+	assert.deepEqual(conversations.writes, []); // never marked running
+	assert.deepEqual(conversations.finished.fields, { status: 'cancelled' });
+	assert.equal(conversations.finished.unread, false);
+	assert.deepEqual(events.map(e => e.type), ['end', 'unread']);
+	assert.equal(events[0].status, 'cancelled');
+});
+
+test('a run that throws a non-error value still settles the reply and rejects', async () => {
+	const { d, conversations } = deps({ d: { runAgent: async () => { throw null; } } });
+	await assert.rejects(() => run(d), /Assistant chat job failed/);
+	assert.equal(conversations.finished.fields.status, 'error');
+	assert.equal(conversations.finished.fields.error, UNAVAILABLE_TEXT);
+});

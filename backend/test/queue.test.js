@@ -169,15 +169,38 @@ test('recover requeues automations and returns interrupted chats', async () => {
 	assert.deepEqual(interrupted.map(j => j.messageId), ['m1']);
 });
 
-test('a job cancelled between claim and start never calls its handler', async () => {
+test('a job cancelled between claim and start still reaches its handler, already aborted', async () => {
 	const store = parkingStore();
 	const q = createQueue({ store, log: quiet });
-	const ran = [];
-	q.on('chat', async (job) => { ran.push(job.messageId); });
+	const seen = [];
+	q.on('chat', async (job, { signal }) => {
+		seen.push([job.messageId, signal.aborted, signal.reason ?? null]);
+		if (signal.aborted) return; // already cancelled: stop at once
+	});
 	const first = await q.enqueue(chat(1));
 	const second = await q.enqueue(chat(2));
 	q.start();
 	await store.parked; // first is claimed; the worker is parked before it starts
+	assert.equal(await q.cancel(first._id), 'stopping');
+	store.release();
+	await q.idle();
+	assert.deepEqual(seen, [['m1', true, 'cancelled'], ['m2', false, null]]);
+	assert.equal((await store.get(first._id)).status, 'cancelled');
+	assert.equal((await store.get(second._id)).status, 'done');
+});
+
+test('a handler that ignores abort, cancelled before start, does not freeze the queue', { timeout: 2000 }, async () => {
+	const store = parkingStore();
+	const q = createQueue({ store, log: quiet, graceMs: 20 });
+	const ran = [];
+	q.on('chat', (job) => {
+		if (job.messageId === 'm1') return new Promise(() => {}); // never settles, ignores its signal
+		ran.push(job.messageId);
+	});
+	const first = await q.enqueue(chat(1));
+	const second = await q.enqueue(chat(2));
+	q.start();
+	await store.parked;
 	assert.equal(await q.cancel(first._id), 'stopping');
 	store.release();
 	await q.idle();

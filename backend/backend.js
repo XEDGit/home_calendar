@@ -12,14 +12,19 @@ import tagsRouter from './tags.js';
 import roomsRouter from './rooms.js';
 import choresRouter from './chores.js';
 import usersRouter from './users.js';
-import assistantRouter from './assistant.js';
-import automationsRouter, { startScheduler } from './automations.js';
+import assistantRouter, { initAssistant } from './assistant.js';
+import automationsRouter, { startScheduler, initAutomations } from './automations.js';
 import { securityHeaders, mongoSanitize } from './security.js';
 
 const app = express();
 const PORT = 3000;
 
 await db.connectDB();
+
+// The assistant queue must be ready (and recovered) before the scheduler
+// looks at automations left "running" by a restart.
+const assistantQueue = await initAssistant(db.db);
+initAutomations(assistantQueue);
 
 // Backend is only reached server-side by the SvelteKit frontend over the
 // internal Docker network; lock CORS to that origin and don't leak the stack.
@@ -36,6 +41,7 @@ app.use(mongoSanitize);
 
 schedule.scheduleJob('0 0 * * *', () => db.scheduledUpdate());
 startScheduler();
+assistantQueue.start();
 
 app.use('/', authRouter);
 app.use('/', eventsRouter);

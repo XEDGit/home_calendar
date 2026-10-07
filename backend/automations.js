@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import schedule from 'node-schedule';
 import db from './db.js';
 import { getID, toObjectId } from './helpers.js';
-import { runAgent, exclusive, householdContext, calendarLines } from './assistant.js';
+import { runAgent, householdContext, calendarLines } from './assistant.js';
 import { READ_TOOLS, createExecutor, TZ, dateToLocal } from './assistantTools.js';
 import { validateSchedule, firstRun, nextRun, scheduleText } from './automationSchedule.js';
 
@@ -16,7 +16,6 @@ const router = Router();
 const MAX_PER_HOUSEHOLD = 20;
 const KEEP_RESULTS = 10;
 const MAX_RESULT = 8000;
-const RUN_TIMEOUT_MS = 5 * 60 * 1000;
 // More than chat's 8: a report often needs a search plus several pages.
 const MAX_STEPS = 12;
 // A "running" claim older than this is treated as abandoned (e.g. the reset
@@ -72,39 +71,26 @@ Rules:
 - Write in the language of the task.`;
 }
 
-async function report(doc) {
-	return exclusive(async () => {
-		// Signed inside exclusive(): queue wait plus the run itself can exceed a
-		// token minted before the queue, and a run whose token expired mid-flight
-		// gets Unauthorized from every self-request (empty household context, a
-		// confident wrong report still stored as ok:true). Minted here, the token
-		// only needs to outlive the run itself, not the queue wait too.
-		// The household's own session, so tools see exactly what the UI shows the
-		// member who created the automation.
-		const token = jwt.sign({ session: doc.session }, process.env.SECRET, { expiresIn: '15m' });
-		const cookie = `session=${token}; user=${doc.createdBy || ''}`;
-		const exec = createExecutor({ cookie, userId: doc.createdBy || '', stage: true });
-		// The timeout starts only once the model is actually available: time
-		// spent queued behind other runs/chat in exclusive() must not count
-		// against the automation's own budget.
-		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), RUN_TIMEOUT_MS);
-		try {
-			// Fails loudly (instead of silently degrading to an empty household
-			// context) if the token above can't even authenticate: the caller
-			// records the run as an error rather than an ok:true built on nothing.
-			await exec.load('users');
-			const messages = [
-				{ role: 'system', content: reportPrompt(doc, await householdContext(exec)) },
-				{ role: 'user', content: doc.prompt },
-			];
-			const { reply, finished } = await runAgent({ messages, tools: READ_TOOLS, exec, signal: controller.signal, maxSteps: MAX_STEPS });
-			if (!finished) throw new Error(controller.signal.aborted ? 'timed out' : 'stopped after too many steps');
-			return reply.trim() || '(no output)';
-		} finally {
-			clearTimeout(timer);
-		}
-	});
+// Runs inside the assistant queue's worker: `signal` carries the queue's
+// 5-minute timeout, which starts when the worker picks the job, so time
+// spent waiting behind chat or other runs never counts against it.
+async function report(doc, signal) {
+	// Signed when the run starts, not when it was queued: the token only has
+	// to outlive the run itself. The household's own session, so tools see
+	// exactly what the UI shows the member who created the automation.
+	const token = jwt.sign({ session: doc.session }, process.env.SECRET, { expiresIn: '15m' });
+	const cookie = `session=${token}; user=${doc.createdBy || ''}`;
+	const exec = createExecutor({ cookie, userId: doc.createdBy || '', stage: true });
+	// Fails loudly (instead of silently degrading to an empty household
+	// context) if the token above can't even authenticate.
+	await exec.load('users');
+	const messages = [
+		{ role: 'system', content: reportPrompt(doc, await householdContext(exec)) },
+		{ role: 'user', content: doc.prompt },
+	];
+	const { reply, finished } = await runAgent({ messages, tools: READ_TOOLS, exec, signal, maxSteps: MAX_STEPS });
+	if (!finished) throw new Error(signal.aborted ? 'timed out' : 'stopped after too many steps');
+	return reply.trim() || '(no output)';
 }
 
 // Updates the automation first; the result is stored only if it still exists
@@ -118,35 +104,63 @@ async function finishRun(doc, result, status = result.ok ? 'ok' : 'error') {
 	if (old.length) await results().deleteMany({ _id: { $in: old.map(r => r._id) } });
 }
 
-// Returns false when this automation is already running (slot skipped).
-// A "running" claim older than STALE_RUN_MS is treated as abandoned and can
-// be reclaimed, so a failed reset (or a crash before finishRun) can't wedge
-// an automation as "running" forever.
+let queue = null;
+
+// Registers the automation job handler on the assistant queue (backend.js)
+export function initAutomations(q) {
+	queue = q;
+	q.on('automation', automationJob);
+}
+
+// Returns false when this automation is already queued or running (slot
+// skipped). runningSince now means "queued or running". A claim older than
+// STALE_RUN_MS is treated as abandoned and can be reclaimed.
 async function runAutomation(doc) {
 	const claimed = await automations().findOneAndUpdate(
 		{ _id: doc._id, $or: [{ runningSince: null }, { runningSince: { $lt: new Date(Date.now() - STALE_RUN_MS) } }] },
 		{ $set: { runningSince: new Date() } },
 	);
 	if (!claimed) return false;
+	try {
+		await queue.enqueue({ kind: 'automation', session: claimed.session, user: claimed.createdBy || '', automationId: claimed._id });
+	} catch (err) {
+		console.error(`Automation "${doc.name}" could not be queued:`, err);
+		await finishRun(claimed, { ok: false, error: 'could not be queued' })
+			.catch(err2 => console.error(`Automation "${doc.name}" reset failed:`, err2));
+	}
+	return true;
+}
+
+async function automationJob(job, { signal }) {
+	const doc = await automations().findOne({ _id: job.automationId });
+	if (!doc) return; // deleted while queued
 	let result;
 	try {
-		const text = await report(claimed);
+		const text = await report(doc, signal);
 		result = { ok: true, text: text.slice(0, MAX_RESULT) };
 	} catch (err) {
 		console.error(`Automation "${doc.name}" failed:`, err);
-		const timedOut = err.name === 'AbortError' || err.message === 'timed out';
+		const timedOut = signal.reason === 'timeout' || err.name === 'AbortError' || err.message === 'timed out';
 		result = { ok: false, error: timedOut ? 'timed out' : String(err.message || err).slice(0, 300) };
 	}
 	try {
-		await finishRun(claimed, result);
+		await finishRun(doc, result);
 	} catch (err) {
 		// finishRun itself failed (e.g. a transient Mongo error): retry just the
 		// runningSince reset so the automation doesn't stay "running" forever.
 		console.error(`Automation "${doc.name}" finishRun failed, retrying reset:`, err);
-		await automations().updateOne({ _id: claimed._id }, { $set: { runningSince: null, lastStatus: 'error' } })
+		await automations().updateOne({ _id: doc._id }, { $set: { runningSince: null, lastStatus: 'error' } })
 			.catch(err2 => console.error(`Automation "${doc.name}" reset retry failed:`, err2));
 	}
-	return true;
+}
+
+// A restart mid-run leaves runningSince set. Automations whose job is still
+// in the queue (requeued by the assistant queue's recovery) just run again;
+// the rest were really interrupted.
+export async function interruptedAutomations(stuck, hasActiveAutomation) {
+	const out = [];
+	for (const doc of stuck) if (!(await hasActiveAutomation(doc._id))) out.push(doc);
+	return out;
 }
 
 async function tick() {
@@ -166,8 +180,8 @@ async function tick() {
 }
 
 export function startScheduler() {
-	// A restart mid-run leaves runningSince set: record those runs as interrupted
 	automations().find({ runningSince: { $ne: null } }).toArray()
+		.then(stuck => interruptedAutomations(stuck, id => queue.hasActiveAutomation(id)))
 		.then(stuck => Promise.all(stuck.map(doc => finishRun(doc, { ok: false, error: 'interrupted by a restart' }, 'interrupted'))))
 		.catch(err => console.error('Automation recovery failed:', err));
 	schedule.scheduleJob('* * * * *', () => tick().catch(err => console.error('Automation tick failed:', err)));

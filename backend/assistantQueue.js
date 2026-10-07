@@ -6,8 +6,13 @@
 export const PRIORITY = { chat: 0, automation: 1 };
 export const MAX_ACTIVE_PER_MEMBER = 5;
 export const RUN_TIMEOUT_MS = 5 * 60 * 1000;
+// After abort, how long the worker waits for a handler to wind down (save
+// partial output) before moving on. A handler that ignores its signal must
+// not freeze the queue.
+export const ABORT_GRACE_MS = 10 * 1000;
+const GRACE_EXPIRED = Symbol('grace expired');
 
-export function createQueue({ store, timeoutMs = RUN_TIMEOUT_MS, onPositions = () => {}, log = console }) {
+export function createQueue({ store, timeoutMs = RUN_TIMEOUT_MS, graceMs = ABORT_GRACE_MS, onPositions = () => {}, log = console }) {
 	const handlers = {};
 	const running = new Map(); // job id → AbortController
 	const cancelSoon = new Set(); // cancelled between claim and start
@@ -76,17 +81,35 @@ export function createQueue({ store, timeoutMs = RUN_TIMEOUT_MS, onPositions = (
 		running.set(id, ctl);
 		if (cancelSoon.delete(id)) ctl.abort('cancelled');
 		const timer = setTimeout(() => ctl.abort('timeout'), timeoutMs);
+		const abortStatus = () => (ctl.signal.reason === 'cancelled' ? 'cancelled' : 'error');
+		let graceTimer = null;
 		let status = 'done';
 		try {
 			const handler = handlers[job.kind];
 			if (!handler) throw new Error(`no handler for ${job.kind}`);
-			await handler(job, { signal: ctl.signal });
-			if (ctl.signal.aborted) status = ctl.signal.reason === 'cancelled' ? 'cancelled' : 'error';
+			if (ctl.signal.aborted) {
+				status = abortStatus(); // cancelled before start: the handler never runs
+			} else {
+				// Once aborted, the handler gets graceMs to wind down; then the worker moves on
+				const grace = new Promise((resolve) => {
+					ctl.signal.addEventListener('abort', () => {
+						graceTimer = setTimeout(() => resolve(GRACE_EXPIRED), graceMs);
+					}, { once: true });
+				});
+				const outcome = await Promise.race([handler(job, { signal: ctl.signal }), grace]);
+				if (outcome === GRACE_EXPIRED) {
+					log.error(`Assistant job ${id} (${job.kind}) did not stop within ${graceMs} ms after ${ctl.signal.reason}; moving on`);
+					status = abortStatus();
+				} else if (ctl.signal.aborted) {
+					status = abortStatus();
+				}
+			}
 		} catch (err) {
-			status = ctl.signal.reason === 'cancelled' ? 'cancelled' : 'error';
+			status = abortStatus();
 			if (status === 'error') log.error(`Assistant job ${id} (${job.kind}) failed:`, err);
 		} finally {
 			clearTimeout(timer);
+			clearTimeout(graceTimer);
 			running.delete(id);
 		}
 		try { await store.finish(job._id, status, new Date()); }

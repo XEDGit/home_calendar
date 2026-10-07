@@ -8,6 +8,31 @@ const chat = (n, extra = {}) => ({ kind: 'chat', session: 's1', user: 'u1', conv
 const auto = (n) => ({ kind: 'automation', session: 's1', user: 'u1', automationId: `a${n}` });
 function gate() { let open; const p = new Promise(r => { open = r; }); return { p, open }; }
 
+// Store that parks the worker right after its first claim: announce() waits in
+// listQueued until release(), so a cancel lands between claim and start.
+function parkingStore() {
+	const store = memoryJobStore();
+	const g = gate();
+	let armed = true;
+	let holding = false;
+	let onParked;
+	const parked = new Promise(r => { onParked = r; });
+	return {
+		...store,
+		parked,
+		release: () => g.open(),
+		async claimNext(now) {
+			const job = await store.claimNext(now);
+			if (job && armed) { armed = false; holding = true; onParked(); }
+			return job;
+		},
+		async listQueued() {
+			if (holding) { holding = false; await g.p; }
+			return store.listQueued();
+		},
+	};
+}
+
 test('PRIORITY puts chat first', () => {
 	assert.ok(PRIORITY.chat < PRIORITY.automation);
 });
@@ -142,6 +167,40 @@ test('recover requeues automations and returns interrupted chats', async () => {
 	const { requeued, interrupted } = await q.recover();
 	assert.equal(requeued, 1);
 	assert.deepEqual(interrupted.map(j => j.messageId), ['m1']);
+});
+
+test('a job cancelled between claim and start never calls its handler', async () => {
+	const store = parkingStore();
+	const q = createQueue({ store, log: quiet });
+	const ran = [];
+	q.on('chat', async (job) => { ran.push(job.messageId); });
+	const first = await q.enqueue(chat(1));
+	const second = await q.enqueue(chat(2));
+	q.start();
+	await store.parked; // first is claimed; the worker is parked before it starts
+	assert.equal(await q.cancel(first._id), 'stopping');
+	store.release();
+	await q.idle();
+	assert.deepEqual(ran, ['m2']);
+	assert.equal((await store.get(first._id)).status, 'cancelled');
+	assert.equal((await store.get(second._id)).status, 'done');
+});
+
+test('a handler that ignores abort is abandoned after the grace period and the next job runs', { timeout: 2000 }, async () => {
+	const store = memoryJobStore();
+	const q = createQueue({ store, log: quiet, timeoutMs: 20, graceMs: 20 });
+	const ran = [];
+	q.on('chat', (job) => {
+		if (job.messageId === 'm1') return new Promise(() => {}); // never settles, ignores its signal
+		ran.push(job.messageId);
+	});
+	const j1 = await q.enqueue(chat(1));
+	const j2 = await q.enqueue(chat(2));
+	q.start();
+	await q.idle();
+	assert.deepEqual(ran, ['m2']);
+	assert.equal((await store.get(j1._id)).status, 'error');
+	assert.equal((await store.get(j2._id)).status, 'done');
 });
 
 test('unknown job kinds are rejected at enqueue', async () => {

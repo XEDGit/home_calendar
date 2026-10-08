@@ -20,6 +20,9 @@ export const selected = writable(undefined);
 let source = null;
 let member = null;
 let retryTimer = null;
+const RETRY_MIN = 5000;
+const RETRY_MAX = 5 * 60 * 1000;
+let retryDelay = RETRY_MIN;
 const pending = new Map(); // messageId → events that arrived before the message
 const visible = new Map(); // 'home' | 'tab' → conversationId shown there
 const changeListeners = new Set();
@@ -38,7 +41,7 @@ function uiPlan(plan) {
 	};
 }
 
-const uiMessage = (m) => ({ ...m, ahead: null, plan: uiPlan(m.plan) });
+const uiMessage = (m) => ({ ...m, ahead: m.ahead ?? null, plan: uiPlan(m.plan) });
 
 function householdChanged() {
 	for (const fn of changeListeners) fn();
@@ -64,6 +67,7 @@ export function connect(user) {
 	if (user === member && source) return;
 	disconnect();
 	member = user;
+	retryDelay = RETRY_MIN;
 	conversations.set([]);
 	threads.set({});
 	unreadCount.set(0);
@@ -74,7 +78,7 @@ export function connect(user) {
 function open_stream() {
 	clearTimeout(retryTimer);
 	source = new EventSource('/api/assistantEvents');
-	source.onopen = () => refresh();
+	source.onopen = () => { retryDelay = RETRY_MIN; refresh(); };
 	source.onmessage = (e) => {
 		try { apply(JSON.parse(e.data)); } catch { /* ignore malformed event */ }
 	};
@@ -100,8 +104,8 @@ export function disconnect() {
 async function refreshList() {
 	const r = await api.listConversations();
 	if (!r.ok) return;
-	conversations.set(r.data.conversations);
-	unreadCount.set(r.data.unreadCount);
+	conversations.set(r.data.conversations ?? []);
+	unreadCount.set(r.data.unreadCount ?? 0);
 	listLoaded.set(true);
 }
 
@@ -116,9 +120,19 @@ export async function open(id, { read = true } = {}) {
 		if (r.status === 404) threads.update(t => { const c = { ...t }; delete c[id]; return c; });
 		return null;
 	}
-	const messages = r.data.messages.map(uiMessage);
+	const messages = (r.data.messages ?? []).map(uiMessage);
 	for (const m of messages) pending.delete(m._id);
-	threads.update(t => ({ ...t, [id]: messages }));
+	threads.update(t => {
+		// A background reload must not re-tick what the member unticked
+		const before = new Map((t[id] || []).filter(m => m.plan?.state === 'review').map(m => [m._id, m.plan]));
+		for (const m of messages) {
+			const old = before.get(m._id);
+			if (!old || m.plan?.state !== 'review') continue;
+			const checked = new Map(old.actions.map(a => [a.ref, a.checked]));
+			m.plan = { ...m.plan, actions: m.plan.actions.map(a => (checked.has(a.ref) ? { ...a, checked: checked.get(a.ref) } : a)) };
+		}
+		return { ...t, [id]: messages };
+	});
 	if (read) conversations.update(list => list.map(c => (c._id === id ? { ...c, unread: false } : c)));
 	return messages;
 }
@@ -225,7 +239,7 @@ export async function confirm(conversationId, messageId) {
 	patchMessage(conversationId, messageId, m => ({ ...m, plan: { ...m.plan, state: 'running' } }));
 	const r = await api.confirmPlan(messageId, refs);
 	await open(conversationId, { read: false });
-	if (r.ok && r.data.results.some(x => x.status === 'done')) householdChanged();
+	if (r.ok && (r.data.results ?? []).some(x => x.status === 'done')) householdChanged();
 	return r.ok ? {} : { error: errorText(r) };
 }
 

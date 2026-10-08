@@ -36,6 +36,8 @@
 	}
 
 	const waiting = (m) => (m.ahead == null ? 'Waiting…' : m.ahead === 0 ? 'Starting…' : `Waiting — ${m.ahead} ahead of you`);
+	// Finished without saying anything or proposing anything
+	const empty = (m) => m.role === 'assistant' && m.status === 'done' && !m.content && !m.plan && !m.doneActions?.length;
 	const ended = { cancelled: 'Cancelled', interrupted: null, error: null };
 
 	async function doConfirm(m) {
@@ -87,7 +89,7 @@
 			{#if m.plan}
 				<div class="plan" class:settled={m.plan.state !== 'review'}>
 					<p class="plan-title">
-						{#if m.plan.state === 'review'}Review before I go ahead{:else if m.plan.state === 'running'}Working…{:else if m.plan.state === 'rejected'}Rejected{:else}Result{/if}
+						{#if m.plan.state === 'review'}Review before I go ahead{:else if m.plan.state === 'running'}Working…{:else if m.plan.state === 'rejected'}Rejected{:else if m.plan.state === 'interrupted'}Stopped by a restart — some changes may have been made{:else}Result{/if}
 					</p>
 					<ul class="actions">
 						{#each m.plan.actions as a (a.ref)}
@@ -116,9 +118,9 @@
 				</div>
 			{/if}
 
-			{#if m.role === 'assistant' && ['error', 'interrupted', 'cancelled'].includes(m.status)}
+			{#if m.role === 'assistant' && (['error', 'interrupted', 'cancelled'].includes(m.status) || empty(m))}
 				<p class="bubble error">
-					{m.error || ended[m.status] || 'Something went wrong'}
+					{m.error || ended[m.status] || (empty(m) ? "I couldn't finish this one" : 'Something went wrong')}
 					{#if questionBefore(i)}
 						<button class="link" disabled={retrying !== null} on:click={() => askAgain(m, questionBefore(i))}>Ask again</button>
 					{/if}

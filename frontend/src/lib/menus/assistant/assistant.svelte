@@ -1,4 +1,5 @@
 <script>
+	import { onMount, onDestroy } from 'svelte';
 	import AssistantThread from '$lib/assistant/AssistantThread.svelte';
 	import AssistantInput from '$lib/assistant/AssistantInput.svelte';
 	import { conversations, threads, listLoaded, open, send, remove, setVisible, selected } from '$lib/assistant/store.js';
@@ -10,12 +11,24 @@
 	let showList = true;     // phones: list or conversation
 	let error = null;
 	let reported = false;
+	let isPhone = false;     // same breakpoint as the CSS below
 
 	$: if ($listLoaded && !reported) { reported = true; onReady(); }
 	$: if (active && $selected !== undefined) { pick($selected); selected.set(undefined); }
-	$: setVisible('tab', active ? current : null);
+	// On a phone the list pane hides the conversation, so it is not being looked at
+	$: setVisible('tab', active && !(isPhone && showList) ? current : null);
 	$: messages = (current && $threads[current]) || [];
 	$: title = current ? ($conversations.find(c => c._id === current)?.title ?? '') : 'New chat';
+
+	onMount(() => {
+		const mq = window.matchMedia('(max-width: 720px)');
+		const update = () => { isPhone = mq.matches; };
+		update();
+		mq.addEventListener('change', update);
+		return () => mq.removeEventListener('change', update);
+	});
+
+	onDestroy(() => setVisible('tab', null));
 
 	async function pick(id) {
 		current = id;

@@ -86,36 +86,23 @@
 		color: var(--primary);
 	}
 
-	/* Phones: one step down, not fluid. The eight labels share the row by
-	 * their length and never break inside a word. */
-	@media (max-width: 480px) {
+	/* Phones: eight labels don't fit one row, so the nav is two rows of four.
+	 * Labels stay whole (no clipping or ellipsis), which also leaves room for
+	 * the badge that hangs off a button's corner. */
+	@media (max-width: 639px) {
 		.navBar {
 			box-sizing: border-box;
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
 			gap: 3px;
 			padding: 0 4px var(--space-sm);
 		}
 
 		.navButton {
-			flex: 1 1 auto;
-			min-width: 0;
+			height: 2.5rem;
 			padding: 0 3px;
 			font-size: var(--text-xs);
 			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-	}
-
-	/* Under 360px (small phones, or zoomed text) eight can't fit a row, so the
-	 * nav becomes two rows of four instead of running off the edge */
-	@media (max-width: 359px) {
-		.navBar {
-			display: grid;
-			grid-template-columns: repeat(4, 1fr);
-		}
-
-		.navButton {
-			height: 2.5rem;
 		}
 	}
 </style>

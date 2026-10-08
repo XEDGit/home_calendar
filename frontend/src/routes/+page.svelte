@@ -236,9 +236,11 @@
 		if (browser) {
 			window.addEventListener("popstate", handlePopState);
 			// Add listener for our custom viewModeChanged event
+			// detail: a page index, or a page name ("assistant")
 			window.addEventListener("viewModeChanged", (event) => {
-				if (event.detail !== undefined) {
-					updateViewMode(event.detail);
+				const target = typeof event.detail === "string" ? pages[event.detail] : event.detail;
+				if (target !== undefined) {
+					updateViewMode(target);
 				}
 			});
 		}

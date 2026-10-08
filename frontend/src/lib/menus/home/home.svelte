@@ -791,7 +791,7 @@
 		<!-- Assistant -->
 		<div class="section">
 			<Section title="Assistant" />
-			<AssistantChat onChange={loadData} />
+			<AssistantChat onChange={loadData} {active} />
 		</div>
 
 		<!-- Events -->

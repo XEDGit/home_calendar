@@ -3,6 +3,10 @@
 async function call(path, options) {
 	try {
 		const res = await fetch(path, options);
+		// An expired session answers with the login page (redirect / HTML)
+		if (res.redirected || !(res.headers.get('content-type') || '').includes('json')) {
+			return { ok: false, status: 401, data: { error: 'Your session expired, log in again' } };
+		}
 		const data = await res.json().catch(() => ({}));
 		return { ok: res.ok, status: res.status, data };
 	} catch {

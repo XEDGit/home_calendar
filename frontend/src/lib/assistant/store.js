@@ -88,7 +88,9 @@ function open_stream() {
 		if (source && source.readyState === EventSource.CLOSED) {
 			source = null;
 			const who = member;
-			retryTimer = setTimeout(() => { if (member === who) open_stream(); }, 5000);
+				const delay = retryDelay;
+				retryDelay = Math.min(retryDelay * 2, RETRY_MAX);
+				retryTimer = setTimeout(() => { if (member === who) open_stream(); }, delay);
 		}
 	};
 }
@@ -195,7 +197,14 @@ export async function send(text, conversationId = null) {
 		let reply = { _id: messageId, role: 'assistant', content: '', status: 'queued', ahead, error: null, tools: [], plan: null, doneActions: null };
 		for (const ev of pending.get(messageId) || []) reply = applyToMessage(reply, ev);
 		pending.delete(messageId);
-		threads.update(t => ({ ...t, [cid]: [...t[cid], { _id: userMessageId, role: 'user', content: text, status: null, tools: [], plan: null }, reply] }));
+		threads.update(t => {
+			// An open() snapshot may already hold them: never add an _id twice
+			const have = new Set(t[cid].map(m => m._id));
+			const add = [];
+			if (!have.has(userMessageId)) add.push({ _id: userMessageId, role: 'user', content: text, status: null, tools: [], plan: null });
+			if (!have.has(messageId)) add.push(reply);
+			return add.length ? { ...t, [cid]: [...t[cid], ...add] } : t;
+		});
 	} else {
 		await open(cid);
 	}

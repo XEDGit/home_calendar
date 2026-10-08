@@ -13,6 +13,8 @@
 	import Todo from "$lib/menus/todo/todo.svelte";
 	import Automations from "$lib/menus/automations/automations.svelte";
 	import AddAutomationForm from "$lib/menus/automations/addAutomation.svelte";
+	import AssistantTab from "$lib/menus/assistant/assistant.svelte";
+	import { connect, unreadCount } from "$lib/assistant/store.js";
 	import { onMount, setContext, tick } from "svelte";
 	import { getRooms, getUsers } from "$lib/requests";
 	import { getCookie, setCookie } from "$lib/helpers/getCookie";
@@ -38,6 +40,7 @@
 		addTodo: 8,
 		automations: 9,
 		addAutomation: 10,
+		assistant: 11,
 	};
 
 	let pageNames = [
@@ -52,17 +55,21 @@
 		"addTodo",
 		"automations",
 		"addAutomation",
+		"assistant",
 	];
 
 	let viewMode = 0;
 	$: view = pageNames[viewMode];
+
+	// One assistant stream per page, for the member picked on this device
+	$: if (browser && user && !loading) connect(user);
 
 	// Spatial model for page changes: the screens sit in a row in nav order,
 	// each form just right of the tab it belongs to. Changing screen pushes
 	// sideways along that row: a screen further right slides in from the
 	// right, going back slides in from the left.
 	const FORM_PARENT = { [pages.addEvent]: pages.calendar, [pages.addChore]: pages.chores, [pages.addTodo]: pages.todo, [pages.addAutomation]: pages.automations };
-	const TABS = ["home", "calendar", "chores", "todo", "stats", "automations", "settings"];
+	const TABS = ["home", "assistant", "calendar", "chores", "todo", "stats", "automations", "settings"];
 
 	const isForm = (value) => value in FORM_PARENT;
 
@@ -336,6 +343,7 @@
 	f={updateViewMode}
 	buttons={{
 		home: pages.home,
+		assistant: pages.assistant,
 		calendar: pages.calendar,
 		chores: pages.chores,
 		todo: pages.todo,
@@ -343,7 +351,8 @@
 		automations: pages.automations,
 		settings: pages.settings,
 	}}
-	disableMask={[false, false, false, false, false, false, false]}
+	badges={{ assistant: $unreadCount }}
+	disableMask={[false, false, false, false, false, false, false, false]}
 />
 
 {#if viewMode < 0 || viewMode >= pageNames.length}
@@ -367,6 +376,11 @@
 		{#if alive.home || view === "home"}
 			<Screen name="home" active={view === "home"}>
 				<Home active={view === "home"} onReady={() => markReady("home")} />
+			</Screen>
+		{/if}
+		{#if alive.assistant || view === "assistant"}
+			<Screen name="assistant" active={view === "assistant"}>
+				<AssistantTab active={view === "assistant"} onReady={() => markReady("assistant")} />
 			</Screen>
 		{/if}
 		{#if alive.calendar || view === "calendar"}

@@ -2,6 +2,8 @@
 	export let active = 1;
     export let f, buttons = [];
 	export let disableMask = Array(buttons.length).fill(false);
+	// Count bubbles per button label, e.g. { assistant: 2 }; 0 hides it
+	export let badges = {};
 </script>
 
 <style>
@@ -14,6 +16,24 @@
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
+	}
+
+	.navButton { position: relative; }
+
+	.badge {
+		position: absolute;
+		top: -6px;
+		right: -6px;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 4px;
+		box-sizing: border-box;
+		border-radius: var(--radius-pill);
+		background: var(--urgent);
+		color: var(--paper);
+		font-size: var(--text-xs);
+		line-height: 18px;
+		text-align: center;
 	}
 
 	.navButton {
@@ -66,7 +86,7 @@
 		color: var(--primary);
 	}
 
-	/* Phones: one step down, not fluid. The seven labels share the row by
+	/* Phones: one step down, not fluid. The eight labels share the row by
 	 * their length and never break inside a word. */
 	@media (max-width: 480px) {
 		.navBar {
@@ -86,7 +106,7 @@
 		}
 	}
 
-	/* Under 360px (small phones, or zoomed text) seven can't fit a row, so the
+	/* Under 360px (small phones, or zoomed text) eight can't fit a row, so the
 	 * nav becomes two rows of four instead of running off the edge */
 	@media (max-width: 359px) {
 		.navBar {
@@ -103,7 +123,7 @@
 <div class='navBackground'>
     <nav class="navBar" aria-label="Sections">
 		{#each Object.entries(buttons).map((button, index) => [button, disableMask[index]]) as [button, masked]}
-	        <button disabled={masked} class="navButton {active == button[1]? 'active' : ''}" aria-current={active == button[1] ? 'page' : undefined} on:click={() => f(button[1])}>{button[0]}</button>
+	        <button disabled={masked} class="navButton {active == button[1]? 'active' : ''}" aria-current={active == button[1] ? 'page' : undefined} on:click={() => f(button[1])}>{button[0]}{#if badges[button[0]]}<span class="badge" aria-label={`${badges[button[0]]} unread`}>{badges[button[0]]}</span>{/if}</button>
 		{/each}
     </nav>
 </div>

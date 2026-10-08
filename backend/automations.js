@@ -180,11 +180,12 @@ async function tick() {
 }
 
 export function startScheduler() {
-	automations().find({ runningSince: { $ne: null } }).toArray()
+	const recovery = automations().find({ runningSince: { $ne: null } }).toArray()
 		.then(stuck => interruptedAutomations(stuck, id => queue.hasActiveAutomation(id)))
 		.then(stuck => Promise.all(stuck.map(doc => finishRun(doc, { ok: false, error: 'interrupted by a restart' }, 'interrupted'))))
 		.catch(err => console.error('Automation recovery failed:', err));
 	schedule.scheduleJob('* * * * *', () => tick().catch(err => console.error('Automation tick failed:', err)));
+	return recovery;
 }
 
 // ── Routes ──────────────────────────────────────────────────────────────────

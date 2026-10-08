@@ -40,7 +40,8 @@ app.use(cookies());
 app.use(mongoSanitize);
 
 schedule.scheduleJob('0 0 * * *', () => db.scheduledUpdate());
-startScheduler();
+// Recovery first: a requeued automation must not also be marked interrupted
+await startScheduler();
 assistantQueue.start();
 
 app.use('/', authRouter);

@@ -50,8 +50,11 @@ export function onHouseholdChange(fn) {
 }
 
 export function setVisible(key, conversationId) {
+	const previous = visible.get(key);
 	if (conversationId) visible.set(key, conversationId);
 	else visible.delete(key);
+	// An answer that finished while this view was hidden is read once it is looked at again
+	if (conversationId && conversationId !== previous && get(conversations).find(c => c._id === conversationId)?.unread) open(conversationId);
 }
 
 const isVisible = (id) => [...visible.values()].includes(id);

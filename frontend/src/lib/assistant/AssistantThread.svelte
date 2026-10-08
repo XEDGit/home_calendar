@@ -23,6 +23,18 @@
 		return '';
 	}
 
+	let retrying = null; // id of the message whose "Ask again" is in flight
+	let retryError = {};
+
+	async function askAgain(m, question) {
+		if (retrying) return;
+		retrying = m._id;
+		retryError = { ...retryError, [m._id]: null };
+		const r = await onAskAgain(question);
+		retrying = null;
+		if (r?.error) retryError = { ...retryError, [m._id]: r.error };
+	}
+
 	const waiting = (m) => (m.ahead == null ? 'Waiting…' : m.ahead === 0 ? 'Starting…' : `Waiting — ${m.ahead} ahead of you`);
 	const ended = { cancelled: 'Cancelled', interrupted: null, error: null };
 
@@ -108,9 +120,10 @@
 				<p class="bubble error">
 					{m.error || ended[m.status] || 'Something went wrong'}
 					{#if questionBefore(i)}
-						<button class="link" on:click={() => onAskAgain(questionBefore(i))}>Ask again</button>
+						<button class="link" disabled={retrying !== null} on:click={() => askAgain(m, questionBefore(i))}>Ask again</button>
 					{/if}
 				</p>
+				{#if retryError[m._id]}<p class="err" role="alert">{retryError[m._id]}</p>{/if}
 			{/if}
 		</div>
 	{/each}

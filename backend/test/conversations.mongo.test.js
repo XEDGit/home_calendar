@@ -106,3 +106,21 @@ test('unknown ids are simply not found', { skip }, async () => {
 	const s = await fresh();
 	assert.equal(await s.get(me, new ObjectId()), null);
 });
+
+test('runningPlans, interruptPlan and activeReplies', { skip }, async () => {
+	const s = await fresh();
+	const plan = { state: 'review', results: [], actions: [{ ref: '#1', tool: 'add_todo', summary: 'Add', path: '/todos', body: {} }] };
+	const a = await s.startTurn({ ...me, conversationId: null, text: 'one' });
+	await s.finishReply(a.conversation._id, a.reply._id, { status: 'done', plan });
+	await s.claimPlan(me, a.reply._id);
+	const b = await s.startTurn({ ...me, conversationId: null, text: 'two' });
+	await s.updateReply(b.reply._id, { status: 'running' });
+	const c = await s.startTurn({ ...me, conversationId: null, text: 'three' });
+	await s.finishReply(c.conversation._id, c.reply._id, { status: 'done', plan });
+
+	assert.deepEqual((await s.runningPlans()).map(m => String(m._id)), [String(a.reply._id)]);
+	assert.deepEqual((await s.activeReplies()).map(m => String(m._id)).sort(), [String(b.reply._id)].sort());
+	await s.interruptPlan(a.reply._id);
+	assert.equal((await s.getMessage(me, a.reply._id)).plan.state, 'interrupted');
+	assert.deepEqual(await s.runningPlans(), []);
+});

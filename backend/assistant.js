@@ -5,6 +5,7 @@ import { toObjectId } from './helpers.js';
 import { TOOLS, TZ, createExecutor, runAction, dateToLocal, localToDate, labelOf } from './assistantTools.js';
 import { createQueue, MAX_ACTIVE_PER_MEMBER } from './assistantQueue.js';
 import { mongoJobStore, ensureAssistantIndexes } from './assistantJobs.js';
+import { reconcileOnStartup } from './assistantReconcile.js';
 import { conversationStore, clientMessage, clientPlan } from './assistantConversations.js';
 import { createChatJobHandler } from './assistantChatJob.js';
 import { publish, subscribe, listenerTotal } from './assistantEvents.js';
@@ -275,7 +276,10 @@ export async function initAssistant(database) {
 	}));
 	const { requeued, interrupted } = await queue.recover();
 	await conversations.markInterrupted(interrupted);
-	if (requeued || interrupted.length) console.log(`Assistant recovery: ${requeued} automation run(s) requeued, ${interrupted.length} chat question(s) interrupted`);
+	const stale = await reconcileOnStartup({ conversations, queue, now: new Date() });
+	if (requeued || interrupted.length || stale.plans || stale.replies) {
+		console.log(`Assistant recovery: ${requeued} automation run(s) requeued, ${interrupted.length} chat question(s) interrupted, ${stale.plans} plan(s) and ${stale.replies} stuck reply(ies) interrupted`);
+	}
 	return queue;
 }
 
@@ -314,7 +318,7 @@ router.post('/assistant', async (req, res) => {
 			conversationId: String(turn.conversation._id),
 			userMessageId: String(turn.userMessage._id),
 			messageId: String(turn.reply._id),
-			ahead: await queue.ahead(job._id),
+			ahead: await queue.ahead(job._id).catch(() => null),
 		});
 	} catch (err) {
 		console.error('Assistant enqueue failed:', err);
@@ -345,9 +349,17 @@ router.get('/assistant/conversations/:id', async (req, res) => {
 			await conversations.markRead(who, id);
 			publish(who.session, who.user, { type: 'unread', count: await conversations.unreadCount(who) });
 		}
+		const messages = [];
+		for (const m of found.messages) {
+			const view = clientMessage(m);
+			if (m.status === 'queued') {
+				view.ahead = await queue.activeByMessage(m._id).then(job => (job ? queue.ahead(job._id) : null)).catch(() => null);
+			}
+			messages.push(view);
+		}
 		res.send({
 			conversation: { _id: String(found.conversation._id), title: found.conversation.title, updatedAt: found.conversation.updatedAt },
-			messages: found.messages.map(clientMessage),
+			messages,
 		});
 	} catch (err) {
 		console.error('Assistant conversation failed:', err);
@@ -431,7 +443,8 @@ router.post('/assistant/confirm', async (req, res) => {
 			}
 		}
 		const settled = await conversations.settlePlan(id, results);
-		publish(who.session, who.user, { type: 'plan', conversationId: String(msg.conversationId), messageId: String(id), plan: clientPlan(settled.plan) });
+		// null: the conversation was deleted while the plan ran
+		if (settled) publish(who.session, who.user, { type: 'plan', conversationId: String(msg.conversationId), messageId: String(id), plan: clientPlan(settled.plan) });
 		res.send({ results });
 	} catch (err) {
 		console.error('Assistant confirm failed:', err);

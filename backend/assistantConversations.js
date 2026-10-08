@@ -157,6 +157,18 @@ export function conversationStore(db) {
 			);
 		},
 
+		runningPlans() {
+			return msgs.find({ role: 'assistant', 'plan.state': 'running' }).toArray();
+		},
+
+		async interruptPlan(messageId) {
+			await msgs.updateOne({ _id: messageId }, { $set: { 'plan.state': 'interrupted' } });
+		},
+
+		activeReplies() {
+			return msgs.find({ role: 'assistant', status: { $in: ACTIVE } }).toArray();
+		},
+
 		async markInterrupted(jobs, now = new Date()) {
 			for (const job of jobs) {
 				await store.finishReply(job.conversationId, job.messageId, { status: 'interrupted', error: INTERRUPTED_TEXT }, now);

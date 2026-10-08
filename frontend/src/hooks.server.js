@@ -148,6 +148,15 @@ export async function handle({ event, resolve }) {
 		return new Response("Contact the administrator", {status: 418, headers: {'Connection': 'close'},})
 	}
 
+	// The live event stream retries on its own after a session expires: answer
+	// it with a plain 401 instead of an infraction + redirect, or an idle tab
+	// would get the whole IP blacklisted.
+	const isEventStream = event.url.pathname === '/api/assistantEvents';
+
+	if (!token && isEventStream) {
+		return new Response(null, { status: 401 });
+	}
+
 	if (!token && event.url.pathname != '/login' && event.url.pathname != '/api/login') {
 		console.log('Unauthorized connection on: ', event.url.pathname)
 		if (event.url.pathname != '/') {
@@ -171,6 +180,7 @@ export async function handle({ event, resolve }) {
 	if (verification.status != 200) {
 		console.log('Bad token verification')
 		event.cookies.delete('session', { path: '/' });
+		if (isEventStream) return new Response(null, { status: 401 });
 		throw redirect(302, '/login');
 	}
 

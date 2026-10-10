@@ -103,15 +103,16 @@
 
 <style>
 	/* Moved unchanged from AssistantChat.svelte (composer section) */
-	.composer { display: flex; gap: var(--space-xs); align-items: stretch; }
+	.composer { display: flex; gap: var(--space-xs); align-items: center; }
+	/* Border-box, so the field is exactly as tall as the round buttons beside it */
 	.text {
-		flex: 1; min-width: 0; min-height: var(--control-min-h);
-		padding: var(--control-pad-y) var(--control-pad-x);
+		flex: 1; min-width: 0; box-sizing: border-box; height: var(--control-min-h);
+		padding: 0 var(--control-pad-x);
 		border: var(--bw) solid var(--primary); border-radius: var(--radius-pill);
 		background: var(--paper); color: var(--ink); font: inherit; transition: var(--swap);
 	}
-	.text::placeholder { color: var(--muted); }
-	.text:focus { outline: none; border-color: var(--primary-deep); box-shadow: var(--focus-ring); }
+	.text::placeholder { color: var(--primary); font-style: italic; opacity: 1; }
+	.text:focus { border-color: var(--primary-deep); box-shadow: var(--focus-ring); }
 	.text:disabled { opacity: 0.7; }
 	.icon {
 		flex-shrink: 0; width: var(--control-min-h); height: var(--control-min-h);

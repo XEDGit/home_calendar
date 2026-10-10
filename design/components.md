@@ -17,7 +17,7 @@ Every value below maps to a token in [tokens.css](tokens.css). One size per cont
 
 - **Standard button** (mode switches, retries, settings actions): control padding `8px 14px`, min-height `40px`, radius `--radius-md`, border `--bw` solid rose, weight 700. Hover = inversion.
 - **Block button** (form submits, sign/save/delete in modals): full width, padding `13px`, radius `--radius-md`, border `--bw`. Save = rose solid. Delete = `--danger` solid (the only red button). Skip/secondary = transparent with rose border.
-- **Nav button** (top nav only): height `3rem`, radius `--radius-md`, border `--bw`, `--text-base` font (`--text-xs` on phones, never breaking a word; two rows of three under 360px). Hover (pointer devices)/active = inversion + `--shadow-lift`.
+- **Nav segment** (top nav only): transparent segment of the solid rose nav bar, height `2.5rem`, radius `--radius-sm`, cream `--text-base` label (`--text-xs` under 640px, never breaking a word). Active = cream pill with rose label. Hover (pointer devices) = `--paper-a12` wash.
 - **FAB**: circle `clamp(50px, 10vh, 80px)`, cream/rose, border `--bw`, fixed `bottom: 5vh; right: 40px`. Hover inverts.
 - **Disabled**: `--idle` fill and border, cream text, no hover.
 
@@ -46,7 +46,7 @@ Overlay `--overlay` + 2-3px blur. Content: cream, radius `--radius-lg` (bottom-s
 
 ## Navigation & headers
 
-- **Nav bar**: cream, `space-evenly`, `padding-bottom: --space-sm`.
+- **Nav bar**: one solid rose bar (`.on-primary`), radius `--radius-lg`, inset `--space-xs`, 95% wide like the content column; tabs in equal columns, two rows of four under 900px (3px inset and gaps under 640px).
 - **Calendar header**: rose band, radius `--radius-lg`, cream controls inside (borderless cream buttons, hover `--paper-shade`; today-button gets `--bw` `--primary-deep` border).
 - **Section header**: `h2` + `hr` pair colored via `--color` prop (defaults `var(--primary)`; `var(--urgent)` for overdue sections; `var(--paper)` on rose cards).
 

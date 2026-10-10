@@ -91,16 +91,20 @@ components:
     rounded: "{rounded.md}"
     padding: "13px"
     width: "100%"
-  button-nav:
+  nav-bar:
     backgroundColor: "{colors.dusty-rose}"
+    rounded: "{rounded.lg}"
+    padding: "5px"
+  button-nav:
+    backgroundColor: "transparent"
     textColor: "{colors.warm-cream}"
-    rounded: "{rounded.md}"
-    height: "3rem"
+    rounded: "{rounded.sm}"
+    height: "2.5rem"
   button-nav-active:
     backgroundColor: "{colors.warm-cream}"
     textColor: "{colors.dusty-rose}"
-    rounded: "{rounded.md}"
-    height: "3rem"
+    rounded: "{rounded.sm}"
+    height: "2.5rem"
   chip:
     backgroundColor: "{colors.warm-cream}"
     textColor: "{colors.dusty-rose}"
@@ -222,7 +226,7 @@ Flat by default. Surfaces sit flush at rest; depth shows up only as a response t
 ### Shadow Vocabulary
 - **Ambient** (`box-shadow: 0 2px 5px rgba(0,0,0,0.1)`): Calendar day cells. Structural separation in dense grids.
 - **Pop** (`box-shadow: 0 2px 10px rgba(0,0,0,0.1)`): Context menus and floating popovers.
-- **Lift** (`box-shadow: 0 7px 15px rgba(0,0,0,0.3)`): Nav buttons on hover. The button rises toward the finger.
+- **Lift** (`box-shadow: 0 7px 15px rgba(0,0,0,0.3)`): Kanban cards while dragging. The card rises toward the finger.
 - **Modal** (`box-shadow: 0 4px 20px rgba(0,0,0,0.3)`): Dialogs, over the overlay.
 - **Focus outline** (`outline: 2px solid` deep rose, `outline-offset: 2px`): Global `:focus-visible` rule in `general.css`. Inside primary surfaces (mark the container `.on-primary`) the outline turns paper-coloured. Never remove it; `outline: none` is prohibited.
 - **Focus ring** (`box-shadow: 0 0 0 2px rgba(143,92,102,0.3)`): Optional soft glow on inputs, in addition to the outline, never instead of it.
@@ -242,7 +246,7 @@ Clean and purposeful. The 2px rose border is always present, so the hit target r
 - **Ghost (`.btn-ghost`):** Cream fill, rose text, same border.
 - **Block (`.btn-block`):** Full width, 13px padding. Form submit and dialog actions.
 - **Danger (`.btn-danger`):** Delete red fill and border, cream text. The only red button.
-- **Hover:** Full inversion via `--swap` (150ms ease-out on background, color, border). Nav buttons add the lift shadow.
+- **Hover:** Full inversion via `--swap` (150ms ease-out on background, color, border).
 - **Focus:** The global `:focus-visible` outline (see Elevation).
 - **Disabled:** Idle gray fill and border, cream text, no hover.
 
@@ -270,11 +274,21 @@ Clean and purposeful. The 2px rose border is always present, so the hit target r
 - **Phones:** In forms the label sits above its field and the field takes the full width.
 
 ### Navigation
-- **Bar:** Full-width cream, `space-evenly`, 10px bottom padding.
-- **Button:** Rose fill, cream text, 2px rose border, 7px radius, 3rem height, 700 weight, `--text-base`.
-- **Active:** Inverted (cream fill, rose text).
-- **Hover:** Inverted plus lift shadow (pointer devices only).
-- **Phones (≤480px):** Labels step down to `--text-xs` and share the row by their length; a label never breaks inside a word. Under 360px (small phones, or zoomed text) the bar becomes two rows of three rather than running off the edge.
+- **Bar:** One solid rose bar (`.on-primary`), 10px radius, 5px inset, lined up with the content column (95% wide) with 10px below it. The tabs are its segments: equal columns in one row, a column growing past its share only when its label needs the room.
+- **Segment:** Transparent, cream label, 5px radius (10px bar minus 5px inset, so the corners nest), 2.5rem height, 700 weight, `--text-base`, never wrapping.
+- **Active:** A cream pill with a rose label. During a page change the pill glides to its new tab.
+- **Hover:** A `--paper-a12` wash with the label kept solid cream (pointer devices only). The one exception to the Inversion Rule: inside the bar a full swap would read as the active tab.
+- **Badge:** Urgent-red count riding on the label's top-right with a 2px rose ring, since a segment has no visible edge to hang it from.
+- **Narrow screens:** Under 900px the bar becomes two rows of four (as many columns as half the tabs). Under 640px labels step down to `--text-xs`, gaps and inset to 3px and segment corners to 7px. A label never breaks inside a word.
+
+### Assistant tab
+- **Two panels** built like kanban columns: 2px rose border, 10px radius, rose header band. "Chats" (list, with **New chat** in its band) and the open conversation (its title, and delete, in the band). Phones show one panel at a time; the conversation band carries a **Chats** back button.
+- **Fills the screen exactly:** the tab measures its top and is as tall as the screen below the nav, so the page never scrolls; the list and the messages scroll inside their panels and the band and input stay put. The page's bottom spacer is skipped on this tab.
+- **Reading column:** messages and the input share one centred 46rem column; the scrollbar stays at the panel edge. The member's messages are rose bubbles on the right; answers are plain teal-ink text on the page, no box.
+- **Opens at the latest message** and follows new ones while the member is at the bottom; scrolling up to read stops the follow.
+- **New chat** says what the assistant can do and offers tappable starter questions (chips).
+- **Running:** the steps so far as a ticked list, the current one pulsing; **Stop**, **Cancel** and **Ask again** are compact pill buttons, not links.
+- **Review card:** square tick boxes (22px, 5px radius, rose border, rose fill with a cream ✓), primary "Do it" / "Do 2 of 3" (disabled when nothing is ticked) and a ghost Cancel.
 
 ### Section Headers
 - **Pattern:** h2 plus hairline rule (1px), colored through a `--color` custom property; subtitle as an italic h5.

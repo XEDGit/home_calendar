@@ -12,10 +12,36 @@
 	let planError = {};
 	const STATUS = { done: '✓', failed: '✕', skipped: '–', not_run: '–' };
 
+	// Opens at the latest message and follows new ones, unless the member has
+	// scrolled up to read: then the log stays where they are.
+	let atBottom = true;
+	let shown = null;
+	$: if (conversationId !== shown) { shown = conversationId; atBottom = true; }
 	$: messages, scrollDown();
 	async function scrollDown() {
 		await tick();
-		if (log) log.scrollTop = log.scrollHeight;
+		if (log && atBottom) log.scrollTop = log.scrollHeight;
+	}
+	// A scroll event that arrives with a new size came from layout (the log or
+	// its content resized), not from the member: stay pinned through it.
+	let size = '';
+	function onScroll() {
+		const now = `${log.scrollHeight}x${log.clientHeight}`;
+		if (now !== size && atBottom) { size = now; log.scrollTop = log.scrollHeight; return; }
+		size = now;
+		atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+	}
+	// Heights keep changing after a render: the log itself (screen resize, the
+	// tab measuring itself) and the messages in it (fonts arriving, entrance
+	// animations, a review card settling). Keep the latest message in view
+	// through all of it while the member is at the bottom.
+	function followResize(node) {
+		const ro = new ResizeObserver(() => { if (atBottom) node.scrollTop = node.scrollHeight; });
+		const watch = () => { ro.disconnect(); ro.observe(node); for (const c of node.children) ro.observe(c); };
+		const mo = new MutationObserver(watch);
+		mo.observe(node, { childList: true });
+		watch();
+		return { destroy: () => { mo.disconnect(); ro.disconnect(); } };
 	}
 
 	function questionBefore(i) {
@@ -50,7 +76,7 @@
 	}
 </script>
 
-<div class="log" bind:this={log} style:max-height={maxHeight}>
+<div class="log" bind:this={log} use:followResize on:scroll={onScroll} style:max-height={maxHeight}>
 	{#each messages as m, i (m._id)}
 		<div class="msg {m.role}" in:reveal>
 			{#if m.content}
@@ -60,9 +86,12 @@
 			{/if}
 
 			{#if m.role === 'assistant' && m.status === 'running' && m.tools?.length}
-				<ul class="chips" aria-label="Steps">
-					{#each m.tools as t}
-						<li class="chip" class:failed={t.error}>{t.summary || t.name.replaceAll('_', ' ')}</li>
+				<ul class="steps" aria-label="Steps" aria-live="polite">
+					{#each m.tools as t, ti}
+						<li class="step" class:failed={t.error} class:now={ti === m.tools.length - 1}>
+							<span class="mark" aria-hidden="true">{t.error ? '✕' : ti === m.tools.length - 1 ? '' : '✓'}</span>
+							{t.summary || t.name.replaceAll('_', ' ')}
+						</li>
 					{/each}
 				</ul>
 			{/if}
@@ -70,11 +99,11 @@
 			{#if m.role === 'assistant' && m.status === 'queued'}
 				<p class="status" aria-live="polite">
 					<span>{waiting(m)}</span>
-					<button class="link" on:click={() => cancel(conversationId, m._id)}>Cancel</button>
+					<button class="small-btn" on:click={() => cancel(conversationId, m._id)}>Cancel</button>
 				</p>
 			{:else if m.role === 'assistant' && m.status === 'running'}
 				<p class="status">
-					<button class="link" on:click={() => cancel(conversationId, m._id)}>Stop</button>
+					<button class="small-btn" on:click={() => cancel(conversationId, m._id)}>Stop</button>
 				</p>
 			{/if}
 
@@ -107,11 +136,12 @@
 						{/each}
 					</ul>
 					{#if m.plan.state === 'review'}
+						{@const picked = m.plan.actions.filter(a => a.checked).length}
 						<div class="plan-buttons">
-							<button class="btn primary" on:click={() => doConfirm(m)}>
-								{m.plan.actions.every(a => a.checked) ? 'Do it' : `Do ${m.plan.actions.filter(a => a.checked).length} selected`}
+							<button class="btn btn-solid" disabled={!picked} on:click={() => doConfirm(m)}>
+								{picked === m.plan.actions.length ? 'Do it' : picked ? `Do ${picked} of ${m.plan.actions.length}` : 'Nothing selected'}
 							</button>
-							<button class="btn" on:click={() => doReject(m)}>Cancel</button>
+							<button class="btn btn-ghost" on:click={() => doReject(m)}>Cancel</button>
 						</div>
 					{/if}
 					{#if planError[m._id]}<p class="err">{planError[m._id]}</p>{/if}
@@ -122,7 +152,7 @@
 				<p class="bubble error">
 					{m.error || ended[m.status] || (empty(m) ? "I couldn't finish this one" : 'Something went wrong')}
 					{#if questionBefore(i)}
-						<button class="link" disabled={retrying !== null} on:click={() => askAgain(m, questionBefore(i))}>Ask again</button>
+						<button class="small-btn" disabled={retrying !== null} on:click={() => askAgain(m, questionBefore(i))}>Ask again</button>
 					{/if}
 				</p>
 				{#if retryError[m._id]}<p class="err" role="alert">{retryError[m._id]}</p>{/if}
@@ -132,59 +162,84 @@
 </div>
 
 <style>
-	/* Conversation, actions and review list: moved unchanged from AssistantChat.svelte */
 	.log { display: flex; flex-direction: column; gap: var(--space-sm); overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
 	.msg { display: flex; flex-direction: column; gap: var(--space-xs); max-width: min(100%, var(--measure)); }
-	.msg.user { align-self: flex-end; align-items: flex-end; }
-	.msg.assistant { align-self: flex-start; }
+	/* The member's words sit in rose on the right; the answer reads as plain
+	 * text on the page, like a printed entry, and takes the full column */
+	.msg.user { align-self: flex-end; align-items: flex-end; max-width: min(85%, var(--measure)); }
+	.msg.assistant { align-self: stretch; }
 	.bubble {
-		margin: 0; padding: var(--control-pad-y) var(--control-pad-x); border-radius: var(--radius-lg);
-		font-size: var(--text-base); line-height: var(--leading-body); white-space: pre-wrap; overflow-wrap: anywhere;
+		margin: 0; font-size: var(--text-base); line-height: var(--leading-body);
+		white-space: pre-wrap; overflow-wrap: break-word; text-wrap: pretty;
 	}
-	.user .bubble { background: var(--primary); color: var(--paper); border-bottom-right-radius: var(--radius-sm); }
-	.assistant .bubble {
-		background: var(--primary-a08); color: var(--ink);
-		border: var(--bw-hair) solid var(--primary-a25); border-bottom-left-radius: var(--radius-sm);
+	.user .bubble {
+		padding: var(--control-pad-y) var(--control-pad-x); border-radius: var(--radius-lg);
+		border-bottom-right-radius: var(--radius-sm); background: var(--primary); color: var(--paper);
 	}
+	.assistant .bubble { color: var(--ink); max-width: var(--measure); }
 	.bubble.thinking { color: var(--primary); font-style: italic; }
-	.bubble.error { background: var(--urgent-a12); border-color: transparent; color: var(--urgent); font-size: var(--text-sm); }
-	.status { margin: 0; display: flex; gap: var(--space-sm); align-items: baseline; font-size: var(--text-sm); color: var(--muted); }
-	.chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-xs); }
-	.chip {
-		font-size: var(--text-xs); color: var(--primary); border: var(--bw-hair) solid var(--primary-a25);
-		border-radius: var(--radius-pill); padding: 1px var(--space-sm);
+	.bubble.error {
+		display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-sm);
+		padding: var(--control-pad-y) var(--control-pad-x); border-radius: var(--radius-lg);
+		background: var(--urgent-a12); color: var(--urgent); font-size: var(--text-sm);
 	}
-	.chip.failed { color: var(--urgent); }
-	.link {
-		background: none; border: none; padding: 0; color: var(--primary); font: inherit;
-		font-size: var(--text-sm); text-decoration: underline; cursor: pointer;
+	.status { margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; font-size: var(--text-sm); color: var(--primary); font-style: italic; }
+
+	/* What the assistant is doing right now: done steps ticked, the current
+	 * one pulsing. Not .chip: the global filter chip would restyle these. */
+	.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+	.step {
+		display: flex; gap: var(--space-sm); align-items: baseline;
+		font-size: var(--text-sm); line-height: var(--leading-snug); color: var(--primary);
 	}
-	.bubble.error .link { margin-left: var(--space-sm); color: inherit; }
+	.step .mark { width: 1ch; flex-shrink: 0; font-weight: var(--weight-bold); }
+	.step.now { font-style: italic; }
+	.step.now .mark::before {
+		content: ''; display: inline-block; width: 7px; height: 7px; border-radius: var(--radius-circle);
+		background: currentColor; animation: working 1.2s var(--ease-in-out) infinite;
+	}
+	@keyframes working { 50% { opacity: 0.25; } }
+	.step.failed { color: var(--urgent); }
+
+	/* Stop, Cancel, Ask again: compact pills, quiet until hovered */
+	.small-btn {
+		flex-shrink: 0; padding: 2px var(--space-sm); border: var(--bw) solid currentColor; border-radius: var(--radius-pill);
+		background: none; color: inherit; font: inherit; font-style: normal; font-size: var(--text-sm);
+		font-weight: var(--weight-bold); white-space: nowrap; cursor: pointer; transition: var(--swap);
+	}
+	.status .small-btn { color: var(--primary); }
+	.small-btn:disabled { opacity: 0.5; cursor: default; }
+	@media (hover: hover) {
+		.status .small-btn:not(:disabled):hover { background: var(--primary); color: var(--paper); border-color: var(--primary); }
+		.bubble.error .small-btn:not(:disabled):hover { background: var(--urgent); color: var(--paper); border-color: var(--urgent); }
+	}
+
+	/* Changes waiting for a yes: a bordered card with a real tick box per change */
 	.plan {
+		max-width: var(--measure); box-sizing: border-box;
 		border: var(--bw) solid var(--primary); border-radius: var(--radius-lg);
-		padding: var(--space-sm) var(--space-md); background: var(--paper); transition: var(--swap);
+		padding: var(--space-sm) var(--space-md) var(--space-md); background: var(--paper); transition: var(--swap);
 	}
-	.plan.settled { border-color: var(--primary-a25); }
+	.plan.settled { border-color: var(--primary-a25); padding-bottom: var(--space-sm); }
 	.plan-title { margin: 0 0 var(--space-xs); font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--primary); }
 	.actions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 	.action {
 		display: flex; gap: var(--space-sm); align-items: baseline; font-size: var(--text-sm);
 		line-height: var(--leading-snug); color: var(--ink); padding: 3px 0;
 	}
-	.action label { display: flex; gap: var(--space-sm); align-items: baseline; cursor: pointer; }
-	.action input { accent-color: var(--primary); flex-shrink: 0; }
+	.action label { display: flex; gap: var(--space-sm); align-items: center; cursor: pointer; padding: 2px 0; }
+	.action input {
+		flex-shrink: 0; width: 22px; height: 22px; display: grid; place-items: center; padding: 0;
+		border: var(--bw) solid var(--primary); border-radius: var(--radius-sm); background: var(--paper); cursor: pointer;
+	}
+	.action input:checked { background: var(--primary); }
+	.action input:checked::before { content: '✓'; color: var(--paper); font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1; }
 	.action .mark { width: 1ch; flex-shrink: 0; font-weight: var(--weight-bold); color: var(--ok); }
 	.action.failed .mark, .action .err, .err { color: var(--urgent); }
-	.action.skipped, .action.skipped .mark { color: var(--muted); }
+	.action.skipped, .action.skipped .mark { color: var(--primary); font-style: italic; }
 	.actions > .action.done { color: var(--primary); }
 	.plan-buttons { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); flex-wrap: wrap; }
-	.btn {
-		min-height: var(--control-min-h); padding: var(--control-pad-y) var(--control-pad-x);
-		border-radius: var(--radius-md); border: var(--bw) solid var(--primary); background: var(--paper);
-		color: var(--primary); font: inherit; font-weight: var(--weight-bold); cursor: pointer; transition: var(--swap);
-	}
-	.btn:hover { background: var(--paper-shade); }
-	.btn.primary { background: var(--primary); color: var(--paper); }
-	.btn.primary:hover { background: var(--primary-deep); }
-	.btn:active { transform: scale(0.97); }
+	.plan-buttons .btn:disabled { border-color: var(--idle); background: var(--idle); color: var(--paper); cursor: default; }
+
+	@media (prefers-reduced-motion: reduce) { .step.now .mark::before { animation: none; } }
 </style>

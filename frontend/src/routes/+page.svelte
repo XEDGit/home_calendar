@@ -431,4 +431,7 @@
 	</main>
 {/if}
 
-<div style="margin-bottom: 28vh;"></div>
+<!-- Room to scroll the last rows clear of the + button. The Assistant tab
+     already fills the screen exactly, so there it would only add an empty
+     band below the input and let the page scroll the nav away. -->
+{#if view !== "assistant"}<div style="margin-bottom: 28vh;"></div>{/if}

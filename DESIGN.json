@@ -301,9 +301,9 @@
       "name": "Nav Button",
       "kind": "nav",
       "refersTo": "button-nav",
-      "description": "Top navigation tab. Active state is the inverted (cream) variant.",
+      "description": "Top navigation tab: a transparent segment of the solid rose nav bar. Active state is a cream pill with a rose label.",
       "html": "<button class=\"ds-btn-nav ds-active\">Calendar</button>",
-      "css": ".ds-btn-nav { border: 2px solid #8F5C66; border-radius: 7px; cursor: pointer; height: 3rem; font-weight: bold; font-size: clamp(12px, 2vw, 32px); background-color: #8F5C66; color: #FFEAD0; padding: 0 12px; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; } .ds-btn-nav:hover, .ds-btn-nav.ds-active { background-color: #FFEAD0; color: #8F5C66; box-shadow: 0 7px 15px rgba(0,0,0,0.3); }"
+      "css": ".ds-btn-nav { height: 2.5rem; padding: 0 10px; border: 2px solid transparent; border-radius: 5px; cursor: pointer; font-weight: 700; font-size: 1rem; white-space: nowrap; background-color: transparent; color: #FFEAD0; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.13s, color 0.13s; } .ds-btn-nav:hover { background-color: rgba(255,234,208,0.12); } .ds-btn-nav.ds-active { background-color: #FFEAD0; color: #8F5C66; }"
     },
     {
       "name": "Tag / Chip",
@@ -349,9 +349,9 @@
       "name": "Nav Bar",
       "kind": "nav",
       "refersTo": "button-nav",
-      "description": "Full-width top navigation bar containing evenly spaced nav buttons.",
+      "description": "One solid rose bar holding the tabs as equal segments; the active tab is a cream pill.",
       "html": "<nav class=\"ds-navbar\"><button class=\"ds-btn-nav\">Home</button><button class=\"ds-btn-nav ds-active\">Calendar</button><button class=\"ds-btn-nav\">Chores</button><button class=\"ds-btn-nav\">Todo</button></nav>",
-      "css": ".ds-navbar { width: 100%; display: flex; justify-content: space-evenly; background-color: #FFEAD0; padding-bottom: 10px; gap: 4px; } .ds-navbar .ds-btn-nav { border: 2px solid #8F5C66; border-radius: 7px; cursor: pointer; flex-grow: 0.15; height: 3rem; font-weight: bold; font-size: clamp(12px, 2vw, 32px); background-color: #8F5C66; color: #FFEAD0; padding: 0 12px; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; } .ds-navbar .ds-btn-nav:hover, .ds-navbar .ds-btn-nav.ds-active { background-color: #FFEAD0; color: #8F5C66; box-shadow: 0 7px 15px rgba(0,0,0,0.3); }"
+      "css": ".ds-navbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 5px; padding: 5px; border-radius: 10px; background-color: #8F5C66; } .ds-navbar .ds-btn-nav { height: 2.5rem; padding: 0 10px; border: 2px solid transparent; border-radius: 5px; cursor: pointer; font-weight: 700; font-size: 1rem; white-space: nowrap; background-color: transparent; color: #FFEAD0; font-family: 'Libre Franklin', 'Franklin Gothic', Arial, sans-serif; } .ds-navbar .ds-btn-nav:hover { background-color: rgba(255,234,208,0.12); } .ds-navbar .ds-btn-nav.ds-active { background-color: #FFEAD0; color: #8F5C66; }"
     }
   ],
   "narrative": {

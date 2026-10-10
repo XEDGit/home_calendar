@@ -19,6 +19,8 @@
 	{#each blocks as b}
 		{#if b.type === 'heading'}
 			<svelte:element this={`h${Math.min(6, below + b.depth)}`} class="h" class:h1={b.depth === 1}>{@render inline(b.inline)}</svelte:element>
+		{:else if b.type === 'rule'}
+			<hr />
 		{:else if b.type === 'list'}
 			<ul>
 				{#each b.items as item}
@@ -46,5 +48,7 @@
 	ul { padding-left: 1.25em; display: flex; flex-direction: column; gap: 2px; }
 	li::marker { color: var(--primary); }
 	strong { font-weight: var(--weight-bold); }
+	/* A quiet hairline, like the rule under a section heading */
+	hr { width: 100%; height: 0; border: none; border-top: var(--bw-hair) solid var(--primary-a25); }
 	a { color: inherit; overflow-wrap: anywhere; }
 </style>

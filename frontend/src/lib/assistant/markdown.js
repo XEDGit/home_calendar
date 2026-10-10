@@ -1,5 +1,6 @@
 // The little markdown the assistant's replies may use: `#` headings, `-` and
-// `*` list items, **bold** and *italic*. Everything else stays literal text.
+// `*` list items, `---` rules, **bold** and *italic*. Everything else stays
+// literal text.
 //
 // parse() returns a tree of plain objects, never HTML: the component renders
 // it as elements with text children, so anything in a reply (the model's own
@@ -7,11 +8,15 @@
 //
 //   block:  { type: 'heading', depth, inline }          depth = number of #
 //           { type: 'list', items: [{ depth, inline }] } depth 0-2 (nesting)
+//           { type: 'rule' }                            a --- line
 //           { type: 'para', lines: [inline, ...] }      one entry per line
 //   inline: { t: 'text', v } | { t: 'strong', children } | { t: 'em', children }
 
 const HEADING = /^(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const ITEM = /^([ \t]*)[-*][ \t]+(.*)$/;
+// Three or more hyphens, spaces between allowed ("- - -" is a rule, not an
+// item). Unlike markdown, a --- under a line never turns it into a heading.
+const RULE = /^[ \t]*-(?:[ \t]*-){2,}[ \t]*$/;
 
 export function parse(source) {
 	const blocks = [];
@@ -23,6 +28,9 @@ export function parse(source) {
 		let m;
 		if (!line.trim()) {
 			end();
+		} else if (RULE.test(line)) {
+			end();
+			blocks.push({ type: 'rule' });
 		} else if ((m = HEADING.exec(line))) {
 			end();
 			blocks.push({ type: 'heading', depth: m[1].length, inline: parseInline(m[2]) });

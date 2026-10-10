@@ -41,7 +41,27 @@ test('indented items nest, capped at two levels', () => {
 
 test('a marker without a following space is not a list', () => {
 	assert.deepEqual(parse('-5 degrees'), [{ type: 'para', lines: [[text('-5 degrees')]] }]);
-	assert.deepEqual(parse('---'), [{ type: 'para', lines: [[text('---')]] }]);
+	assert.deepEqual(parse('--'), [{ type: 'para', lines: [[text('--')]] }]);
+});
+
+test('--- (three or more hyphens, spaces allowed) is a rule', () => {
+	for (const line of ['---', '-----', '- - -', '  ---  ']) assert.deepEqual(parse(line), [{ type: 'rule' }], line);
+});
+
+test('a rule ends the paragraph or list before it, and never makes a heading', () => {
+	assert.deepEqual(parse('Monday\n---\n- bins\n---\nTuesday'), [
+		{ type: 'para', lines: [[text('Monday')]] },
+		{ type: 'rule' },
+		{ type: 'list', items: [{ depth: 0, inline: [text('bins')] }] },
+		{ type: 'rule' },
+		{ type: 'para', lines: [[text('Tuesday')]] },
+	]);
+});
+
+test('hyphens with text, and other rule styles, stay literal', () => {
+	assert.deepEqual(parse('--- note'), [{ type: 'para', lines: [[text('--- note')]] }]);
+	assert.deepEqual(parse('***'), [{ type: 'para', lines: [[text('***')]] }]);
+	assert.deepEqual(parse('___'), [{ type: 'para', lines: [[text('___')]] }]);
 });
 
 test('other markdown stays literal text', () => {

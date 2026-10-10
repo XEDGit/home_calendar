@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db, { ObjectId } from './db.js';
-import { expandEvents } from './eventRepeat.js';
+import { expandEvents, withInstant } from './eventRepeat.js';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ router.get('/events', async (req, res) => {
             return res.send(expandEvents(events, new Date(startDate), new Date(endDate)));
         }
 
-        res.send(events);
+        res.send(events.map(withInstant));
     } catch (err) {
         console.error('Error retrieving events:', err);
         res.status(500).send({ error: 'Internal server error' });

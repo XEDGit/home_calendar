@@ -39,10 +39,17 @@ export function parseWhen(when) {
 	return isNaN(d) ? null : d;
 }
 
+/** A copy of a stored event with `when` as an ISO instant (as is when unreadable). */
+export function withInstant(event) {
+	const at = parseWhen(event.when);
+	return at ? { ...event, when: at.toISOString() } : event;
+}
+
 /**
- * The events and repeats that fall in [start, end]. A one-off event comes
- * back as stored; each repeat is a copy with `when` as an ISO instant and
- * `isOccurrence`, `originalEventId` and `originalEventDate` set.
+ * The events and repeats that fall in [start, end], each with `when` as an
+ * ISO instant: whoever reads them (the page, the assistant's tools on this
+ * UTC server) gets the same moment. Repeats also carry `isOccurrence`,
+ * `originalEventId` and `originalEventDate` (the series' stored when).
  */
 export function expandEvents(events, start, end) {
 	const out = [];
@@ -51,7 +58,7 @@ export function expandEvents(events, start, end) {
 		if (!first) continue;
 		const step = Number(event.repeatDays) || 0;
 		if (step <= 0) {
-			if (first >= start && first <= end) out.push(event);
+			if (first >= start && first <= end) out.push({ ...event, when: first.toISOString() });
 			continue;
 		}
 		const wall = wallAt(first.getTime());

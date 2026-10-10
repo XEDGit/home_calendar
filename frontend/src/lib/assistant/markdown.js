@@ -5,7 +5,7 @@
 // it as elements with text children, so anything in a reply (the model's own
 // words or a web page it read) can only ever show up as text.
 //
-//   block:  { type: 'heading', depth, level, inline }   depth = number of #
+//   block:  { type: 'heading', depth, inline }          depth = number of #
 //           { type: 'list', items: [{ depth, inline }] } depth 0-2 (nesting)
 //           { type: 'para', lines: [inline, ...] }      one entry per line
 //   inline: { t: 'text', v } | { t: 'strong', children } | { t: 'em', children }
@@ -25,8 +25,7 @@ export function parse(source) {
 			end();
 		} else if ((m = HEADING.exec(line))) {
 			end();
-			// Below the page title (h1) and the panel band (h2)
-			blocks.push({ type: 'heading', depth: m[1].length, level: Math.min(6, m[1].length + 2), inline: parseInline(m[2]) });
+			blocks.push({ type: 'heading', depth: m[1].length, inline: parseInline(m[2]) });
 		} else if ((m = ITEM.exec(line))) {
 			para = null;
 			if (!list) blocks.push((list = { type: 'list', items: [] }));

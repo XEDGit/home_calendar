@@ -15,17 +15,17 @@ test('blank lines split paragraphs', () => {
 	]);
 });
 
-test('# headings, levels offset below the page and panel headings', () => {
+test('# headings carry their depth', () => {
 	assert.deepEqual(parse('# Today\n## Chores\n#### Deep'), [
-		{ type: 'heading', depth: 1, level: 3, inline: [text('Today')] },
-		{ type: 'heading', depth: 2, level: 4, inline: [text('Chores')] },
-		{ type: 'heading', depth: 4, level: 6, inline: [text('Deep')] },
+		{ type: 'heading', depth: 1, inline: [text('Today')] },
+		{ type: 'heading', depth: 2, inline: [text('Chores')] },
+		{ type: 'heading', depth: 4, inline: [text('Deep')] },
 	]);
 });
 
 test('# needs a space after it; closing hashes are dropped', () => {
 	assert.deepEqual(parse('#hashtag'), [{ type: 'para', lines: [[text('#hashtag')]] }]);
-	assert.deepEqual(parse('## Week ##'), [{ type: 'heading', depth: 2, level: 4, inline: [text('Week')] }]);
+	assert.deepEqual(parse('## Week ##'), [{ type: 'heading', depth: 2, inline: [text('Week')] }]);
 });
 
 test('- and * start list items; consecutive items share one list', () => {
@@ -78,7 +78,7 @@ test('\\* is a literal asterisk', () => {
 
 test('emphasis inside headings and list items', () => {
 	assert.deepEqual(parse('# **Big** day\n- *Mia* dentist'), [
-		{ type: 'heading', depth: 1, level: 3, inline: [{ t: 'strong', children: [text('Big')] }, text(' day')] },
+		{ type: 'heading', depth: 1, inline: [{ t: 'strong', children: [text('Big')] }, text(' day')] },
 		{ type: 'list', items: [{ depth: 0, inline: [{ t: 'em', children: [text('Mia')] }, text(' dentist')] }] },
 	]);
 });
@@ -92,4 +92,12 @@ test('CRLF and empty input', () => {
 	assert.deepEqual(parse('a\r\n- b'), [{ type: 'para', lines: [[text('a')]] }, { type: 'list', items: [{ depth: 0, inline: [text('b')] }] }]);
 	assert.deepEqual(parse(''), []);
 	assert.deepEqual(parse(null), []);
+});
+
+test('emphasis around a URL leaves the URL whole (links are found in text nodes)', () => {
+	assert.deepEqual(parse('- **https://example.com/a_b?x=1** and *http://x.io*'), [
+		{ type: 'list', items: [{ depth: 0, inline: [
+			{ t: 'strong', children: [text('https://example.com/a_b?x=1')] }, text(' and '), { t: 'em', children: [text('http://x.io')] },
+		] }] },
+	]);
 });

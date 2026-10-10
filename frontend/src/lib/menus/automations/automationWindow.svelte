@@ -3,7 +3,7 @@
 	// the body, older runs fold away under History.
 	import Collapsible from '$lib/containers/collapsible.svelte';
 	import AutomationForm from './automationForm.svelte';
-	import { linkify } from '$lib/helpers/linkify.js';
+	import Markdown from '$lib/assistant/Markdown.svelte';
 	import { updateAutomation, deleteAutomation, runAutomation } from '$lib/requests.js';
 
 	export let automation;
@@ -140,19 +140,17 @@
 		padding: var(--space-xs) var(--space-sm) 0;
 	}
 
+	/* Results are markdown (headings, lists, bold, italic, links): the
+	 * Markdown component keeps their line breaks */
 	.body {
 		padding: var(--space-sm);
-		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 		line-height: 1.45;
 	}
 
-	.body a {
-		color: inherit;
-	}
-
 	.failed {
 		font-weight: var(--weight-bold);
+		white-space: pre-wrap;
 	}
 
 	.history {
@@ -162,7 +160,6 @@
 	.run {
 		border-top: 1px solid var(--primary);
 		padding: var(--space-xs) 0;
-		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
 
@@ -174,7 +171,7 @@
 
 {#snippet resultText(r)}
 	{#if r.ok}
-		{#each linkify(r.text) as part}{#if part.url}<a href={part.url} target="_blank" rel="noopener noreferrer nofollow">{part.text}</a>{:else}{part.text}{/if}{/each}
+		<Markdown text={r.text} links below={3} />
 	{:else}
 		<span class="failed">Failed: {r.error}</span>
 	{/if}

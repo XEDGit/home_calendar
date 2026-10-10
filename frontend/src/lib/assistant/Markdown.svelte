@@ -2,18 +2,23 @@
 	// Renders an assistant reply's markdown (see ./markdown.js) as elements
 	// with text children. There is deliberately no {@html} here.
 	import { parse } from './markdown.js';
+	import { linkify } from '$lib/helpers/linkify.js';
 
 	export let text = '';
+	// Turn http(s) URLs in the text into links (automation results)
+	export let links = false;
+	// Level of the heading this text sits under: # renders one below it
+	export let below = 2;
 
 	$: blocks = parse(text);
 </script>
 
-{#snippet inline(nodes)}{#each nodes as n}{#if n.t === 'strong'}<strong>{@render inline(n.children)}</strong>{:else if n.t === 'em'}<em>{@render inline(n.children)}</em>{:else}{n.v}{/if}{/each}{/snippet}
+{#snippet inline(nodes)}{#each nodes as n}{#if n.t === 'strong'}<strong>{@render inline(n.children)}</strong>{:else if n.t === 'em'}<em>{@render inline(n.children)}</em>{:else if links}{#each linkify(n.v) as part}{#if part.url}<a href={part.url} target="_blank" rel="noopener noreferrer nofollow">{part.text}</a>{:else}{part.text}{/if}{/each}{:else}{n.v}{/if}{/each}{/snippet}
 
 <div class="md">
 	{#each blocks as b}
 		{#if b.type === 'heading'}
-			<svelte:element this={`h${b.level}`} class="h" class:h1={b.depth === 1}>{@render inline(b.inline)}</svelte:element>
+			<svelte:element this={`h${Math.min(6, below + b.depth)}`} class="h" class:h1={b.depth === 1}>{@render inline(b.inline)}</svelte:element>
 		{:else if b.type === 'list'}
 			<ul>
 				{#each b.items as item}
@@ -41,4 +46,5 @@
 	ul { padding-left: 1.25em; display: flex; flex-direction: column; gap: 2px; }
 	li::marker { color: var(--primary); }
 	strong { font-weight: var(--weight-bold); }
+	a { color: inherit; overflow-wrap: anywhere; }
 </style>

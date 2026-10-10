@@ -1,13 +1,13 @@
 <script>
 	import { onMount } from 'svelte';
-	import { getEvents, getChores, getUsers, getRooms, signChore, delChore, getTodos, getTags, updateTodo, deleteTodo, getStats } from '$lib/requests';
+	import { getEvents, getChores, getUsers, getRooms, signChore, delChore, getTodos, getTags, updateTodo, getStats } from '$lib/requests';
 	import Section from '$lib/header/Section.svelte';
 	import ContentLayout from '$lib/containers/contentLayout.svelte';
 	import Drag from '$lib/containers/drag.svelte';
 	import GroupIcon from '$lib/icons/GroupIcon.svelte';
-	import UpdateEvent from '$lib/menus/calendar/updateEvent.svelte';
+	import EventSheet from '$lib/sheet/EventSheet.svelte';
 	import UpdateTask from '$lib/menus/chores/updateChore.svelte';
-	import UpdateTodo from '$lib/menus/todo/updateTodo.svelte';
+	import TodoSheet from '$lib/sheet/TodoSheet.svelte';
 	import AssistantChat from '$lib/components/AssistantChat.svelte';
 	import { reveal, vanish, expand, move, autoHeight, afterExit } from '$lib/motion';
 
@@ -178,11 +178,8 @@
 	// ── Event handlers ────────────────────────────────────────────────────────
 	function handleEventClick(evt) { selectedEvent = evt; }
 	function handleEventClose() { selectedEvent = null; }
-	function handleEventUpdated(updated) {
-		const idx = events.findIndex(e => e._id === updated._id);
-		if (idx !== -1) events[idx] = updated;
-		filterEvents();
-	}
+	// Saved from the sheet: reload, so repeats are worked out again by the server
+	function handleEventUpdated() { loadData(); }
 	function handleEventDeleted(id) { events = events.filter(e => e._id !== id); filterEvents(); }
 
 	function handleChoreClick(id) { selectedChoreId = id; }
@@ -220,14 +217,6 @@
 
 	function handleTodoClick(todo) { selectedTodo = todo; }
 	function resetTodoSelection() { selectedTodo = null; }
-	async function handleTodoUpdate(data) {
-		try { await updateTodo({ ...data, _id: selectedTodo._id }); await loadData(); resetTodoSelection(); }
-		catch (e) { console.error(e); }
-	}
-	async function handleTodoDelete(id) {
-		try { await deleteTodo({ id }); await loadData(); resetTodoSelection(); }
-		catch (e) { console.error(e); }
-	}
 
 	// ── Format helpers ────────────────────────────────────────────────────────
 	function fmtTime(d) { return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
@@ -998,20 +987,10 @@
 
 <!-- Event detail -->
 {#if selectedEvent}
-	<UpdateEvent
-		event={selectedEvent}
-		onClose={handleEventClose}
-		onUpdated={handleEventUpdated}
-		onDeleted={handleEventDeleted}
-	/>
+	<EventSheet event={selectedEvent} onClose={handleEventClose} onSaved={handleEventUpdated} onDeleted={handleEventDeleted} />
 {/if}
 
 <!-- Todo detail -->
 {#if selectedTodo}
-	<UpdateTodo
-		todo={selectedTodo}
-		onSubmit={handleTodoUpdate}
-		reset={resetTodoSelection}
-		delFunc={() => handleTodoDelete(selectedTodo._id)}
-	/>
+	<TodoSheet todo={selectedTodo} onClose={resetTodoSelection} onSaved={() => loadData()} onDeleted={() => loadData()} />
 {/if}

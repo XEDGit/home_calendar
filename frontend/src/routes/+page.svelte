@@ -1,8 +1,6 @@
 <script>
 	import Stats from "$lib/menus/stats/stats.svelte";
 	import Calendar from "$lib/menus/calendar/calendar.svelte";
-	import AddEventForm from "$lib/menus/calendar/addEvent.svelte";
-	import AddTodoForm from "$lib/menus/todo/addTodo.svelte";
 	import AddChoreForm from "$lib/menus/chores/addChore.svelte";
 	import Chores from "$lib/menus/chores/chores.svelte";
 	import PlusButton from "$lib/buttons/plusButton.svelte";
@@ -68,7 +66,10 @@
 	// each form just right of the tab it belongs to. Changing screen pushes
 	// sideways along that row: a screen further right slides in from the
 	// right, going back slides in from the left.
-	const FORM_PARENT = { [pages.addEvent]: pages.calendar, [pages.addChore]: pages.chores, [pages.addTodo]: pages.todo, [pages.addAutomation]: pages.automations };
+	const FORM_PARENT = { [pages.addChore]: pages.chores, [pages.addAutomation]: pages.automations };
+	// Adding an event or a todo is a sheet over its tab, not a page; the old
+	// /addEvent and /addTodo addresses open that sheet on the tab
+	const ADD_ON = { [pages.addEvent]: pages.calendar, [pages.addTodo]: pages.todo };
 	const TABS = ["home", "assistant", "calendar", "chores", "todo", "stats", "automations", "settings"];
 
 	const isForm = (value) => value in FORM_PARENT;
@@ -147,7 +148,24 @@
 	}
 
 	import { browser } from "$app/environment";
+	// Tab views that can open their add sheet (bound below), and a tab whose
+	// sheet should open once it's on screen with its data in
+	let calendarView, todoView;
+	let pendingAdd = null;
+	$: if (pendingAdd !== null && !loading && viewMode === pendingAdd) openPendingAdd();
+	async function openPendingAdd() {
+		const tab = pendingAdd;
+		pendingAdd = null;
+		await whenReady(pageNames[tab], 1500);
+		await tick();
+		(tab === pages.calendar ? calendarView : todoView)?.openAdd();
+	}
+
 	const updateViewMode = (value, { animate = true } = {}) => {
+		if (value in ADD_ON) {
+			pendingAdd = ADD_ON[value];
+			return updateViewMode(ADD_ON[value], { animate });
+		}
 		if (browser) {
 			if (window.history.state?.viewMode != value)
 				window.history.pushState(
@@ -178,10 +196,18 @@
 
 	// A tab URL opens straight on that tab (a refresh, a reopened tab)
 	const pathView = viewFromPath($page.url.pathname);
-	if (pathView !== undefined) viewMode = pathView;
+	if (pathView in ADD_ON) {
+		viewMode = ADD_ON[pathView];
+		pendingAdd = viewMode;
+	} else if (pathView !== undefined) viewMode = pathView;
 
 	const handlePopState = (event) => {
-		showView(event.state?.viewMode ?? viewFromPath(location.pathname) ?? pages.home);
+		const target = event.state?.viewMode ?? viewFromPath(location.pathname) ?? pages.home;
+		if (target in ADD_ON) {
+			pendingAdd = ADD_ON[target];
+			history.replaceState({ viewMode: pendingAdd }, "", pageNames[pendingAdd]);
+			showView(pendingAdd);
+		} else showView(target);
 	};
 
 	function updateCookies() {
@@ -241,6 +267,8 @@
 
 	onMount(async () => {
 		if (browser) {
+			// An old /addEvent or /addTodo address: show the tab's own address
+			if (pathView in ADD_ON) history.replaceState({ viewMode }, "", pageNames[viewMode]);
 			window.addEventListener("popstate", handlePopState);
 			// Add listener for our custom viewModeChanged event
 			// detail: a page index, or a page name ("assistant")
@@ -385,8 +413,8 @@
 		{/if}
 		{#if alive.calendar || view === "calendar"}
 			<Screen name="calendar" active={view === "calendar"}>
-				<Calendar active={view === "calendar"} onReady={() => markReady("calendar")} />
-				<PlusButton func={() => updateViewMode(pages.addEvent)} />
+				<Calendar bind:this={calendarView} active={view === "calendar"} onReady={() => markReady("calendar")} />
+				<PlusButton func={() => calendarView?.openAdd()} />
 			</Screen>
 		{/if}
 		{#if alive.chores || view === "chores"}
@@ -399,8 +427,8 @@
 		{/if}
 		{#if alive.todo || view === "todo"}
 			<Screen name="todo" active={view === "todo"}>
-				<Todo active={view === "todo"} onReady={() => markReady("todo")} />
-				<PlusButton func={() => updateViewMode(pages.addTodo)} />
+				<Todo bind:this={todoView} active={view === "todo"} onReady={() => markReady("todo")} />
+				<PlusButton func={() => todoView?.openAdd()} />
 			</Screen>
 		{/if}
 		{#if alive.stats || view === "stats"}
@@ -419,12 +447,8 @@
 				<Settings user_id={user} active={view === "settings"} onReady={() => markReady("settings")} />
 			</Screen>
 		{/if}
-		{#if view === "addEvent"}
-			<Screen name="addEvent" active><AddEventForm /></Screen>
-		{:else if view === "addChore"}
+		{#if view === "addChore"}
 			<Screen name="addChore" active><AddChoreForm /></Screen>
-		{:else if view === "addTodo"}
-			<Screen name="addTodo" active><AddTodoForm /></Screen>
 		{:else if view === "addAutomation"}
 			<Screen name="addAutomation" active><AddAutomationForm /></Screen>
 		{/if}

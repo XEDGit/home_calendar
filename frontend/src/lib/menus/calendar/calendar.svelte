@@ -1,7 +1,8 @@
 <script>
 	import { getChores, getEvents, getUsers } from '$lib/requests';
 	import { onMount, tick } from 'svelte';
-	import UpdateEvent from './updateEvent.svelte';
+	import EventSheet from '$lib/sheet/EventSheet.svelte';
+	import { addStart } from '$lib/sheet/when.js';
 	import { viewTransition, reveal } from '$lib/motion';
 
 	// ── Constants ─────────────────────────────────────────────────────────────
@@ -295,11 +296,11 @@
 
 	// ── Interactions ──────────────────────────────────────────────────────────
 	function handleEventClick(event) { selectedEvent = event; modalOpen = true; }
-	function handleEventClose()      { selectedEvent = null;  modalOpen = false; }
+	function handleEventClose()      { selectedEvent = null; addingAt = null; modalOpen = false; }
 
-	function handleEventUpdated(evt) {
-		const idx = events.findIndex(e => e._id === evt._id);
-		if (idx !== -1) events[idx] = evt;
+	// Saved from the sheet (an edit or a new event): reload the period, so
+	// repeats are worked out again by the server
+	function handleEventUpdated() {
 		refreshPeriod();
 	}
 
@@ -308,14 +309,15 @@
 		refreshPeriod();
 	}
 
-	function goToAddEvent(day, hour = null) {
-		const d = new Date(day);
-		const now = new Date();
-		d.setHours(hour ?? now.getHours(), hour !== null ? 0 : now.getMinutes(), 0, 0);
-		localStorage.setItem('selectedCalendarDate', d.getTime().toString());
-		window.history.pushState({ viewMode: 3 }, '', 'addEvent');
-		window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: 3 }));
+	// The add sheet: a day (and hour) clicked in the calendar, or the + button
+	// (the day in view). Null while closed.
+	let addingAt = null;
+	export function openAdd(day = calendarDate, hour = null) {
+		selectedEvent = null;
+		addingAt = addStart(day, hour);
+		modalOpen = true;
 	}
+	const goToAddEvent = (day, hour = null) => openAdd(day, hour);
 
 	function handleMonthChange(e) {
 		const d = new Date(calendarDate); d.setMonth(parseInt(e.target.value));
@@ -1113,10 +1115,16 @@
 </div>
 
 {#if selectedEvent}
-	<UpdateEvent
+	<EventSheet
 		event={selectedEvent}
 		onClose={handleEventClose}
-		onUpdated={handleEventUpdated}
+		onSaved={handleEventUpdated}
 		onDeleted={handleEventDeleted}
+	/>
+{:else if addingAt}
+	<EventSheet
+		start={addingAt}
+		onClose={handleEventClose}
+		onSaved={handleEventUpdated}
 	/>
 {/if}

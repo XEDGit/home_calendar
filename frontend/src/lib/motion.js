@@ -206,9 +206,13 @@ export function autoHeight(node) {
  * routes every close (close button, Escape, backdrop click, closeDialog())
  * through a short exit animation before the real close. The enter animation
  * is pure CSS (@starting-style in general.css).
+ *
+ * `{ lockBackdrop: true }` ignores backdrop clicks (a form with unsaved
+ * changes); Escape and closeDialog() still close.
  */
-export function modalDialog(node) {
+export function modalDialog(node, options = {}) {
 	let closing = false;
+	let opts = options || {};
 
 	function close() {
 		if (closing || !node.open) return;
@@ -234,7 +238,7 @@ export function modalDialog(node) {
 	// Backdrop clicks land on the <dialog> itself, outside its box.
 	// Keyboard-activated clicks report (0,0), so require the dialog as target.
 	function onClick(e) {
-		if (e.target !== node) return;
+		if (e.target !== node || opts.lockBackdrop) return;
 		const r = node.getBoundingClientRect();
 		const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
 		if (!inside) close();
@@ -246,6 +250,9 @@ export function modalDialog(node) {
 	node.showModal();
 
 	return {
+		update(next) {
+			opts = next || {};
+		},
 		destroy() {
 			node.removeEventListener('cancel', onCancel);
 			node.removeEventListener('click', onClick);

@@ -1,8 +1,8 @@
 <script>
     import { onMount } from 'svelte';
-    import { getTodos, getTags, updateTodo, deleteTodo } from '$lib/requests.js'
+    import { getTodos, getTags, updateTodo } from '$lib/requests.js'
     import Card from '$lib/buttons/card.svelte';
-    import UpdateTodo from './updateTodo.svelte';
+    import TodoSheet from '$lib/sheet/TodoSheet.svelte';
     import { reveal, vanish, move } from '$lib/motion';
 
     export let todos = [];
@@ -62,32 +62,27 @@
         selectedTodo = todo;
     }
 
-    function resetTodoSelection() {
+    // The sheet: a todo opened from the board, or a new one (the + button).
+    // What it saves or deletes updates the list in place.
+    let adding = false;
+    export function openAdd() {
         selectedTodo = null;
+        adding = true;
     }
 
-    async function handleTodoUpdate(updatedTodo) {
-        try {
-            await updateTodo(updatedTodo);
-            const index = todos.findIndex(t => t._id === updatedTodo.id);
-            if (index !== -1) {
-                todos[index] = { ...todos[index], ...updatedTodo };
-            }
-            todos = await getTodos();
-            resetTodoSelection();
-        } catch (error) {
-            console.error('Error updating todo:', error);
-        }
+    function closeSheet() {
+        selectedTodo = null;
+        adding = false;
     }
 
-    async function handleTodoDelete(todoId) {
-        try {
-            await deleteTodo({ id: todoId });
-            todos = todos.filter(t => t._id !== todoId);
-            resetTodoSelection();
-        } catch (error) {
-            console.error('Error deleting todo:', error);
-        }
+    function handleTodoSaved(saved) {
+        const i = todos.findIndex(t => t._id === saved._id);
+        if (i === -1) load();
+        else todos[i] = { ...todos[i], ...saved };
+    }
+
+    function handleTodoDeleted(id) {
+        todos = todos.filter(t => t._id !== id);
     }
 
     async function load() {
@@ -221,10 +216,7 @@
 </div>
 
 {#if selectedTodo}
-    <UpdateTodo 
-        todo={selectedTodo} 
-        onSubmit={handleTodoUpdate} 
-        reset={resetTodoSelection} 
-        delFunc={handleTodoDelete} 
-    />
+    <TodoSheet todo={selectedTodo} onSaved={handleTodoSaved} onDeleted={handleTodoDeleted} onClose={closeSheet} />
+{:else if adding}
+    <TodoSheet onSaved={handleTodoSaved} onClose={closeSheet} />
 {/if}

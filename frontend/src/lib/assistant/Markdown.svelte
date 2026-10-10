@@ -48,7 +48,7 @@
 	ul { padding-left: 1.25em; display: flex; flex-direction: column; gap: 2px; }
 	li::marker { color: var(--primary); }
 	strong { font-weight: var(--weight-bold); }
-	/* A quiet hairline, like the rule under a section heading */
-	hr { width: 100%; height: 0; border: none; border-top: var(--bw-hair) solid var(--primary-a25); }
+	/* A quiet rule at border weight: a hairline read too faint in a reply */
+	hr { width: 100%; height: 0; border: none; border-top: var(--bw) solid var(--primary-a25); }
 	a { color: inherit; overflow-wrap: anywhere; }
 </style>

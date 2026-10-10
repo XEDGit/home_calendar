@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import { reveal } from '$lib/motion';
 	import { cancel, togglePlanAction, confirm, reject } from '$lib/assistant/store.js';
+	import Markdown from './Markdown.svelte';
 
 	export let conversationId = null;
 	export let messages = [];
@@ -79,7 +80,9 @@
 <div class="log" bind:this={log} use:followResize on:scroll={onScroll} style:max-height={maxHeight}>
 	{#each messages as m, i (m._id)}
 		<div class="msg {m.role}" in:reveal>
-			{#if m.content}
+			{#if m.content && m.role === 'assistant'}
+				<div class="bubble"><Markdown text={m.content} /></div>
+			{:else if m.content}
 				<p class="bubble">{m.content}</p>
 			{:else if m.role === 'assistant' && m.status === 'running' && !m.tools?.length}
 				<p class="bubble thinking" aria-live="polite">Thinking…</p>

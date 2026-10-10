@@ -3,6 +3,7 @@ const LIMIT_UNAUTH = 10
 const MAX_TRACKED_IPS = 10000
 const MAX_INFRACTIONS = 50
 import { promises as fs } from 'fs';
+import { clientIp } from '$lib/server/clientIp.js';
 import { redirect } from '@sveltejs/kit';
 import { THEMES, themeStyle } from '$lib/theme.js';
 
@@ -88,34 +89,17 @@ let blacklist = null;
 	}
 })()
 
-// Determine the real client IP. nginx sets X-Real-IP from its $remote_addr,
-// which the realip module restores from CF-Connecting-IP when (and only when)
-// the TCP peer is a Cloudflare edge — so it cannot be spoofed by the client.
-// The last entry of X-Forwarded-For is the hop nginx appended and is likewise
-// trustworthy; everything to its left is client-supplied and must be ignored.
-function clientIp(event) {
-	const realIp = event.request.headers.get('x-real-ip');
-	if (realIp) return realIp.trim();
-	const xff = event.request.headers.get('x-forwarded-for');
-	if (xff) {
-		const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
-		if (parts.length) return parts[parts.length - 1];
-	}
-	try {
-		return event.getClientAddress();
-	} catch {
-		return 'unknown';
-	}
-}
-
 function applySecurityHeaders(response) {
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('X-Frame-Options', 'DENY');
 	response.headers.set('Referrer-Policy', 'no-referrer');
 	// Microphone for the assistant's voice input, this origin only
 	response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
-	// HSTS is sent by nginx (the TLS terminator); setting it here too would
-	// produce a duplicate header with a conflicting max-age.
+	// Both ways in are HTTPS only (Cloudflare, Tailscale serve). Over plain
+	// http (the dev server) browsers ignore it. The Content-Security-Policy
+	// comes from kit.csp in svelte.config.js, with a nonce for SvelteKit's
+	// own inline script.
+	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
 	return response;
 }
 
@@ -142,7 +126,7 @@ export async function handle({ event, resolve }) {
 
 	const token = event.cookies.get('session');
 
-	const ip = clientIp(event);
+	const ip = clientIp(event.request.headers, () => event.getClientAddress());
 
 	if (blacklist.isBlocked(ip)) {
 		return new Response("Contact the administrator", {status: 418, headers: {'Connection': 'close'},})

@@ -5,8 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All services run via Docker Compose. Use Makefile shortcuts:
+Frontend, backend, mongo and searxng run in k3s (namespace `home-calendar`, manifest `~/k3s/home-calendar/calendar.yaml` in the separate `~/k3s` git repo, images in the local registry `127.0.0.1:30500`). Only the GPU services (`llm`, `whisper`) still run via Docker Compose. Makefile shortcuts:
 
+- `make deploy` — ship to k3s whatever changed since the images the cluster runs (`scripts/deploy-k3s.sh`): npm test, build + push `calendar-<service>:<short HEAD>`, bump the tag in the manifest, `kubectl apply`, wait for the rollout, commit the manifest in `~/k3s`. Refuses uncommitted changes in the service's directory (`ALLOW_DIRTY=1` builds a `<sha>-dirty-<time>` preview). Only redeploys the backend when `backend/` changed: it is one replica with `Recreate`, so a restart interrupts assistant chats. `make deploy-frontend` / `deploy-backend` / `deploy-all` force a service; `DRY_RUN=1` prints the steps, `SKIP_TESTS=1` skips tests.
 - `make` — build + start detached
 - `make run` — build + start with attached logs
 - `make build` — rebuild images with `--no-cache`

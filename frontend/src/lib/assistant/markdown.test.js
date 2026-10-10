@@ -121,3 +121,62 @@ test('emphasis around a URL leaves the URL whole (links are found in text nodes)
 		] }] },
 	]);
 });
+
+const cell = (v) => (v ? [text(v)] : []);
+const table = (head, rows, align = head.map(() => null)) => ({ type: 'table', align, head: head.map(cell), rows: rows.map(r => r.map(cell)) });
+
+test('a header row, a delimiter row and body rows make a table', () => {
+	assert.deepEqual(parse('| Chore | Who |\n|-------|-----|\n| Bins | Luca |\n| Recycling | Anna |'),
+		[table(['Chore', 'Who'], [['Bins', 'Luca'], ['Recycling', 'Anna']])]);
+});
+
+test('outer pipes are optional', () => {
+	assert.deepEqual(parse('Chore | Who\n--- | ---\nBins | Luca'), [table(['Chore', 'Who'], [['Bins', 'Luca']])]);
+});
+
+test('colons in the delimiter row set column alignment', () => {
+	assert.deepEqual(parse('| a | b | c | d |\n|:--|:-:|--:|---|\n| 1 | 2 | 3 | 4 |'),
+		[table(['a', 'b', 'c', 'd'], [['1', '2', '3', '4']], ['left', 'center', 'right', null])]);
+});
+
+test('a table with only a header row has no body', () => {
+	assert.deepEqual(parse('| a | b |\n| - | - |'), [table(['a', 'b'], [])]);
+});
+
+test('rows are padded or cut to the header width', () => {
+	assert.deepEqual(parse('| a | b |\n|---|---|\n| 1 |\n| 1 | 2 | 3 |'), [table(['a', 'b'], [['1', ''], ['1', '2']])]);
+});
+
+test('\\| is a literal pipe inside a cell', () => {
+	assert.deepEqual(parse('| a | b |\n|---|---|\n| x \\| y | z |'), [table(['a', 'b'], [['x | y', 'z']])]);
+});
+
+test('cells take inline formatting', () => {
+	assert.deepEqual(parse('| Who | Note |\n|---|---|\n| **Luca** | *today* |'), [{
+		type: 'table', align: [null, null], head: [cell('Who'), cell('Note')],
+		rows: [[[{ t: 'strong', children: [text('Luca')] }], [{ t: 'em', children: [text('today')] }]]],
+	}]);
+});
+
+test('the table ends at a blank line or a line without a pipe; text around it stays paragraphs', () => {
+	assert.deepEqual(parse('Here you go:\n| a | b |\n|---|---|\n| 1 | 2 |\nThat is all.\n\n| c |\n|---|\n| 3 |'), [
+		{ type: 'para', lines: [[text('Here you go:')]] },
+		table(['a', 'b'], [['1', '2']]),
+		{ type: 'para', lines: [[text('That is all.')]] },
+		table(['c'], [['3']]),
+	]);
+});
+
+test('without a matching delimiter row, pipes are just text', () => {
+	assert.deepEqual(parse('Luca | Anna'), [{ type: 'para', lines: [[text('Luca | Anna')]] }]);
+	// header still streaming in: no delimiter yet
+	assert.deepEqual(parse('| a | b |'), [{ type: 'para', lines: [[text('| a | b |')]] }]);
+	// delimiter with a different number of columns
+	assert.deepEqual(parse('| a | b |\n|---|\n| 1 | 2 |'), [{ type: 'para', lines: [[text('| a | b |')], [text('|---|')], [text('| 1 | 2 |')]] }]);
+	// a --- rule under a pipe line is a rule, not a delimiter
+	assert.deepEqual(parse('a | b\n---'), [{ type: 'para', lines: [[text('a | b')]] }, { type: 'rule' }]);
+});
+
+test('HTML in a cell stays text', () => {
+	assert.deepEqual(parse('| a |\n|---|\n| <img src=x onerror=alert(1)> |'), [table(['a'], [['<img src=x onerror=alert(1)>']])]);
+});

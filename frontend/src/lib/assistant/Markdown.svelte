@@ -21,6 +21,20 @@
 			<svelte:element this={`h${Math.min(6, below + b.depth)}`} class="h" class:h1={b.depth === 1}>{@render inline(b.inline)}</svelte:element>
 		{:else if b.type === 'rule'}
 			<hr />
+		{:else if b.type === 'table'}
+			<!-- A wide table scrolls sideways inside the reply, never the page -->
+			<div class="table">
+				<table>
+					<thead>
+						<tr>{#each b.head as cell, c}<th scope="col" style:text-align={b.align[c]}>{@render inline(cell)}</th>{/each}</tr>
+					</thead>
+					<tbody>
+						{#each b.rows as row}
+							<tr>{#each row as cell, c}<td style:text-align={b.align[c]}>{@render inline(cell)}</td>{/each}</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{:else if b.type === 'list'}
 			<ul>
 				{#each b.items as item}
@@ -48,6 +62,18 @@
 	ul { padding-left: 1.25em; display: flex; flex-direction: column; gap: 2px; }
 	li::marker { color: var(--primary); }
 	strong { font-weight: var(--weight-bold); }
+	/* Tables read like a printed ledger: rose header over a firmer rule,
+	 * hairlines between rows, no outer box, figures in even columns */
+	.table { max-width: 100%; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--primary-a45) transparent; }
+	table { border-collapse: collapse; font-size: var(--text-sm); line-height: var(--leading-snug); font-variant-numeric: tabular-nums; }
+	th, td { padding: var(--space-xs) var(--space-sm); vertical-align: top; overflow-wrap: normal; text-align: left; }
+	th:first-child, td:first-child { padding-left: 0; }
+	th:last-child, td:last-child { padding-right: 0; }
+	th { color: var(--primary); font-weight: var(--weight-bold); border-bottom: var(--bw) solid var(--primary-a45); }
+	td { border-bottom: var(--bw-hair) solid var(--primary-a25); }
+	tbody tr:last-child td { border-bottom: none; }
+	/* Whole words in cells, links too: a long one scrolls the table instead */
+	.table a { overflow-wrap: normal; }
 	/* A quiet rule at border weight: a hairline read too faint in a reply */
 	hr { width: 100%; height: 0; border: none; border-top: var(--bw) solid var(--primary-a25); }
 	a { color: inherit; overflow-wrap: anywhere; }

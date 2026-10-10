@@ -1,6 +1,6 @@
 // The little markdown the assistant's replies may use: `#` headings, `-` and
-// `*` list items, `---` rules, **bold** and *italic*. Everything else stays
-// literal text.
+// `*` list items, `---` rules, `| a | b |` tables, **bold** and *italic*.
+// Everything else stays literal text.
 //
 // parse() returns a tree of plain objects, never HTML: the component renders
 // it as elements with text children, so anything in a reply (the model's own
@@ -9,6 +9,9 @@
 //   block:  { type: 'heading', depth, inline }          depth = number of #
 //           { type: 'list', items: [{ depth, inline }] } depth 0-2 (nesting)
 //           { type: 'rule' }                            a --- line
+//           { type: 'table', align, head, rows }        align[c]: 'left' |
+//                                                       'center' | 'right' | null;
+//                                                       head: [inline], rows: [[inline]]
 //           { type: 'para', lines: [inline, ...] }      one entry per line
 //   inline: { t: 'text', v } | { t: 'strong', children } | { t: 'em', children }
 
@@ -24,7 +27,9 @@ export function parse(source) {
 	let list = null;
 	const end = () => { para = null; list = null; };
 
-	for (const line of String(source ?? '').split(/\r?\n/)) {
+	const lines = String(source ?? '').split(/\r?\n/);
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
 		let m;
 		if (!line.trim()) {
 			end();
@@ -39,6 +44,18 @@ export function parse(source) {
 			if (!list) blocks.push((list = { type: 'list', items: [] }));
 			const indent = m[1].replace(/\t/g, '  ').length;
 			list.items.push({ depth: Math.min(2, Math.floor(indent / 2)), inline: parseInline(m[2]) });
+		} else if (line.includes('|') && delimiter(lines[i + 1], cells(line).length)) {
+			end();
+			const head = cells(line);
+			const table = { type: 'table', align: cells(lines[i + 1]).map(alignment), head: head.map(parseInline), rows: [] };
+			// Rows run until a blank line or a line without a pipe
+			for (i += 2; i < lines.length && lines[i].trim() && lines[i].includes('|'); i++) {
+				const row = cells(lines[i]).slice(0, head.length);
+				while (row.length < head.length) row.push('');
+				table.rows.push(row.map(parseInline));
+			}
+			i--;
+			blocks.push(table);
 		} else {
 			list = null;
 			if (!para) blocks.push((para = { type: 'para', lines: [] }));
@@ -46,6 +63,36 @@ export function parse(source) {
 		}
 	}
 	return blocks;
+}
+
+// The cells of a table row: outer pipes optional, \| is a literal pipe
+function cells(line) {
+	let s = line.trim();
+	if (s.startsWith('|')) s = s.slice(1);
+	if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+	const out = [];
+	let cur = '';
+	for (let i = 0; i < s.length; i++) {
+		if (s[i] === '\\' && s[i + 1] === '|') { cur += '|'; i++; }
+		else if (s[i] === '|') { out.push(cur.trim()); cur = ''; }
+		else cur += s[i];
+	}
+	out.push(cur.trim());
+	return out;
+}
+
+// |---|:-:|--:| under a header of the same width
+function delimiter(line, width) {
+	if (!line?.includes('|')) return false;
+	const c = cells(line);
+	return c.length === width && c.every(x => /^:?-+:?$/.test(x));
+}
+
+function alignment(c) {
+	if (c.startsWith(':') && c.endsWith(':')) return 'center';
+	if (c.endsWith(':')) return 'right';
+	if (c.startsWith(':')) return 'left';
+	return null;
 }
 
 export function parseInline(s) {

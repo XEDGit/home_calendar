@@ -94,3 +94,15 @@ test('a huge range is capped per series', () => {
 	const out = expandEvents([ev], ...range('2000-01-01T00:00:00Z', '2100-01-01T00:00:00Z'));
 	assert.equal(out.length, 1000);
 });
+
+test('an unreadable range returns nothing instead of looping forever', () => {
+	const ev = { _id: 'e1', when: '2026-10-01T09:00:00', repeatDays: 7 };
+	assert.deepEqual(expandEvents([ev], new Date('nonsense'), new Date('2026-11-01T00:00:00Z')), []);
+	assert.deepEqual(expandEvents([ev], new Date('2026-10-01T00:00:00Z'), new Date('nonsense')), []);
+	assert.deepEqual(expandEvents([ev], new Date('nonsense'), new Date('nonsense')), []);
+});
+
+test('a series that runs past the end of time stops', () => {
+	const ev = { _id: 'e1', when: '2026-10-01T09:00:00', repeatDays: 1e9 };
+	assert.deepEqual(whens(expandEvents([ev], new Date('2026-10-01T00:00:00Z'), new Date(8.64e15))), ['2026-10-01T07:00:00.000Z']);
+});

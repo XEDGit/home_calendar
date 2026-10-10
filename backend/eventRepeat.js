@@ -53,6 +53,7 @@ export function withInstant(event) {
  */
 export function expandEvents(events, start, end) {
 	const out = [];
+	if (isNaN(start) || isNaN(end)) return out;
 	for (const event of events) {
 		const first = parseWhen(event.when);
 		if (!first) continue;
@@ -65,8 +66,10 @@ export function expandEvents(events, start, end) {
 		// Jump close to the range, then walk; one step back covers DST's hour
 		let k = Math.max(0, Math.floor((start - first) / (step * DAY)) - 1);
 		for (let n = 0; n < MAX_REPEATS; k++) {
-			const at = fromWall(wall + k * step * DAY);
-			if (at > end) break;
+			const next = wall + k * step * DAY;
+			if (!(Math.abs(next) <= 8.64e15)) break; // past the last date JS can hold
+			const at = fromWall(next);
+			if (isNaN(at) || at > end) break;
 			if (at >= start) {
 				out.push({ ...event, when: at.toISOString(), isOccurrence: true, originalEventId: event._id, originalEventDate: event.when });
 				n++;

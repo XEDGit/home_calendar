@@ -139,27 +139,35 @@ html[data-vt-dir='back'] { --vt-push: -100vw; }
 	from { translate: var(--vt-push) 0; }
 }
 
+/* Every screen is listed: one left out falls back to the browser's
+ * crossfade. A new <Screen name="x"> needs screen-x in both lists. */
 ::view-transition-old(screen-home),
+::view-transition-old(screen-assistant),
 ::view-transition-old(screen-calendar),
 ::view-transition-old(screen-chores),
 ::view-transition-old(screen-todo),
 ::view-transition-old(screen-stats),
+::view-transition-old(screen-automations),
 ::view-transition-old(screen-settings),
 ::view-transition-old(screen-addEvent),
 ::view-transition-old(screen-addChore),
-::view-transition-old(screen-addTodo) {
+::view-transition-old(screen-addTodo),
+::view-transition-old(screen-addAutomation) {
 	animation: vt-push-out var(--dur-screen) var(--ease-screen) both;
 }
 
 ::view-transition-new(screen-home),
+::view-transition-new(screen-assistant),
 ::view-transition-new(screen-calendar),
 ::view-transition-new(screen-chores),
 ::view-transition-new(screen-todo),
 ::view-transition-new(screen-stats),
+::view-transition-new(screen-automations),
 ::view-transition-new(screen-settings),
 ::view-transition-new(screen-addEvent),
 ::view-transition-new(screen-addChore),
-::view-transition-new(screen-addTodo) {
+::view-transition-new(screen-addTodo),
+::view-transition-new(screen-addAutomation) {
 	animation: vt-push-in var(--dur-screen) var(--ease-screen) both;
 }
 

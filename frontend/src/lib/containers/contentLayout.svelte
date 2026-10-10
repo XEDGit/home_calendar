@@ -3,7 +3,6 @@
 
     // Only the page shell is the <main> landmark; nested layouts stay divs.
     export let as = 'div';
-    // The page shell's container and title morph during page transitions.
     export let pageView = false;
     export let title = '';
     export let loading = false;
@@ -50,8 +49,10 @@
 </style>
 
 <svelte:element this={as} class="content-container" class:page-view={pageView}>
+    <!-- The nav already shows which screen this is, so its name is only
+         announced, not shown -->
     {#if title}
-        <h1 class="title" class:page-title={pageView}>{title}</h1>
+        <h1 class="sr-only">{title}</h1>
     {/if}
 
     {#if loading}

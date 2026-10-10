@@ -9,12 +9,17 @@
     export let chores = null;
     export let users_by_id = null;
     export let rooms_by_id = null;
+    // Told the picked range, so the graph below can cover the same days
+    export let onRangeChange = () => {};
     
     // Date ranges for stats section
     let statsStartDate = new Date();
     let statsEndDate = new Date();
     let statsCustomRange = false;
     let statsDateRangeText = "Today";
+    // The custom date inputs hold YYYY-MM-DD strings
+    let customStart = '';
+    let customEnd = '';
     
     // Stats calculation
     let totalStats = {
@@ -56,27 +61,39 @@
             statsDateRangeText = `Last ${days} Days`;
         }
         
-        calculateStats();
+        rangeChanged();
+    }
+    
+    function toInputDate(date) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+    
+    // Local midnight; new Date('YYYY-MM-DD') would be UTC midnight
+    function fromInputDate(value) {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(year, month - 1, day);
     }
     
     function setStatsCustomDateRange() {
         statsCustomRange = true;
         statsDateRangeText = "Custom Range";
-        calculateStats();
+        customStart = toInputDate(statsStartDate);
+        customEnd = toInputDate(statsEndDate);
+        rangeChanged();
     }
     
     function updateStatsCustomDateRange() {
-        if (typeof statsStartDate === 'string') {
-            statsStartDate = new Date(statsStartDate);
-            statsStartDate.setHours(0, 0, 0, 0);
-        }
-        
-        if (typeof statsEndDate === 'string') {
-            statsEndDate = new Date(statsEndDate);
-            statsEndDate.setHours(23, 59, 59, 999);
-        }
-        
+        if (!customStart || !customEnd) return;
+        statsStartDate = fromInputDate(customStart);
+        statsEndDate = fromInputDate(customEnd);
+        statsEndDate.setHours(23, 59, 59, 999);
+        rangeChanged();
+    }
+    
+    function rangeChanged() {
         calculateStats();
+        onRangeChange(statsStartDate, statsEndDate);
     }
     
     function calculateStats() {
@@ -174,9 +191,20 @@
         console.log(totalStats)
     }
     
-    // Initialize with default range when data is available
-    $: if (stats && users && rooms && events && chores && users_by_id && rooms_by_id) {
+    // Default range once the data first arrives; refreshes (a deleted stat,
+    // coming back to the tab) keep the range that was picked
+    let initialized = false;
+    function refresh() {
+        if (initialized) {
+            calculateStats();
+            return;
+        }
+        initialized = true;
         setStatsDateRange(30); // Default to last 30 days
+    }
+
+    $: if (stats && users && rooms && events && chores && users_by_id && rooms_by_id) {
+        refresh();
     }
 </script>
 
@@ -374,7 +402,7 @@
                             id="stats-start-date" 
                             class="date-input" 
                             type="date" 
-                            bind:value={statsStartDate} 
+                            bind:value={customStart} 
                             on:change={updateStatsCustomDateRange}
                         />
                     </div>
@@ -384,7 +412,7 @@
                             id="stats-end-date" 
                             class="date-input" 
                             type="date" 
-                            bind:value={statsEndDate} 
+                            bind:value={customEnd} 
                             on:change={updateStatsCustomDateRange}
                         />
                     </div>

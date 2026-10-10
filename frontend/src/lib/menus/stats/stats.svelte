@@ -22,7 +22,6 @@
 	let rooms_by_id = null;
 	let events = null; // Added variable declaration
 
-	let history_len = 5;
 	let chartType = 'line';
 	let chores_filter = [];
 	let lineChartComponent;
@@ -45,8 +44,15 @@
 		wasActive = isActive;
 	}
 
-	// Variables for time navigation
-	let currentOffset = 0; // Number of days to offset from current date (negative for past, positive for future)
+	// The graph covers the range picked in the household stats above it
+	let rangeStart = null;
+	let rangeEnd = null;
+
+	function handleRangeChange(start, end) {
+		rangeStart = start;
+		rangeEnd = end;
+		updateCharts();
+	}
 
 	function filterStats(stats_list, chores_filter) {
 		if (chores_filter.length) {
@@ -60,26 +66,8 @@
 		updateCharts();
 	}
 
-	// Navigate backward in time
-	function navigateBackward() {
-		currentOffset -= history_len;
-		updateCharts();
-	}
-
-	// Navigate forward in time
-	function navigateForward() {
-		currentOffset += history_len;
-		if (currentOffset > 0) currentOffset = 0; // Don't navigate into the future
-		updateCharts();
-	}
-
-	// Reset to current time
-	function resetTimeNavigation() {
-		currentOffset = 0;
-		updateCharts();
-	}
-
 	function updateCharts() {
+		if (!rangeStart) return;
 		if (chartType === 'line') {
 			prepareLineChartData();
 			if (lineChartComponent) {
@@ -93,28 +81,22 @@
 		}
 	}
 
+	function dayKey(date) {
+		return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+	}
+
 	function prepareLineChartData() {
-		let date = new Date();
-		// Apply the offset for time navigation
-		date.setDate(date.getDate() + currentOffset);
-		
-		let dates = [];
-		for (let i = 0; i < history_len; i++) {
-			const day = String(date.getDate());
-			const month = String(date.getMonth() + 1);
-			dates.push(`${day}-${month}`);
-			date.setDate(date.getDate() - 1);
+		// One point per day of the range
+		let days = [];
+		for (let date = new Date(rangeStart); date <= rangeEnd; date.setDate(date.getDate() + 1)) {
+			days.push(new Date(date));
 		}
-		dates.reverse();
+		const day_index = Object.fromEntries(days.map((day, i) => [dayKey(day), i]));
 		
 		let dataset = {};
 		for (let d of filterStats(stats, chores_filter)) {
-			date = new Date(d.date);
-			const day = String(date.getDate());
-			const month = String(date.getMonth() + 1);
-			date = `${day}-${month}`;
-			let idx = dates.findIndex((cmp_date) => {return date == cmp_date});
-			if (idx == -1) continue;
+			const idx = day_index[dayKey(new Date(d.date))];
+			if (idx === undefined) continue;
 			
 			if (d.who in dataset) {
 				if (chores_filter.length) {
@@ -126,7 +108,7 @@
 				const color = users_by_id[d.who].color;
 				dataset[d.who] = {
 					label: users_by_id[d.who].name,
-					data: Array(history_len).fill(0),
+					data: Array(days.length).fill(0),
 					fill: true,
 					backgroundColor: color ? color.padEnd(6, '0') + '99' : currentPrimary() + '99',
 					borderColor: color || currentPrimary(),
@@ -141,22 +123,18 @@
 		}
 		
 		lineDatasets = Object.values(dataset);
-		lineLabels = dates;
+		lineLabels = days.map(day => `${day.getDate()}-${day.getMonth() + 1}`);
 	}
 
 	function prepareBarChartData() {
 		let dataset = {};
-		let date = new Date();
-		// Apply the offset for bar chart time navigation
-		date.setDate(date.getDate() + currentOffset);
-		date.setDate(date.getDate() - history_len);
-		
 		for (let chore of chores) {
 			dataset[chore.name] = {};
 			for (let user of users) {
 				dataset[chore.name][user.name] = 0;
 				for (let stat of filterStats(stats_per_user[user._id] || [], chores_filter)) {
-					if (date < new Date(stat.date) && stat.chore_ref == chore._id) {
+					const stat_date = new Date(stat.date);
+					if (stat_date >= rangeStart && stat_date <= rangeEnd && stat.chore_ref == chore._id) {
 						if (chores_filter.length) {
 							dataset[chore.name][user.name] += stat.rooms.filter(room => chores_filter.includes(rooms_by_id[room])).length;
 						} else {	
@@ -217,7 +195,6 @@
 		// Assigned last: the page renders once everything it needs is here
 		stats = fetchedStats;
 		reduceStats();
-		prepareLineChartData();
 
 		// The chart mounts once stats render
 		await tick();
@@ -244,10 +221,6 @@
 		flex-direction: column;
 		align-items: center;
 		margin-bottom: 10px;
-	}
-
-	input {
-		background-color: var(--primary);
 	}
 
 	.user-stats {
@@ -289,48 +262,6 @@
 		}
 	}
 
-	.range-container {
-		width: 100%;
-		text-align: center;
-	}
-	
-	.navigation-container {
-		display: flex;
-		justify-content: center;
-		gap: 10px;
-		margin: 10px 0;
-	}
-	
-	.nav-button {
-		background-color: var(--paper);
-		border: var(--bw) solid var(--primary);
-		border-radius: var(--radius-md);
-		color: var(--primary);
-		padding: var(--control-pad-y) var(--control-pad-x);
-		min-height: var(--control-min-h);
-		cursor: pointer;
-		font-weight: var(--weight-bold);
-		transition: var(--swap);
-	}
-	
-	@media (hover: hover) {
-		.nav-button:hover {
-			background-color: var(--primary);
-			color: var(--paper);
-		}
-	}
-	
-	.nav-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	
-	.time-info {
-		color: var(--primary);
-		text-align: center;
-		margin: 5px 0;
-		font-style: italic;
-	}
 </style>
 
 <ContentLayout
@@ -350,6 +281,7 @@
 				chores={chores}
 				users_by_id={users_by_id}
 				rooms_by_id={rooms_by_id}
+				onRangeChange={handleRangeChange}
 			/>
 		{/if}
 		<!-- Chart Section -->
@@ -360,26 +292,6 @@
 					"Bars": () => {chartType = 'bars'; updateCharts();}
 				}} 
 			/>
-			
-			<div class="navigation-container">
-				<button class="nav-button" on:click={navigateBackward}>
-					← Older
-				</button>
-				{#if currentOffset !== 0}
-					<button class="nav-button" on:click={resetTimeNavigation}>
-						Reset
-					</button>
-				{/if}
-				<button class="nav-button" on:click={navigateForward} disabled={currentOffset === 0}>
-					Newer →
-				</button>
-			</div>
-			
-			{#if currentOffset !== 0}
-				<p class="time-info">
-					Viewing data from {Math.abs(currentOffset) + history_len} to {Math.abs(currentOffset)} days ago
-				</p>
-			{/if}
 			
 			{#if chartType === 'line'}
 				<div in:reveal>
@@ -406,24 +318,6 @@
 				selectedRooms={chores_filter} 
 				onFilterChange={handleFilterChange} 
 			/>
-			
-			<div class="range-container">
-				<p style='color: var(--primary); margin: 0; margin-top:10px;'>
-					Showing {history_len} days {currentOffset === 0 ? '' : `(offset by ${-currentOffset} days)`}
-				</p>
-				<input 
-					class='range' 
-					type="range" 
-					min="1" 
-					max="30" 
-					step="1" 
-					bind:value={history_len} 
-					on:change={(e) => {
-						updateCharts(); 
-						e.target.max = history_len < 30 ? 30 : history_len < 60 ? 60 : history_len < 90 ? 90 : 180
-					}} 
-				/>
-			</div>
 		</div>
 
 		<div class='bordered'>

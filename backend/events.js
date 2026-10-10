@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db, { ObjectId } from './db.js';
+import { expandEvents } from './eventRepeat.js';
 
 const router = Router();
 
@@ -10,57 +11,8 @@ router.get('/events', async (req, res) => {
 
         const { startDate, endDate } = req.query;
         if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-
-            const relevantEvents = events.filter(event => {
-                if (!event.repeatDays) {
-                    const eventDate = new Date(event.when);
-                    return eventDate >= start && eventDate <= end;
-                }
-
-                const eventStart = new Date(event.when);
-                if (eventStart > end) return false;
-
-                const daysDiff = Math.floor((end - eventStart) / (1000 * 60 * 60 * 24));
-                if (daysDiff >= 0) {
-                    const firstOccurrenceInRange = new Date(eventStart);
-                    while (firstOccurrenceInRange < start) {
-                        firstOccurrenceInRange.setDate(firstOccurrenceInRange.getDate() + event.repeatDays);
-                    }
-                    return firstOccurrenceInRange <= end;
-                }
-
-                return false;
-            });
-
-            const expandedEvents = relevantEvents.flatMap(event => {
-                if (!event.repeatDays) {
-                    return event;
-                }
-
-                const occurrences = [];
-                let occurrenceDate = new Date(event.when);
-
-                while (occurrenceDate < start) {
-                    occurrenceDate.setDate(occurrenceDate.getDate() + event.repeatDays);
-                }
-
-                while (occurrenceDate <= end) {
-                    occurrences.push({
-                        ...event,
-                        when: new Date(occurrenceDate).toISOString(),
-                        isOccurrence: true,
-                        originalEventId: event._id,
-                        originalEventDate: event.when
-                    });
-                    occurrenceDate.setDate(occurrenceDate.getDate() + event.repeatDays);
-                }
-
-                return occurrences.length > 0 ? occurrences : [];
-            });
-
-            return res.send(expandedEvents);
+            // Repeats are worked out on the household's wall clock (eventRepeat.js)
+            return res.send(expandEvents(events, new Date(startDate), new Date(endDate)));
         }
 
         res.send(events);
@@ -124,7 +76,14 @@ router.post('/updateEvent', async (req, res) => {
 			updatedEvent.repeatDays = 0;
 		}
 
-		const result = await db.update('events', req.cookies.session, { _id: id }, { $set: updatedEvent });
+		// Fields of a generated repeat (eventRepeat.js) never belong on the
+		// series; older forms saved them along with an edit, so clear them
+		const REPEAT_ONLY = ['isOccurrence', 'originalEventId', 'originalEventDate'];
+		for (const key of REPEAT_ONLY) delete updatedEvent[key];
+		const result = await db.update('events', req.cookies.session, { _id: id }, {
+			$set: updatedEvent,
+			$unset: Object.fromEntries(REPEAT_ONLY.map(key => [key, ''])),
+		});
 		if (result) {
 			const updatedDoc = await db.find('events', req.cookies.session, { _id: id });
 			if (updatedDoc && updatedDoc.length > 0) {

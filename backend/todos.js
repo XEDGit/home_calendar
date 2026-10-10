@@ -42,6 +42,8 @@ router.post('/updateTodo', async (req, res) => {
 	if (!updatedTodo._id) {
 		return res.status(400).send({ success: false, message: 'Missing todo ID' });
 	}
+	// Same shape as on add: a Date, or cleared
+	if (updatedTodo.deadline) updatedTodo.deadline = new Date(updatedTodo.deadline);
 	if (updatedTodo['title'])
 		updatedTodo.shortTitle = updatedTodo.title.substring(0, 20) + (updatedTodo.title.length > 20? '...' : '');
 

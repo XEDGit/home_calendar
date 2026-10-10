@@ -165,7 +165,7 @@
 </div>
 
 <style>
-	.log { display: flex; flex-direction: column; gap: var(--space-sm); overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+	.log { display: flex; flex-direction: column; gap: var(--space-sm); overflow-y: auto; padding: 2px; }
 	.msg { display: flex; flex-direction: column; gap: var(--space-xs); max-width: min(100%, var(--measure)); }
 	/* The member's words sit in rose on the right; the answer reads as plain
 	 * text on the page, like a printed entry, and takes the full column */

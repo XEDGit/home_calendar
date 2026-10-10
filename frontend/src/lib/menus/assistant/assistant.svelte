@@ -224,7 +224,7 @@
 	/* ── Chat list ── */
 	.list ul {
 		list-style: none; margin: 0; padding: var(--space-xs); display: flex; flex-direction: column; gap: 2px;
-		flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+		flex: 1; min-height: 0; overflow-y: auto;
 		scrollbar-width: thin; scrollbar-color: var(--primary-a45) transparent;
 	}
 	/* Rows: rose ink on cream; the open chat wears rose (inverted) */

@@ -165,9 +165,14 @@ export async function delChore(data) {
 	return postFrontend('delChore', data)
 }
 
+// Todos and tags belong to the member picked on this device. Until one is
+// (a new household has nobody yet) the backend answers with an error
+// object; the pages get an empty list.
+const asList = (value) => (Array.isArray(value) ? value : []);
+
 // Todos
 export async function getTodos() {
-	return getFrontend('getTodos')
+	return asList(await getFrontend('getTodos'))
 }
 
 export async function addTodo(data) {
@@ -184,7 +189,7 @@ export async function deleteTodo(data) {
 
 // Tags
 export async function getTags() {
-	return getFrontend('getTags')
+	return asList(await getFrontend('getTags'))
 }
 
 // Events

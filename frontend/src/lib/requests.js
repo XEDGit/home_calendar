@@ -137,6 +137,17 @@ export async function updateTheme(theme) {
 	return postFrontend('updateTheme', { theme })
 }
 
+// Household login. A password change logs every other device out; the
+// answer is {} or {error, field} ('current' or 'password').
+export async function changePassword(current, password) {
+	return postFrontend('changePassword', { current, password })
+}
+
+// Only the server can drop the httpOnly session cookie
+export async function logout() {
+	return postFrontend('logout', {})
+}
+
 // Chores
 export async function getChores() {
 	return getFrontend('getChores')

@@ -2,12 +2,22 @@
 	import Form from "$lib/prompts/form.svelte";
 	import Section from "$lib/header/Section.svelte";
 	import { onMount } from "svelte";
-	import { getUsers, getRooms, getTags, postFrontend, updateTheme } from "$lib/requests.js";
+	import { getUsers, getRooms, getTags, postFrontend, updateTheme, logout } from "$lib/requests.js";
+	import PasswordSheet from "$lib/sheet/PasswordSheet.svelte";
     import ColorPicker from "svelte-awesome-color-picker";
     import Collapsible from "$lib/containers/collapsible.svelte";
 	import { reveal, vanish, move, expand, viewTransition } from "$lib/motion";
 	import { THEMES, DEFAULT_THEME, themeById, applyTheme } from "$lib/theme";
 	import { setCookie } from "$lib/helpers/getCookie";
+
+	let changingPassword = false
+
+	async function logOut() {
+		// The login cookie is httpOnly: only the server can drop it
+		await logout().catch(() => {})
+		setCookie('user', '', -1000)
+		document.location = '/login'
+	}
 
 	export let user_id = '';
 	let users = []
@@ -146,9 +156,16 @@
 		margin-bottom: 20px;
 	}
 
+	/* Wraps on phones with room between the rows */
+	.userActions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm) var(--space-md);
+		padding-left: var(--space-md);
+	}
+
 	.userAction {
 		border-radius: var(--radius-md);
-		margin-left: var(--space-md);
 		padding: var(--control-pad-y) var(--control-pad-x);
 		min-height: var(--control-min-h);
 		color: var(--paper);
@@ -540,8 +557,14 @@
 	{/if}
 	<div class='spacer'></div>
 	<Section title='Profile' subtitle='do things with your account' />
-	<button class='retro-red userAction' on:click={() => {setCookie('user', '', -1000); document.location = document.location}}>Change User</button>
-	<button class='retro-red userAction' on:click={() => {setCookie('user', '', -1000); setCookie('session', '', -1000); document.location = '/login'}}>Log out</button>
+	<div class='userActions'>
+		<button class='retro-red userAction' on:click={() => {setCookie('user', '', -1000); document.location = document.location}}>Change User</button>
+		<button class='retro-red userAction' on:click={() => (changingPassword = true)}>Change password</button>
+		<button class='retro-red userAction' on:click={logOut}>Log out</button>
+	</div>
+	{#if changingPassword}
+		<PasswordSheet onClose={() => (changingPassword = false)} />
+	{/if}
 	<div class='spacer'></div>
 	<Section title='Register new account' />
 	<p class='tooltip'>Here you can register a new account on the website</p>

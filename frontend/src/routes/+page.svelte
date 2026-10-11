@@ -211,25 +211,16 @@
 	};
 
 	function updateCookies() {
-		const date = new Date();
-		date.setTime(date.getTime() + 1000 * 24 * 60 * 60 * 1000);
-		const expires = "expires=" + date.toUTCString();
 		if (user && !users.find((u) => u._id == user)) {
 			// Reset cookie if user is not found
 			setCookie("user", "", -1000);
 			user = undefined;
 		}
-		if (!user && users.length == 1) {
-			// Set single cookie
-			user = users[0]._id;
-			setCookie("user", users[0]._id, expires);
-		}
-		// Renew cookies
-		const cookies = document.cookie.split("; ");
-		for (let i = 0; i < cookies.length; i++) {
-			const [cookieName, cookieValue] = cookies[i].split("=");
-			setCookie(cookieName, cookieValue, expires);
-		}
+		// A household of one needs no picking
+		if (!user && users.length == 1) user = users[0]._id;
+		// The member picked on this device stays picked ~1000 days from the
+		// last visit (the theme cookie renews itself in applyTheme)
+		if (user) setCookie("user", user, 1000);
 	}
 
 	async function updateUI() {

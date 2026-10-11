@@ -12,6 +12,7 @@
 	import Automations from "$lib/menus/automations/automations.svelte";
 	import AddAutomationForm from "$lib/menus/automations/addAutomation.svelte";
 	import AssistantTab from "$lib/menus/assistant/assistant.svelte";
+	import Intro from "$lib/intro/Intro.svelte";
 	import { connect, unreadCount } from "$lib/assistant/store.js";
 	import { onMount, setContext, tick } from "svelte";
 	import { getRooms, getUsers } from "$lib/requests";
@@ -25,6 +26,8 @@
 	let user = undefined;
 	let users = undefined;
 	let loading = true;
+	// A household with no members yet gets the welcome intro instead of the tabs
+	let setup = false;
 
 	let pages = {
 		home: 0,
@@ -233,15 +236,13 @@
 		const [fetchedUsers, fetchedRooms] = await Promise.all([getUsers(), getRooms()]);
 		users = fetchedUsers;
 		rooms = fetchedRooms;
-		if (!users.length) {
-			viewMode = pages.settings;
-		}
+		setup = Array.isArray(users) && users.length === 0;
 		updateCookies();
 		// First reveal: crossfade from the loading line to the populated page,
 		// already in this member's theme (their pick follows them across
 		// devices). The first screen's data is waited for, so it arrives whole.
 		const me = users.find((u) => u._id == user);
-		const showsScreen = !!user || users.length <= 1;
+		const showsScreen = !setup && (!!user || users.length <= 1);
 		await viewTransition(
 			async () => {
 				applyTheme(me?.theme);
@@ -251,7 +252,15 @@
 			},
 			{ scope: "reveal", settle: showsScreen && isForm(viewMode) ? 600 : 0 },
 		);
-		warmUp();
+		if (!setup) warmUp();
+	}
+
+	// The intro is done: the household opens on home, with its new members
+	function finishSetup() {
+		setup = false;
+		viewMode = pages.home;
+		history.replaceState({ viewMode }, "", pageNames[viewMode]);
+		updateUI();
 	}
 
 	setContext("updateUI", updateUI);
@@ -357,6 +366,7 @@
 	{/if}
 </header>
 
+{#if !setup}
 <NavButton
 	active={viewMode}
 	f={updateViewMode}
@@ -373,12 +383,17 @@
 	badges={{ assistant: $unreadCount }}
 	disableMask={[false, false, false, false, false, false, false, false]}
 />
+{/if}
 
 {#if viewMode < 0 || viewMode >= pageNames.length}
 	{updateViewMode(pages.home, { animate: false })}
 {/if}
 
-{#if !user && users && users.length > 1}
+{#if setup && !loading}
+	<main>
+		<Intro onDone={finishSetup} />
+	</main>
+{:else if !user && users && users.length > 1}
 	<ContentLayout as="main" pageView title={formatPageName(pageNames[viewMode])}>
 		<PromptUser
 			buttons={users}

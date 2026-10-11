@@ -4,10 +4,11 @@
 	import { onMount } from "svelte";
 	import { getUsers, getRooms, getTags, postFrontend, updateTheme, logout } from "$lib/requests.js";
 	import PasswordSheet from "$lib/sheet/PasswordSheet.svelte";
+	import ThemePicker from "$lib/components/ThemePicker.svelte";
     import ColorPicker from "svelte-awesome-color-picker";
     import Collapsible from "$lib/containers/collapsible.svelte";
 	import { reveal, vanish, move, expand, viewTransition } from "$lib/motion";
-	import { THEMES, DEFAULT_THEME, themeById, applyTheme } from "$lib/theme";
+	import { DEFAULT_THEME, themeById, applyTheme } from "$lib/theme";
 	import { setCookie } from "$lib/helpers/getCookie";
 
 	let changingPassword = false
@@ -186,119 +187,6 @@
 		height: 20px;
 	}
 
-	/* ── Theme picker ─────────────────────────────────────────────────────── */
-	.theme-picker {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-		gap: var(--space-md);
-		/* Three across on wide screens (six palettes, two even rows), two on phones */
-		max-width: 560px;
-		margin: 0 0 var(--space-sm);
-		padding: 0;
-		border: none;
-	}
-
-	.theme-option {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		color: var(--primary);
-		font-size: var(--text-sm);
-		font-weight: var(--weight-bold);
-		cursor: pointer;
-	}
-
-	/* The native radio stays for keyboard and screen readers, but is hidden */
-	.theme-option input {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: 0;
-		opacity: 0;
-	}
-
-	/* A miniature of the app, drawn in that palette's own two colours */
-	.swatch {
-		display: flex;
-		flex-direction: column;
-		height: 84px;
-		overflow: hidden;
-		border: var(--bw) solid var(--swatch-primary);
-		border-radius: var(--radius-lg);
-		background: var(--swatch-paper);
-		transition: var(--swap);
-	}
-
-	.swatch-band {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		height: 24px;
-		padding: 0 10px;
-		background: var(--swatch-primary);
-	}
-
-	.swatch-dot {
-		width: 10px;
-		height: 10px;
-		border-radius: var(--radius-circle);
-		background: var(--swatch-paper);
-	}
-
-	.swatch-bar,
-	.swatch-line {
-		height: 6px;
-		border-radius: var(--radius-pill);
-	}
-
-	.swatch-bar {
-		width: 40%;
-		background: var(--swatch-paper);
-	}
-
-	.swatch-page {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		padding: 10px;
-	}
-
-	.swatch-line {
-		width: 70%;
-		background: var(--swatch-primary);
-	}
-
-	.swatch-line.short {
-		width: 45%;
-	}
-
-	.swatch-pill {
-		width: 34px;
-		height: 12px;
-		margin-top: 2px;
-		border-radius: var(--radius-sm);
-		background: var(--swatch-primary);
-	}
-
-	.theme-option:active .swatch {
-		transform: scale(0.97);
-	}
-
-	/* Selected: a double ring plus a tick, never colour alone */
-	.theme-option.selected .swatch {
-		box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--primary);
-	}
-
-	.theme-option.selected .theme-name::before {
-		content: '✓ ';
-	}
-
-	.theme-option:has(input:focus-visible) .swatch {
-		outline: var(--bw) solid var(--primary-deep);
-		outline-offset: 7px;
-	}
-
 	.assistant-toggle {
 		display: flex;
 		gap: var(--space-sm);
@@ -343,12 +231,6 @@
 			max-width: none;
 			margin: 10px 0;
 		}
-
-		/* Two palettes across, even on the smallest phones */
-		.theme-picker {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-			gap: var(--space-sm);
-		}
 	}
 </style>
 
@@ -356,36 +238,7 @@
 <div in:reveal>
 	{#if me}
 		<Section title='Your theme' subtitle="Just for {me.name}, on every device" />
-		<fieldset class="theme-picker">
-			<legend class="sr-only">Theme for {me.name}</legend>
-			{#each THEMES as theme (theme.id)}
-				<label
-					class="theme-option"
-					class:selected={theme.id === currentTheme}
-					style="--swatch-primary: {theme.primary}; --swatch-paper: {theme.paper};"
-				>
-					<input
-						type="radio"
-						name="theme"
-						value={theme.id}
-						checked={theme.id === currentTheme}
-						on:change={() => chooseTheme(theme.id)}
-					/>
-					<span class="swatch" aria-hidden="true">
-						<span class="swatch-band">
-							<span class="swatch-dot"></span>
-							<span class="swatch-bar"></span>
-						</span>
-						<span class="swatch-page">
-							<span class="swatch-line"></span>
-							<span class="swatch-line short"></span>
-							<span class="swatch-pill"></span>
-						</span>
-					</span>
-					<span class="theme-name">{theme.name}</span>
-				</label>
-			{/each}
-		</fieldset>
+		<ThemePicker current={currentTheme} label="Theme for {me.name}" onPick={chooseTheme} />
 		{#if themeError}
 			<p class="theme-error" role="alert" transition:expand>{themeError}</p>
 		{/if}

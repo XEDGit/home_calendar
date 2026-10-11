@@ -309,6 +309,12 @@ Clean and purposeful. The 2px rose border is always present, so the hit target r
   - **Behaviour:** add focuses the title; Enter saves from one-line fields, Ctrl/⌘+Enter from notes; a missing title is said under the field. Delete asks once in place ("Delete for good?", the red button) instead of a browser confirm, and settles back after 4s. Errors show in the footer, never as alerts. While editing, a backdrop click doesn't close (Escape and ✕ do). A repeat edits its series, its date field labelled "Starts"; someone else's todo is view-only (anyone can mark it done).
 - **Mode switches:** View ↔ Edit and Sign ↔ Edit morph the container's height (`morphHeight`) instead of jumping.
 
+### Welcome intro
+- **When:** a household with no members yet. It takes the page in place of the nav and tabs, one card (up to 40rem, centred; full width less 10px on phones).
+- **Structure:** the card's rose band says "Setting up your household" in small bold capitals, with "Step N of 6" in italics; under it a 6px progress track fills from the left (`transform: scaleX`). Then the step's headline (`--text-lg`), a teal-ink lead line, the step's controls, and a footer with **Back** (ghost) left and the step's action (solid) right. "Who's on this device" counts as part of "Who lives here", so the count never changes under you.
+- **Controls:** members are ruled rows (colour dot, bold name, a quiet red **Remove**) above an underline name field with an **Add** ghost button and colour swatches (36px circles, real radios; the pick gets the theme picker's double ring; a "+" opens any colour). People on this device are 48px tiles with their dot. Rooms, chore suggestions, chore rooms and repeats are the shared `.chip`, picked ones solid with a ✓.
+- **Behaviour:** each step saves as it goes; a name typed but not added counts when you press Next. Mistakes are said under their field and clear as you fix them; a failed save says so in the footer and stays put. Step changes morph the card's height and reveal the new step; focus moves to the step's headline.
+
 ### FAB
 - **Shape:** Circle, `clamp(50px, 10vh, 80px)`.
 - **Default:** Cream fill, rose text and 2px border. Hover inverts.

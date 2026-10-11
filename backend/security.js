@@ -64,16 +64,21 @@ export function resetLoginAttempts(req) {
 	attempts.delete(limiterKey(req));
 }
 
-export function loginRateLimiter(req, res, next) {
-	const key = limiterKey(req);
-	const now = Date.now();
-	const cutoff = now - WINDOW_MS;
-	const times = (attempts.get(key) || []).filter((t) => t > cutoff);
-	if (times.length >= MAX_ATTEMPTS) {
-		res.setHeader('Retry-After', String(Math.ceil(WINDOW_MS / 1000)));
-		return res.status(429).send({ error: 'Too many attempts. Try again later.' });
-	}
-	times.push(now);
-	attempts.set(key, times);
-	next();
+// MAX_ATTEMPTS per WINDOW_MS for each key that `keyOf(req)` gives.
+export function rateLimiter(keyOf) {
+	return (req, res, next) => {
+		const key = keyOf(req);
+		const now = Date.now();
+		const cutoff = now - WINDOW_MS;
+		const times = (attempts.get(key) || []).filter((t) => t > cutoff);
+		if (times.length >= MAX_ATTEMPTS) {
+			res.setHeader('Retry-After', String(Math.ceil(WINDOW_MS / 1000)));
+			return res.status(429).send({ error: 'Too many attempts. Try again later.' });
+		}
+		times.push(now);
+		attempts.set(key, times);
+		next();
+	};
 }
+
+export const loginRateLimiter = rateLimiter(limiterKey);

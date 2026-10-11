@@ -166,6 +166,22 @@ class DB {
 		}
 	}
 
+	// A household's new password hash, and when it changed (seconds): /verify
+	// refuses the logins issued before then.
+	async setSessionPassword(session, password, changedAt) {
+		try {
+			const collection = this.db.collection('sessions')
+			const result = await collection.updateOne(
+				{ "session": String(session) },
+				{ $set: { password: String(password), passwordChangedAt: Number(changedAt) } }
+			);
+			return result.matchedCount === 1;
+		} catch (err) {
+			console.error("Error changing password:", err);
+			return false;
+		}
+	}
+
 	async find(collectionName, session, where = {}) {
 		try {
 			const scope = this.getSession(session)

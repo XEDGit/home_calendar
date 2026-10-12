@@ -131,6 +131,7 @@ export const TOOLS = [
 		{ chore: S, rooms: { type: 'array', items: S, description: 'only if just some of its rooms were done' }, notes: S },
 		['chore']),
 	fn('skip_chore', 'Skip a chore this time: moves its due date without recording it as done.', { chore: S }, ['chore']),
+	fn('reset_chores', 'Restart every chore\'s countdown at its full interval from today, without recording any as done (e.g. back from a holiday, so nothing is overdue).'),
 	fn('add_chore', 'Create a recurring chore.',
 		{ name: S, every_days: { type: 'integer', description: 'repeat interval in days (30 = monthly)' },
 			rooms: { type: 'array', items: S } }, ['name', 'every_days', 'rooms']),
@@ -380,6 +381,10 @@ export function createExecutor({ cookie, userId, stage }) {
 			const r = await find('chores', chore, 'chore');
 			if (r.error) return r;
 			return write('skip_chore', arguments[0], `Skip chore "${labelOf(r.item)}" this time`, '/chores/skip', { id: String(r.item._id) });
+		},
+
+		async reset_chores() {
+			return write('reset_chores', {}, 'Reset all chores: each one due again a full interval from today', '/chores/reset', {});
 		},
 
 		async add_chore({ name, every_days, rooms }) {

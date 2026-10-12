@@ -24,6 +24,15 @@ test('create_automation validates and stages a POST /automations', async () => {
 	assert.deepEqual(exec.staged[0].body, { name: 'News', prompt: 'Top headlines', every: 1, unit: 'days', at: '08:00', enabled: true });
 });
 
+test('reset_chores stages one POST /chores/reset and is not an automation tool', async () => {
+	assert.ok(!names(READ_TOOLS).includes('reset_chores'));
+	const exec = createExecutor({ cookie: '', userId: 'u1', stage: true });
+	const out = await exec.call('reset_chores', {});
+	assert.equal(out.staged, true);
+	assert.equal(exec.staged.length, 1);
+	assert.equal(exec.staged[0].path, '/chores/reset');
+});
+
 test('fetch_page results carry the untrusted-content note', async () => {
 	const exec = createExecutor({ cookie: '', userId: 'u1', stage: true });
 	const out = await exec.call('fetch_page', { url: 'http://127.0.0.1/' });

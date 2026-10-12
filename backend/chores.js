@@ -1,30 +1,9 @@
 import { Router } from 'express';
 import db, { ObjectId } from './db.js';
 import { getID } from './helpers.js';
+import { calcNextTimeDays, resetChore } from './choreTime.js';
 
 const router = Router();
-
-function calcNextTimeDays(newChore) {
-	newChore.daysNextTime = newChore.nextTime;
-
-	if (newChore.nextTime > 30) {
-		let currentDate = new Date();
-		let targetDate = new Date(currentDate);
-		let monthsToAdd = Math.round(newChore.nextTime - 30);
-		targetDate.setMonth(currentDate.getMonth() + monthsToAdd);
-		newChore.daysNextTime = Math.round((targetDate - currentDate) / (1000 * 60 * 60 * 24));
-	}
-
-	if (newChore.nextTime == 1) {
-		newChore.timeMeasure = 'day';
-	} else if (newChore.nextTime < 31) {
-		newChore.timeMeasure = 'days';
-	} else if (newChore.nextTime == 31) {
-		newChore.timeMeasure = 'month';
-	} else if (newChore.nextTime > 31) {
-		newChore.timeMeasure = 'months';
-	}
-}
 
 // Debug-only: runs the nightly recompute across ALL tenants. Disabled in
 // production and POST-only so it cannot be triggered via a cross-site GET.
@@ -154,6 +133,22 @@ router.post('/chores/skip', async (req, res) => {
 			}
 		}
 	);
+});
+
+// Back from a holiday: every chore's countdown restarts at its full interval
+// from today, like Skip on each one. Nothing is signed, stats stay as they are.
+router.post('/chores/reset', async (req, res) => {
+	const chores = await db.find('chores', req.cookies.session);
+	if (!chores) {
+		res.status(401).send({ error: 'Unauthorized' });
+		return;
+	}
+	let reset = 0;
+	for (const chore of chores) {
+		const fields = resetChore(chore);
+		if (fields && await db.update('chores', req.cookies.session, { _id: chore._id }, { $set: fields })) reset++;
+	}
+	res.status(200).send({ reset });
 });
 
 router.post('/chores/del', async (req, res) => {

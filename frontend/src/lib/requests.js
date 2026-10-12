@@ -165,6 +165,11 @@ export async function delChore(data) {
 	return postFrontend('delChore', data)
 }
 
+// Every chore due again a full interval from today, nothing signed
+export async function resetChores() {
+	return postFrontend('resetChores', {})
+}
+
 // Todos and tags belong to the member picked on this device. Until one is
 // (a new household has nobody yet) the backend answers with an error
 // object; the pages get an empty list.

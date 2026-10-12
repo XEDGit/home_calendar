@@ -2,7 +2,7 @@
 	import Form from "$lib/prompts/form.svelte";
 	import Section from "$lib/header/Section.svelte";
 	import { onMount } from "svelte";
-	import { getUsers, getRooms, getTags, postFrontend, updateTheme, logout } from "$lib/requests.js";
+	import { getUsers, getRooms, getTags, postFrontend, updateTheme, logout, resetChores } from "$lib/requests.js";
 	import PasswordSheet from "$lib/sheet/PasswordSheet.svelte";
 	import ThemePicker from "$lib/components/ThemePicker.svelte";
     import ColorPicker from "svelte-awesome-color-picker";
@@ -85,6 +85,30 @@
 			currentTheme = savedTheme
 			showTheme(savedTheme)
 			themeError = "Couldn't save your theme, so the previous one is back. Try again in a moment."
+		}
+	}
+
+	// ── Chores ─────────────────────────────────────────────────────────────
+	// Back from a holiday: every chore restarts its countdown from today
+	// instead of showing up overdue. Nobody gets the credit.
+	let resetting = false
+	let resetMessage = ''
+	let resetFailed = false
+
+	async function resetAllChores() {
+		if (!confirm("Restart every chore's countdown from today? Nothing is recorded as done.")) return
+		resetting = true
+		resetMessage = ''
+		resetFailed = false
+		try {
+			const res = await resetChores()
+			if (res?.error || typeof res?.reset !== 'number') throw new Error(res?.error)
+			resetMessage = `${res.reset} chore${res.reset === 1 ? '' : 's'} reset.`
+		} catch {
+			resetMessage = "Couldn't reset the chores. Try again in a moment."
+			resetFailed = true
+		} finally {
+			resetting = false
 		}
 	}
 
@@ -185,6 +209,11 @@
 
 	.spacer {
 		height: 20px;
+	}
+
+	p.reset-status {
+		padding-left: var(--space-md);
+		margin: var(--space-sm) 0 0;
 	}
 
 	.assistant-toggle {
@@ -358,6 +387,15 @@
 			width='50%'
 		/>
 		</Collapsible>
+	{/if}
+	<div class='spacer'></div>
+	<Section title='Chores' subtitle='back from a holiday?' />
+	<p class='tooltip'>Start every chore's countdown again from today, so nothing is overdue. Nobody gets the credit.</p>
+	<div class='userActions'>
+		<button class='retro-red userAction' on:click={resetAllChores} disabled={resetting}>Reset all chores</button>
+	</div>
+	{#if resetMessage}
+		<p class='reset-status' class:tooltip={!resetFailed} class:theme-error={resetFailed} role={resetFailed ? 'alert' : 'status'} transition:expand>{resetMessage}</p>
 	{/if}
 	<div class='spacer'></div>
 	<Section title='Tags' subtitle='add or remove tags for your Todo list' />

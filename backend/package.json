@@ -4,7 +4,7 @@
   "main": "backend.js",
   "type": "module",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "start": "node backend.js",
     "start:dev": "nodemon backend.js"
   },
@@ -14,16 +14,16 @@
   "description": "",
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "express": "^4.21.1",
-    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
     "linkedom": "^0.18.13",
-    "mongodb": "^6.10.0",
+    "mongodb": "^7.7.0",
     "node-schedule": "^2.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.14"
   }
 }

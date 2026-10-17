@@ -14,7 +14,7 @@ import choresRouter from './chores.js';
 import usersRouter from './users.js';
 import assistantRouter, { initAssistant } from './assistant.js';
 import automationsRouter, { startScheduler, initAutomations } from './automations.js';
-import { securityHeaders, mongoSanitize } from './security.js';
+import { securityHeaders, mongoSanitize, defaultBody } from './security.js';
 
 const app = express();
 const PORT = 3000;
@@ -36,6 +36,7 @@ app.use(cors({
 }));
 app.use(securityHeaders);
 app.use(express.json({ limit: '256kb' }));
+app.use(defaultBody);
 app.use(cookies());
 app.use(mongoSanitize);
 

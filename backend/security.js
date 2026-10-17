@@ -21,9 +21,17 @@ function scrub(value) {
 	return value;
 }
 
+// Express 5 leaves req.body undefined when no JSON came in; routes destructure it.
+export function defaultBody(req, _res, next) {
+	req.body ??= {};
+	next();
+}
+
 export function mongoSanitize(req, _res, next) {
 	if (req.body) scrub(req.body);
-	if (req.query) scrub(req.query);
+	// Express 5's req.query is a getter that parses the URL again on every
+	// read, so scrubbing it in place would be lost: pin the scrubbed copy.
+	Object.defineProperty(req, 'query', { value: scrub(req.query), writable: true, configurable: true, enumerable: true });
 	if (req.params) scrub(req.params);
 	next();
 }

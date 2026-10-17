@@ -1,10 +1,10 @@
 <script>
 	import { onMount, tick } from 'svelte';
-	import { DUR, ms, morphHeight, reducedMotion } from '$lib/motion';
-	import SelectButtons from '$lib/buttons/selectButtons.svelte';
-	import Section from '$lib/header/Section.svelte';
-	import { getFrontend, getUsers } from '$lib/requests';
-	import { getCookie } from '$lib/helpers/getCookie';
+	import { DUR, ms, morphHeight, reducedMotion } from '#lib/motion.js';
+	import SelectButtons from '#lib/buttons/selectButtons.svelte';
+	import Section from '#lib/header/Section.svelte';
+	import { getFrontend, getUsers } from '#lib/requests.js';
+	import { getCookie } from '#lib/helpers/getCookie.js';
 
 	export let onSubmit = () => {};
 	export let reset = () => {};

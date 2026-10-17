@@ -3,8 +3,8 @@
 	// household, so every other device (family phones too) has to log in
 	// again afterwards; this one stays logged in.
 	import { onMount, tick } from 'svelte';
-	import { closeDialog, morphHeight } from '$lib/motion';
-	import { changePassword } from '$lib/requests';
+	import { closeDialog, morphHeight } from '#lib/motion.js';
+	import { changePassword } from '#lib/requests.js';
 	import Sheet from './Sheet.svelte';
 
 	export let onClose = () => {};

@@ -1,16 +1,16 @@
 <script>
 	import { onMount, tick } from "svelte";
 	import { getStats, getUsers, getChores, getEvents, getRooms, delStats } from '../../requests'
-	import Section from "$lib/header/Section.svelte";
-	import Collapsible from "$lib/containers/collapsible.svelte";
-    import SelectButtons from "$lib/buttons/selectButtons.svelte";
-    import LineChart from "$lib/charts/lineChart.svelte";
-    import BarChart from "$lib/charts/barChart.svelte";
-    import RoomFilter from "$lib/filters/roomFilter.svelte";
-    import ContentLayout from "$lib/containers/contentLayout.svelte";
-	import { reveal } from "$lib/motion";
-	import { currentPrimary } from "$lib/theme";
-    import HouseholdStats from "$lib/components/HouseholdStats.svelte";
+	import Section from "#lib/header/Section.svelte";
+	import Collapsible from "#lib/containers/collapsible.svelte";
+    import SelectButtons from "#lib/buttons/selectButtons.svelte";
+    import LineChart from "#lib/charts/lineChart.svelte";
+    import BarChart from "#lib/charts/barChart.svelte";
+    import RoomFilter from "#lib/filters/roomFilter.svelte";
+    import ContentLayout from "#lib/containers/contentLayout.svelte";
+	import { reveal } from "#lib/motion.js";
+	import { currentPrimary } from "#lib/theme.js";
+    import HouseholdStats from "#lib/components/HouseholdStats.svelte";
 
 	let users = null;
 	let users_by_id = null;

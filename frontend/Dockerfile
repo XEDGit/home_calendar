@@ -1,4 +1,4 @@
-FROM node:23.11.0 AS build
+FROM node:24.22.0 AS build
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY . /app/
 RUN npm run build
 
 # Production image: the adapter-node server plus runtime dependencies only
-FROM node:23.11.0
+FROM node:24.22.0
 
 WORKDIR /app
 

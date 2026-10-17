@@ -1,9 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
-	import { expand } from '$lib/motion';
-	import AssistantThread from '$lib/assistant/AssistantThread.svelte';
-	import AssistantInput from '$lib/assistant/AssistantInput.svelte';
-	import { conversations, threads, listLoaded, open, send, setVisible, selected, onHouseholdChange } from '$lib/assistant/store.js';
+	import { expand } from '#lib/motion.js';
+	import AssistantThread from '#lib/assistant/AssistantThread.svelte';
+	import AssistantInput from '#lib/assistant/AssistantInput.svelte';
+	import { conversations, threads, listLoaded, open, send, setVisible, selected, onHouseholdChange } from '#lib/assistant/store.js';
 
 	// Called after the assistant changed something, so the page can reload
 	export let onChange = () => {};

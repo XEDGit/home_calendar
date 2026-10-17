@@ -3,9 +3,9 @@
 	// Only the member who added a todo edits or deletes it; anyone who sees
 	// it can mark it done, as on the board.
 	import { onMount, tick } from 'svelte';
-	import { closeDialog, morphHeight } from '$lib/motion';
-	import { addTodo, updateTodo, deleteTodo, getTags } from '$lib/requests';
-	import { getCookie } from '$lib/helpers/getCookie';
+	import { closeDialog, morphHeight } from '#lib/motion.js';
+	import { addTodo, updateTodo, deleteTodo, getTags } from '#lib/requests.js';
+	import { getCookie } from '#lib/helpers/getCookie.js';
 	import Sheet from './Sheet.svelte';
 	import Icon from './Icon.svelte';
 	import { deadlineInfo, dateInput, QUICK_DEADLINES } from './when.js';

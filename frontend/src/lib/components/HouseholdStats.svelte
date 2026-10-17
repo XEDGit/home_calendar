@@ -1,5 +1,5 @@
 <script>
-    import Section from '$lib/header/Section.svelte';
+    import Section from '#lib/header/Section.svelte';
     
     // Props
     export let stats = null;

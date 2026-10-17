@@ -1,9 +1,9 @@
 <script>
     import { onMount } from 'svelte';
-    import { getTodos, getTags, updateTodo } from '$lib/requests.js'
-    import Card from '$lib/buttons/card.svelte';
-    import TodoSheet from '$lib/sheet/TodoSheet.svelte';
-    import { reveal, vanish, move } from '$lib/motion';
+    import { getTodos, getTags, updateTodo } from '#lib/requests.js'
+    import Card from '#lib/buttons/card.svelte';
+    import TodoSheet from '#lib/sheet/TodoSheet.svelte';
+    import { reveal, vanish, move } from '#lib/motion.js';
 
     export let todos = [];
     let tags = [];

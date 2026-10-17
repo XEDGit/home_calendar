@@ -1,6 +1,6 @@
 <script>
 	import AutomationForm from './automationForm.svelte';
-	import { addAutomation } from '$lib/requests.js';
+	import { addAutomation } from '#lib/requests.js';
 
 	async function save(data) {
 		const res = await addAutomation(data);

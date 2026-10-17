@@ -3,7 +3,7 @@
 	// what it is and a close button, a body that scrolls, a footer that stays
 	// put. Centred over the page; a sheet rising from the bottom on phones.
 	// The field and fact styles below are shared by EventSheet and TodoSheet.
-	import { modalDialog, closeDialog } from '$lib/motion';
+	import { modalDialog, closeDialog } from '#lib/motion.js';
 	import Icon from './Icon.svelte';
 
 	export let kind = '';          // shown in the band: "Event", "New todo"…

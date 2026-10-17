@@ -2,7 +2,7 @@
 	// Renders an assistant reply's markdown (see ./markdown.js) as elements
 	// with text children. There is deliberately no {@html} here.
 	import { parse } from './markdown.js';
-	import { linkify } from '$lib/helpers/linkify.js';
+	import { linkify } from '#lib/helpers/linkify.js';
 
 	export let text = '';
 	// Turn http(s) URLs in the text into links (automation results)

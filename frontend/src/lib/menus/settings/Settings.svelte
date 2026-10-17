@@ -1,15 +1,15 @@
 <script>
-	import Form from "$lib/prompts/form.svelte";
-	import Section from "$lib/header/Section.svelte";
+	import Form from "#lib/prompts/form.svelte";
+	import Section from "#lib/header/Section.svelte";
 	import { onMount } from "svelte";
-	import { getUsers, getRooms, getTags, postFrontend, updateTheme, logout, resetChores } from "$lib/requests.js";
-	import PasswordSheet from "$lib/sheet/PasswordSheet.svelte";
-	import ThemePicker from "$lib/components/ThemePicker.svelte";
+	import { getUsers, getRooms, getTags, postFrontend, updateTheme, logout, resetChores } from "#lib/requests.js";
+	import PasswordSheet from "#lib/sheet/PasswordSheet.svelte";
+	import ThemePicker from "#lib/components/ThemePicker.svelte";
     import ColorPicker from "svelte-awesome-color-picker";
-    import Collapsible from "$lib/containers/collapsible.svelte";
-	import { reveal, vanish, move, expand, viewTransition } from "$lib/motion";
-	import { DEFAULT_THEME, themeById, applyTheme } from "$lib/theme";
-	import { setCookie } from "$lib/helpers/getCookie";
+    import Collapsible from "#lib/containers/collapsible.svelte";
+	import { reveal, vanish, move, expand, viewTransition } from "#lib/motion.js";
+	import { DEFAULT_THEME, themeById, applyTheme } from "#lib/theme.js";
+	import { setCookie } from "#lib/helpers/getCookie.js";
 
 	let changingPassword = false
 
@@ -314,7 +314,7 @@
 				{#if user._id == user_id}
 				<div style='display: flex; gap: 10px; align-items: center;'>
 					<p>{user.name}</p>
-					<ColorPicker label='' bind:hex={own_color} on:input={(e) => {postFrontend('updateUser', {color: e.detail.hex});}} ></ColorPicker>
+					<ColorPicker label='' bind:hex={own_color} onInput={(c) => {postFrontend('updateUser', {color: c.hex});}} ></ColorPicker>
 				</div>
 				{:else}
 					<p>{user.name}</p>

@@ -1,10 +1,10 @@
 <script>
-	import Section from "$lib/header/Section.svelte";
+	import Section from "#lib/header/Section.svelte";
 	import UpdateTask from "./updateChore.svelte";
 	import { onMount } from "svelte";
-	import { getStats, getUsers, getChores, signChore, skipChore, delChore, getRooms } from '$lib/requests';
-	import RoomFilter from "$lib/filters/roomFilter.svelte";
-	import { reveal, vanish, expand, move, afterExit } from "$lib/motion";
+	import { getStats, getUsers, getChores, signChore, skipChore, delChore, getRooms } from '#lib/requests.js';
+	import RoomFilter from "#lib/filters/roomFilter.svelte";
+	import { reveal, vanish, expand, move, afterExit } from "#lib/motion.js";
 
 	let chores = undefined;
 	let sortedDays = [];

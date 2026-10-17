@@ -1,4 +1,4 @@
-import { getBackend } from '$lib/requests';
+import { getBackend } from '#lib/requests.js';
 
 export async function GET({ request, url }) {
     // Get date range parameters from query string if present

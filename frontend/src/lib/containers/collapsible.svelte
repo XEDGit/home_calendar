@@ -1,6 +1,6 @@
 <script>
     // Opens and closes in place: content below glides instead of jumping
-    import { expand } from "$lib/motion";
+    import { expand } from "#lib/motion.js";
 
     export let title = 'Show More'
     let isOpen = false;

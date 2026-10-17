@@ -1,5 +1,3 @@
-import { json } from '@sveltejs/kit';
-
 const BACK_ENDPOINT = 'https://backend:3000/'
 
 // Common backend
@@ -25,7 +23,7 @@ export async function getBackend(request, endpoint) {
         });
 	} catch (error) {
 		console.error('Error proxying request:', error);
-		return json({ error: 'Failed to get data from backend' }, { status: 500 });
+		return Response.json({ error: 'Failed to get data from backend' }, { status: 500 });
 	}
 }
 
@@ -56,7 +54,7 @@ export async function postBackend(request, endpoint) {
         });
     } catch (error) {
         console.error('Error proxying request:', error);
-        return json({ error: 'Failed to post data to backend' }, { status: 500 });
+        return Response.json({ error: 'Failed to post data to backend' }, { status: 500 });
     }
 }
 

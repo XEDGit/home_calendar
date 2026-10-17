@@ -2,7 +2,7 @@
 	// The member palettes, each drawn as a miniature of the app in its own
 	// two colours; a real radio group underneath. Settings and the welcome
 	// intro pick a theme with it.
-	import { THEMES } from '$lib/theme';
+	import { THEMES } from '#lib/theme.js';
 
 	export let current = '';            // the selected palette id
 	export let label = 'Theme';         // the group's accessible name

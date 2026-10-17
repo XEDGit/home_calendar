@@ -3,9 +3,9 @@ const LIMIT_UNAUTH = 10
 const MAX_TRACKED_IPS = 10000
 const MAX_INFRACTIONS = 50
 import { promises as fs } from 'fs';
-import { clientIp } from '$lib/server/clientIp.js';
+import { clientIp } from '#lib/server/clientIp.js';
 import { redirect } from '@sveltejs/kit';
-import { THEMES, themeStyle } from '$lib/theme.js';
+import { THEMES, themeStyle } from '#lib/theme.js';
 
 class Blacklist {
 	constructor(old_blacklist) {
@@ -97,8 +97,8 @@ function applySecurityHeaders(response) {
 	response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(self), camera=()');
 	// Both ways in are HTTPS only (Cloudflare, Tailscale serve). Over plain
 	// http (the dev server) browsers ignore it. The Content-Security-Policy
-	// comes from kit.csp in svelte.config.js, with a nonce for SvelteKit's
-	// own inline script.
+	// comes from the csp option of sveltekit() in vite.config.js, with a nonce
+	// for SvelteKit's own inline script.
 	response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
 	return response;
 }

@@ -1,5 +1,5 @@
 <script>
-    import { postFrontend } from '$lib/requests';
+    import { postFrontend } from '#lib/requests.js';
 	import { redirect } from '@sveltejs/kit'
 	let password = '';
 	let username = '';

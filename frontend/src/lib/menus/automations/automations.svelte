@@ -1,7 +1,7 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { getAutomations } from '$lib/requests.js';
-	import { reveal, vanish, move } from '$lib/motion';
+	import { getAutomations } from '#lib/requests.js';
+	import { reveal, vanish, move } from '#lib/motion.js';
 	import AutomationWindow from './automationWindow.svelte';
 
 	// Kept alive in the background between visits (see routes/+page.svelte):

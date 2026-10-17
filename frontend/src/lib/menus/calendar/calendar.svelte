@@ -1,9 +1,9 @@
 <script>
-	import { getChores, getEvents, getUsers } from '$lib/requests';
+	import { getChores, getEvents, getUsers } from '#lib/requests.js';
 	import { onMount, tick } from 'svelte';
-	import EventSheet from '$lib/sheet/EventSheet.svelte';
-	import { addStart } from '$lib/sheet/when.js';
-	import { viewTransition, reveal } from '$lib/motion';
+	import EventSheet from '#lib/sheet/EventSheet.svelte';
+	import { addStart } from '#lib/sheet/when.js';
+	import { viewTransition, reveal } from '#lib/motion.js';
 
 	// ── Constants ─────────────────────────────────────────────────────────────
 	const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 07–22

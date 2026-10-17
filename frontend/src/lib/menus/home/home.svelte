@@ -1,15 +1,15 @@
 <script>
 	import { onMount } from 'svelte';
-	import { getEvents, getChores, getUsers, getRooms, signChore, delChore, getTodos, getTags, updateTodo, getStats } from '$lib/requests';
-	import Section from '$lib/header/Section.svelte';
-	import ContentLayout from '$lib/containers/contentLayout.svelte';
-	import Drag from '$lib/containers/drag.svelte';
-	import GroupIcon from '$lib/icons/GroupIcon.svelte';
-	import EventSheet from '$lib/sheet/EventSheet.svelte';
-	import UpdateTask from '$lib/menus/chores/updateChore.svelte';
-	import TodoSheet from '$lib/sheet/TodoSheet.svelte';
-	import AssistantChat from '$lib/components/AssistantChat.svelte';
-	import { reveal, vanish, expand, move, autoHeight, afterExit } from '$lib/motion';
+	import { getEvents, getChores, getUsers, getRooms, signChore, delChore, getTodos, getTags, updateTodo, getStats } from '#lib/requests.js';
+	import Section from '#lib/header/Section.svelte';
+	import ContentLayout from '#lib/containers/contentLayout.svelte';
+	import Drag from '#lib/containers/drag.svelte';
+	import GroupIcon from '#lib/icons/GroupIcon.svelte';
+	import EventSheet from '#lib/sheet/EventSheet.svelte';
+	import UpdateTask from '#lib/menus/chores/updateChore.svelte';
+	import TodoSheet from '#lib/sheet/TodoSheet.svelte';
+	import AssistantChat from '#lib/components/AssistantChat.svelte';
+	import { reveal, vanish, expand, move, autoHeight, afterExit } from '#lib/motion.js';
 
 	// ── Data ──────────────────────────────────────────────────────────────────
 	let events = null;

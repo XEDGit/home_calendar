@@ -1,6 +1,6 @@
 <script>
     import Tag from "./tag.svelte";
-    import GroupIcon from "$lib/icons/GroupIcon.svelte";
+    import GroupIcon from "#lib/icons/GroupIcon.svelte";
 
     const PRIORITY_NAMES = ['none', 'low', 'medium', 'high'];
     export let

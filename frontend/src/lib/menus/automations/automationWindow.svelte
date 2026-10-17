@@ -1,10 +1,10 @@
 <script>
 	// One automation as a window: its name is the title, the latest result is
 	// the body, older runs fold away under History.
-	import Collapsible from '$lib/containers/collapsible.svelte';
+	import Collapsible from '#lib/containers/collapsible.svelte';
 	import AutomationForm from './automationForm.svelte';
-	import Markdown from '$lib/assistant/Markdown.svelte';
-	import { updateAutomation, deleteAutomation, runAutomation } from '$lib/requests.js';
+	import Markdown from '#lib/assistant/Markdown.svelte';
+	import { updateAutomation, deleteAutomation, runAutomation } from '#lib/requests.js';
 
 	export let automation;
 	export let onChange = () => {};

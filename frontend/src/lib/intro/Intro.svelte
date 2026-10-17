@@ -4,11 +4,11 @@
 	// shows it instead of the tabs while the household has no members.
 	// Every step saves as it goes; all of it can be changed later in Settings.
 	import { onMount, tick } from 'svelte';
-	import { getUsers, getRooms, postFrontend, updateTheme } from '$lib/requests';
-	import { setCookie } from '$lib/helpers/getCookie';
-	import { applyTheme, themeById } from '$lib/theme';
-	import { morphHeight, reveal, vanish, move, viewTransition } from '$lib/motion';
-	import ThemePicker from '$lib/components/ThemePicker.svelte';
+	import { getUsers, getRooms, postFrontend, updateTheme } from '#lib/requests.js';
+	import { setCookie } from '#lib/helpers/getCookie.js';
+	import { applyTheme, themeById } from '#lib/theme.js';
+	import { morphHeight, reveal, vanish, move, viewTransition } from '#lib/motion.js';
+	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import {
 		introSteps, PHASES, phaseOf, cleanName, findByName, MEMBER_COLORS, MEMBER_COLOR_NAMES, nextColor,
 		ROOM_SUGGESTIONS, CHORE_SUGGESTIONS, CHORE_REPEATS, choreBody,

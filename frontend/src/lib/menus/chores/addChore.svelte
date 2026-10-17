@@ -1,8 +1,8 @@
 <script>
-	import { getFrontend, postFrontend } from "$lib/requests";
-	import Section from "$lib/header/Section.svelte";
+	import { getFrontend, postFrontend } from "#lib/requests.js";
+	import Section from "#lib/header/Section.svelte";
 	import { onMount } from "svelte";
-	import { expand } from "$lib/motion";
+	import { expand } from "#lib/motion.js";
 
 	let newChore = {
 		name: '',

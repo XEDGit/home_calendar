@@ -1,26 +1,26 @@
 <script>
-	import Stats from "$lib/menus/stats/stats.svelte";
-	import Calendar from "$lib/menus/calendar/calendar.svelte";
-	import AddChoreForm from "$lib/menus/chores/addChore.svelte";
-	import Chores from "$lib/menus/chores/chores.svelte";
-	import PlusButton from "$lib/buttons/plusButton.svelte";
-	import NavButton from "$lib/header/navButton.svelte";
-	import PromptUser from "$lib/prompts/promptUser.svelte";
-	import Settings from "$lib/menus/settings/Settings.svelte";
-	import Home from "$lib/menus/home/home.svelte";
-	import Todo from "$lib/menus/todo/todo.svelte";
-	import Automations from "$lib/menus/automations/automations.svelte";
-	import AddAutomationForm from "$lib/menus/automations/addAutomation.svelte";
-	import AssistantTab from "$lib/menus/assistant/assistant.svelte";
-	import Intro from "$lib/intro/Intro.svelte";
-	import { connect, unreadCount } from "$lib/assistant/store.js";
+	import Stats from "#lib/menus/stats/stats.svelte";
+	import Calendar from "#lib/menus/calendar/calendar.svelte";
+	import AddChoreForm from "#lib/menus/chores/addChore.svelte";
+	import Chores from "#lib/menus/chores/chores.svelte";
+	import PlusButton from "#lib/buttons/plusButton.svelte";
+	import NavButton from "#lib/header/navButton.svelte";
+	import PromptUser from "#lib/prompts/promptUser.svelte";
+	import Settings from "#lib/menus/settings/Settings.svelte";
+	import Home from "#lib/menus/home/home.svelte";
+	import Todo from "#lib/menus/todo/todo.svelte";
+	import Automations from "#lib/menus/automations/automations.svelte";
+	import AddAutomationForm from "#lib/menus/automations/addAutomation.svelte";
+	import AssistantTab from "#lib/menus/assistant/assistant.svelte";
+	import Intro from "#lib/intro/Intro.svelte";
+	import { connect, unreadCount } from "#lib/assistant/store.js";
 	import { onMount, setContext, tick } from "svelte";
-	import { getRooms, getUsers } from "$lib/requests";
-	import { getCookie, setCookie } from "$lib/helpers/getCookie";
-	import ContentLayout from "$lib/containers/contentLayout.svelte";
-	import Screen from "$lib/containers/screen.svelte";
-	import { viewTransition } from "$lib/motion";
-	import { applyTheme } from "$lib/theme";
+	import { getRooms, getUsers } from "#lib/requests.js";
+	import { getCookie, setCookie } from "#lib/helpers/getCookie.js";
+	import ContentLayout from "#lib/containers/contentLayout.svelte";
+	import Screen from "#lib/containers/screen.svelte";
+	import { viewTransition } from "#lib/motion.js";
+	import { applyTheme } from "#lib/theme.js";
 
 	let rooms = null;
 	let user = undefined;
@@ -150,7 +150,7 @@
 		warmTimer = setTimeout(() => idle(next), 200);
 	}
 
-	import { browser } from "$app/environment";
+	import { browser } from "$app/env";
 	// Tab views that can open their add sheet (bound below), and a tab whose
 	// sheet should open once it's on screen with its data in
 	let calendarView, todoView;
@@ -181,9 +181,9 @@
 		else viewMode = value;
 	};
 
-	import { page } from "$app/stores";
-	import Section from "$lib/header/Section.svelte";
-	let queryParams = $page.url.searchParams;
+	import { page } from "$app/state";
+	import Section from "#lib/header/Section.svelte";
+	let queryParams = page.url.searchParams;
 	for (let [key, value] of Array.from(queryParams.entries())) {
 		if (key == "viewMode") {
 			let idx = pageNames.indexOf(value);
@@ -198,7 +198,7 @@
 	}
 
 	// A tab URL opens straight on that tab (a refresh, a reopened tab)
-	const pathView = viewFromPath($page.url.pathname);
+	const pathView = viewFromPath(page.url.pathname);
 	if (pathView in ADD_ON) {
 		viewMode = ADD_ON[pathView];
 		pendingAdd = viewMode;

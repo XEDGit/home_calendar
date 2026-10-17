@@ -1,5 +1,3 @@
-import { json } from '@sveltejs/kit';
-
 // Voice input for the assistant: the recorded clip goes to the internal
 // whisper.cpp server (it converts webm/ogg/mp4 itself), text comes back.
 const WHISPER = 'http://whisper:8080/inference';
@@ -20,11 +18,11 @@ async function transcribe(audio, type, language) {
 export async function POST({ request }) {
 	const type = request.headers.get('Content-Type') || 'audio/webm';
 	if (!type.startsWith('audio/')) {
-		return json({ error: 'Expected an audio clip' }, { status: 400 });
+		return Response.json({ error: 'Expected an audio clip' }, { status: 400 });
 	}
 	const audio = await request.arrayBuffer();
 	if (!audio.byteLength || audio.byteLength > MAX_BYTES) {
-		return json({ error: 'The recording is empty or too long' }, { status: 400 });
+		return Response.json({ error: 'The recording is empty or too long' }, { status: 400 });
 	}
 
 	try {
@@ -38,9 +36,9 @@ export async function POST({ request }) {
 				: ['spanish', 'portuguese', 'es', 'pt'].includes(result.language) ? 'it' : 'en';
 			result = await transcribe(audio, type, fallback);
 		}
-		return json({ text: (result.text || '').replace(/\s+/g, ' ').trim(), language: result.language });
+		return Response.json({ text: (result.text || '').replace(/\s+/g, ' ').trim(), language: result.language });
 	} catch (error) {
 		console.error('Error transcribing:', error);
-		return json({ error: 'Voice input is unavailable right now' }, { status: 502 });
+		return Response.json({ error: 'Voice input is unavailable right now' }, { status: 502 });
 	}
 }

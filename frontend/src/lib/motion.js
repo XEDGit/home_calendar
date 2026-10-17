@@ -8,7 +8,7 @@ import { tick } from 'svelte';
 import { fade, fly, slide } from 'svelte/transition';
 import { flip } from 'svelte/animate';
 import { quintIn, quintOut } from 'svelte/easing';
-import { networkIdle } from '$lib/requests';
+import { networkIdle } from '#lib/requests.js';
 
 export const DUR = { instant: 100, fast: 130, base: 200, slow: 260, screen: 360 };
 export const EASE = {

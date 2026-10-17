@@ -3,8 +3,8 @@
 	// occurrence of a series) shows its own day, and editing it edits the
 	// series: the date field then holds when the series starts.
 	import { onMount, tick } from 'svelte';
-	import { closeDialog, morphHeight } from '$lib/motion';
-	import { postFrontend } from '$lib/requests';
+	import { closeDialog, morphHeight } from '#lib/motion.js';
+	import { postFrontend } from '#lib/requests.js';
 	import Sheet from './Sheet.svelte';
 	import Icon from './Icon.svelte';
 	import { REPEATS, repeatKey, repeatText, localParts, joinLocal, dateInput, formatWhen, formatDay } from './when.js';

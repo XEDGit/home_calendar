@@ -1,7 +1,7 @@
 <script>
 	import { tick } from 'svelte';
-	import { reveal } from '$lib/motion';
-	import { cancel, togglePlanAction, confirm, reject } from '$lib/assistant/store.js';
+	import { reveal } from '#lib/motion.js';
+	import { cancel, togglePlanAction, confirm, reject } from '#lib/assistant/store.js';
 	import Markdown from './Markdown.svelte';
 
 	export let conversationId = null;

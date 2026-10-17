@@ -1,5 +1,5 @@
 <script>
-    import { reveal } from '$lib/motion';
+    import { reveal } from '#lib/motion.js';
 
     // Only the page shell is the <main> landmark; nested layouts stay divs.
     export let as = 'div';

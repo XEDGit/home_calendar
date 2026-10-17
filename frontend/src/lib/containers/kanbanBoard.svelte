@@ -1,5 +1,5 @@
 <script>
-    import Card from "$lib/buttons/card.svelte";
+    import Card from "#lib/buttons/card.svelte";
 
     export let chores = {};
     let columns = { Late: -1, Today: 0}

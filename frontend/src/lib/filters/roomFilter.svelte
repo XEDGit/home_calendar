@@ -1,5 +1,5 @@
 <script>
-    import Button from "$lib/buttons/button.svelte";
+    import Button from "#lib/buttons/button.svelte";
     
     export let rooms = [];
     export let selectedRooms = [];

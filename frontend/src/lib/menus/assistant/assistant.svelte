@@ -1,8 +1,8 @@
 <script>
 	import { onMount, onDestroy, tick } from 'svelte';
-	import AssistantThread from '$lib/assistant/AssistantThread.svelte';
-	import AssistantInput from '$lib/assistant/AssistantInput.svelte';
-	import { conversations, threads, listLoaded, open, send, remove, setVisible, selected } from '$lib/assistant/store.js';
+	import AssistantThread from '#lib/assistant/AssistantThread.svelte';
+	import AssistantInput from '#lib/assistant/AssistantInput.svelte';
+	import { conversations, threads, listLoaded, open, send, remove, setVisible, selected } from '#lib/assistant/store.js';
 
 	export let active = true;
 	export let onReady = () => {};
